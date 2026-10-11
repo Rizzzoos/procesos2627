@@ -1,0 +1,8 @@
+{
+  "name": "procesos2627",
+  "version": "1.0.0",
+  "main": "servidor/api.js",
+  "dependencies": {
+    "express": "^5.0.0"
+  }
+}
