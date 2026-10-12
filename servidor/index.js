@@ -16,18 +16,22 @@ mongoose.connect(uri)
   .then(() => console.log('¡Conectado con éxito a MongoDB Atlas!'))
   .catch(err => console.error('Error conectando a MongoDB:', err));
 
-// Ruta de la API para recibir los datos del formulario
-app.post('/api/usuarios', async (req, res) => {
+// Ruta para registrarse
+app.post('/api/registro', async (req, res) => {
     const { email, password } = req.body;
+    const resultado = await datos.registrarUsuario(email, password);
     
-    // Llamamos a la función de la base de datos
-    const resultado = await datos.procesarUsuario(email, password);
+    if (resultado.exito) res.status(200).json({ mensaje: resultado.mensaje });
+    else res.status(400).json({ error: resultado.error });
+});
+
+// Ruta para iniciar sesión
+app.post('/api/login', async (req, res) => {
+    const { email, password } = req.body;
+    const resultado = await datos.loginUsuario(email, password);
     
-    if (resultado.exito) {
-        res.status(200).json({ mensaje: resultado.mensaje });
-    } else {
-        res.status(400).json({ error: resultado.error });
-    }
+    if (resultado.exito) res.status(200).json({ mensaje: resultado.mensaje });
+    else res.status(400).json({ error: resultado.error });
 });
 
 // Arrancar el servidor

@@ -1,35 +1,46 @@
 const mongoose = require('mongoose');
 
-// 1. Definimos el "Molde" (Schema) de nuestros usuarios
 const usuarioSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     fechaRegistro: { type: Date, default: Date.now }
 });
 
-// 2. Creamos el modelo basado en el esquema
 const Usuario = mongoose.model('Usuario', usuarioSchema);
 
-// 3. Función para registrar o identificar al usuario
-async function procesarUsuario(email, password) {
+// Función 1: Solo para crear cuentas nuevas
+async function registrarUsuario(email, password) {
     try {
-        // Buscamos si el usuario ya existe en la base de datos
         const usuarioExistente = await Usuario.findOne({ email: email });
-        
         if (usuarioExistente) {
-            // Podríamos validar la contraseña aquí, pero por ahora lo damos por logueado
-            return { exito: true, mensaje: '¡Bienvenida de nuevo a tu espacio Dasna!' };
+            return { exito: false, error: 'Este correo ya tiene una cuenta. Inicia sesión.' };
         }
         
-        // Si no existe, creamos un nuevo usuario y lo guardamos
         const nuevoUsuario = new Usuario({ email, password });
         await nuevoUsuario.save();
-        
-        return { exito: true, mensaje: 'Tu aura se ha registrado con éxito en Dasna.' };
+        return { exito: true, mensaje: 'Cuenta creada con éxito.' };
     } catch (error) {
-        console.error("Error en la base de datos:", error);
-        return { exito: false, error: 'Hubo una interferencia al conectar con el universo.' };
+        return { exito: false, error: 'Error al conectar con la base de datos.' };
     }
 }
 
-module.exports = { procesarUsuario };
+// Función 2: Solo para entrar en cuentas que ya existen
+async function loginUsuario(email, password) {
+    try {
+        const usuarioExistente = await Usuario.findOne({ email: email });
+        if (!usuarioExistente) {
+            return { exito: false, error: 'No existe ninguna cuenta con este correo.' };
+        }
+        
+        if (usuarioExistente.password === password) {
+            return { exito: true, mensaje: '¡Bienvenida de nuevo!' };
+        } else {
+            return { exito: false, error: 'Contraseña incorrecta. Inténtalo de nuevo.' };
+        }
+    } catch (error) {
+        return { exito: false, error: 'Error al conectar con la base de datos.' };
+    }
+}
+
+// ESTA ES LA LÍNEA CLAVE QUE FALTABA O NO ESTABA GUARDADA
+module.exports = { registrarUsuario, loginUsuario };
