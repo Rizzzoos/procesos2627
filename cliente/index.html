@@ -2,10 +2,159 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Aplicación SaaS - Gestión de Usuarios</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dasna - Sana y potencia tu interior</title>
+    <style>
+        :root {
+            --text-main: #2d3748;
+            --text-muted: #4a5568;
+            --glass-bg: rgba(255, 255, 255, 0.25);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --input-bg: rgba(255, 255, 255, 0.5);
+        }
+
+        /* FONDO ANIMADO: Efecto Aura en movimiento */
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            
+            /* Colores del aura: Lavanda, melocotón, rosado y azul suave */
+            background: linear-gradient(-45deg, #e0c3fc, #8ec5fc, #ffecd2, #fcb69f);
+            background-size: 400% 400%;
+            animation: auraMovement 12s ease infinite;
+            color: var(--text-main);
+        }
+
+        /* Animación fluida del aura */
+        @keyframes auraMovement {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* RECUADRO ESTÉTICO (Glassmorphism avanzado) */
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 3rem 2.5rem;
+            border-radius: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--glass-border);
+            width: 100%;
+            max-width: 380px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin: 0 0 0.5rem 0;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 2.5rem;
+            font-weight: 400;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.9rem;
+            background: var(--input-bg);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 15px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            color: var(--text-main);
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.8);
+            border-color: #fff;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        input::placeholder {
+            color: #a0aec0;
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #a78bfa, #f687b3);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 1rem;
+            box-shadow: 0 4px 15px rgba(167, 139, 250, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(167, 139, 250, 0.6);
+        }
+
+        #mensaje {
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+    </style>
 </head>
 <body>
-    <h1>Gestión de Usuarios SaaS</h1>
+
+    <div class="card">
+        <h1>Dasna</h1>
+        <p class="subtitle">Manifiesta. Organiza. Evoluciona.</p>
+        
+        <form id="authForm">
+            <div class="form-group">
+                <label for="email">Tu energía (Correo)</label>
+                <input type="email" id="email" placeholder="hola@universo.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Tu llave (Contraseña)</label>
+                <input type="password" id="password" placeholder="••••••••" required>
+            </div>
+
+            <button type="submit">Entrar a mi espacio</button>
+        </form>
+
+        <div id="mensaje"></div>
+    </div>
+
     <script src="rest.js"></script>
 </body>
 </html>

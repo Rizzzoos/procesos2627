@@ -1,23 +1,37 @@
-// servidor/index.js
 const express = require('express');
-const { crearRepositorio } = require('./datos');
-const { crearServicio } = require('./logic');
-const { crearRouter } = require('./api');
+const mongoose = require('mongoose');
+const path = require('path');
+const datos = require('./datos.js'); // Importamos nuestra lógica de base de datos
 
 const app = express();
+
+// Middlewares
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../cliente')));
 
-// Servir los archivos estáticos del cliente (misma origen)
-app.use(express.static('cliente'));
+// Conexión a MongoDB Atlas
+const uri = "mongodb+srv://sandragaralcolea_db_user:4NfTyzkxJmdJkis1@dasnacluster.dvtntci.mongodb.net/dasnaDB?retryWrites=true&w=majority";
 
-// Inyección de dependencias entre capas
-const repo = crearRepositorio();
-const servicio = crearServicio(repo);
+mongoose.connect(uri)
+  .then(() => console.log('¡Conectado con éxito a MongoDB Atlas!'))
+  .catch(err => console.error('Error conectando a MongoDB:', err));
 
-// Conectar las rutas de la API
-app.use('/api/usuarios', crearRouter(servicio));
+// Ruta de la API para recibir los datos del formulario
+app.post('/api/usuarios', async (req, res) => {
+    const { email, password } = req.body;
+    
+    // Llamamos a la función de la base de datos
+    const resultado = await datos.procesarUsuario(email, password);
+    
+    if (resultado.exito) {
+        res.status(200).json({ mensaje: resultado.mensaje });
+    } else {
+        res.status(400).json({ error: resultado.error });
+    }
+});
 
+// Arrancar el servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Servidor ejecutándose en http://localhost:${PORT}`);
+    console.log(`Servidor Dasna vibrando en http://localhost:${PORT}`);
 });

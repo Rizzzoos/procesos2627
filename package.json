@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "servidor/api.js",
   "dependencies": {
-    "express": "^5.0.0"
+    "express": "^5.0.0",
+    "mongoose": "^9.11.1"
   }
 }
