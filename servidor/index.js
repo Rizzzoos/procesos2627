@@ -39,6 +39,7 @@ async function arrancar() {
     // estar disponibles durante el arranque en frío.
     const email = process.env.ADMIN_EMAIL;
     const password = process.env.ADMIN_PASSWORD;
+    console.log(`[LOG - ADMIN] Comprobando credenciales de admin. email=${email ? 'OK' : 'VACIO'} pass=${password ? 'OK' : 'VACIO'}`);
     if (!email || !password) {
         console.log('[LOG - ADMIN] No hay ADMIN_EMAIL/ADMIN_PASSWORD definidos.');
         return;

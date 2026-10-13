@@ -116,6 +116,8 @@ async function asegurarAdmin(email, password) {
             if (existente.rol !== 'admin') {
                 await datos.cambiarRol(email, 'admin');
                 console.log(`[LOG - ADMIN] Usuario ${email} promovido a administrador.`);
+            } else {
+                console.log(`[LOG - ADMIN] Cuenta de administrador verificada: ${email}`);
             }
             return true;
         }
