@@ -1,0 +1,30 @@
+name: CI - Pruebas del proyecto
+
+# Se ejecuta en cada PR y en cada push a main (integración continua)
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar pruebas automatizadas
+        run: npm test
+        env:
+          # Los secretos se guardan en Settings > Secrets and variables > Actions
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
