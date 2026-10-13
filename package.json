@@ -4,7 +4,7 @@
   "main": "servidor/api.js",
   "scripts": {
     "start": "node servidor/index.js",
-    "test": "node --test servidor/datos.test.js"
+    "test": "node --test servidor/logica.test.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

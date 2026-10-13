@@ -1,0 +1,7 @@
+# Archivos y carpetas que NO se copian a la imagen de Docker
+node_modules
+.git
+.github
+.env
+.env.example
+*.md
