@@ -148,7 +148,7 @@
         <div class="separador"></div>
         
         <!-- Botón de Salir real -->
-        <a href="/" class="menu-item" style="background: rgba(255,0,0,0.1);"><span>🚪</span> Cerrar Sesión</a>
+        <a href="#" onclick="cerrarSesion()" class="menu-item" style="background: rgba(255,0,0,0.1);"><span>🚪</span> Cerrar Sesión</a>
     </div>
 
     <!-- Contenido Principal -->
@@ -190,6 +190,25 @@
             </div>
         </div>
     </div>
+
+
+    <script>
+        // 1. Al cargar la página, comprobar sesión
+        fetch('/api/auth/me').then(res => {
+            if (!res.ok) {
+                // Si el servidor da error (no hay cookie), te expulsa a la pantalla de login
+                window.location.href = '/index.html';
+            }
+        });
+
+        // 2. Función para el botón de cerrar sesión
+        function cerrarSesion() {
+            fetch('/api/logout', { method: 'POST' }).then(() => {
+                window.location.href = '/index.html';
+            });
+        }
+    </script>
+
 
 </body>
 </html>

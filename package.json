@@ -2,8 +2,16 @@
   "name": "procesos2627",
   "version": "1.0.0",
   "main": "servidor/api.js",
+  "scripts": {
+    "start": "node servidor/index.js",
+    "test": "node --test servidor/datos.test.js"
+  },
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^18.0.7",
     "express": "^5.0.0",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.11.1"
   }
 }
