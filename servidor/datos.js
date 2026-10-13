@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const usuarioSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
+    nombre: { type: String, default: '' },
     rol: { type: String, default: 'usuario' },
     fechaRegistro: { type: Date, default: Date.now }
 });
@@ -15,8 +16,8 @@ const usuarioSchema = new mongoose.Schema({
 const Usuario = mongoose.model('Usuario', usuarioSchema);
 
 // Crear un documento usuario en la colección "usuarios"
-async function crearUsuario(email, password, rol = 'usuario') {
-    const nuevoUsuario = new Usuario({ email, password, rol });
+async function crearUsuario(email, password, nombre = '', rol = 'usuario') {
+    const nuevoUsuario = new Usuario({ email, password, nombre, rol });
     await nuevoUsuario.save();
     return nuevoUsuario;
 }
@@ -36,9 +37,15 @@ async function eliminarPorEmail(email) {
     return Usuario.findOneAndDelete({ email });
 }
 
+// Cambiar el rol de un usuario (por ejemplo, promoverlo a admin)
+async function cambiarRol(email, nuevoRol) {
+    return Usuario.findOneAndUpdate({ email }, { rol: nuevoRol }, { new: true });
+}
+
 module.exports = {
     crearUsuario,
     buscarPorEmail,
     listarTodos,
-    eliminarPorEmail
+    eliminarPorEmail,
+    cambiarRol
 };

@@ -27,8 +27,8 @@ function crearRouter() {
 
     // Ruta para registrarse
     router.post('/registro', async (req, res) => {
-        const { email, password } = req.body;
-        const resultado = await logica.registrarUsuario(email, password);
+        const { email, password, nombre } = req.body;
+        const resultado = await logica.registrarUsuario(email, password, nombre);
 
         if (resultado.exito) res.status(200).json({ mensaje: resultado.mensaje });
         else res.status(400).json({ error: resultado.error });

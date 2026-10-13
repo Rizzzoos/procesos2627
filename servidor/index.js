@@ -9,6 +9,7 @@ const mongoose = require('mongoose');
 const path = require('path');
 const cookieParser = require('cookie-parser'); // Permite leer cookies
 const { crearRouter } = require('./api.js');   // Capa API
+const logica = require('./logica.js');         // Capa lógica
 
 const app = express();
 
@@ -19,7 +20,12 @@ app.use(express.static(path.join(__dirname, '../cliente'))); // El backend sirve
 
 // Conexión a MongoDB Atlas (base de datos real)
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('¡Conectado con éxito a MongoDB Atlas!'))
+    .then(async () => {
+        console.log('¡Conectado con éxito a MongoDB Atlas!');
+        // Crear (o promover) la cuenta de administrador inicial si hace falta.
+        // Es el mecanismo de creación del primer admin del proyecto.
+        await logica.asegurarAdmin(process.env.ADMIN_EMAIL, process.env.ADMIN_PASSWORD);
+    })
     .catch(err => console.error('Error conectando a MongoDB:', err));
 
 // Conectar la API bajo /api

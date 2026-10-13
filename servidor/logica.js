@@ -7,8 +7,12 @@ const bcrypt = require('bcrypt');
 const datos = require('./datos.js');
 
 // Función 1: Solo para crear cuentas nuevas
-async function registrarUsuario(email, password) {
+async function registrarUsuario(email, password, nombre = '') {
     try {
+        // Validaciones del registro (reglas de negocio)
+        if (!password || password.length < 8) {
+            return { exito: false, error: 'La contraseña debe tener mínimo 8 caracteres.' };
+        }
         const usuarioExistente = await datos.buscarPorEmail(email);
         if (usuarioExistente) {
             return { exito: false, error: 'Este correo ya tiene una cuenta. Inicia sesión.' };
@@ -19,7 +23,7 @@ async function registrarUsuario(email, password) {
         const passwordEncriptada = await bcrypt.hash(password, salt);
 
         // Guardamos la contraseña encriptada, no la original
-        await datos.crearUsuario(email, passwordEncriptada);
+        await datos.crearUsuario(email, passwordEncriptada, nombre);
 
         console.log(`[LOG - SEGURIDAD] Nuevo usuario registrado: ${email}`);
         return { exito: true, mensaje: 'Cuenta creada con éxito.' };
@@ -97,10 +101,38 @@ async function eliminarUsuario(emailAEliminar, emailSolicitante, rolSolicitante)
     }
 }
 
+// 4. Asegurar que existe el primer administrador (al arrancar el servidor)
+// Es el mecanismo de creación del admin inicial: viene de las variables de
+// entorno ADMIN_EMAIL y ADMIN_PASSWORD. Si ya existe, no hace nada.
+async function asegurarAdmin(email, password) {
+    try {
+        if (!email || !password) {
+            console.log('[LOG - ADMIN] No hay ADMIN_EMAIL/ADMIN_PASSWORD definidos. Omitido.');
+            return;
+        }
+        const existente = await datos.buscarPorEmail(email);
+        if (existente) {
+            // Si existe pero no es admin, lo promovemos (idempotente)
+            if (existente.rol !== 'admin') {
+                await datos.cambiarRol(email, 'admin');
+                console.log(`[LOG - ADMIN] Usuario ${email} promovido a administrador.`);
+            }
+            return;
+        }
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash(password, salt);
+        await datos.crearUsuario(email, hash, '', 'admin');
+        console.log(`[LOG - ADMIN] Creada la cuenta de administrador: ${email}`);
+    } catch (error) {
+        console.error('[LOG - ADMIN] Error al asegurar el administrador:', error.message);
+    }
+}
+
 module.exports = {
     registrarUsuario,
     loginUsuario,
     listarUsuarios,
     comprobarEstado,
-    eliminarUsuario
+    eliminarUsuario,
+    asegurarAdmin
 };
