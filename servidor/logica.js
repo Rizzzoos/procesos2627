@@ -108,7 +108,7 @@ async function asegurarAdmin(email, password) {
     try {
         if (!email || !password) {
             console.log('[LOG - ADMIN] No hay ADMIN_EMAIL/ADMIN_PASSWORD definidos. Omitido.');
-            return;
+            return true; // Nada que hacer: no es un error
         }
         const existente = await datos.buscarPorEmail(email);
         if (existente) {
@@ -117,14 +117,16 @@ async function asegurarAdmin(email, password) {
                 await datos.cambiarRol(email, 'admin');
                 console.log(`[LOG - ADMIN] Usuario ${email} promovido a administrador.`);
             }
-            return;
+            return true;
         }
         const salt = await bcrypt.genSalt(10);
         const hash = await bcrypt.hash(password, salt);
         await datos.crearUsuario(email, hash, '', 'admin');
         console.log(`[LOG - ADMIN] Creada la cuenta de administrador: ${email}`);
+        return true;
     } catch (error) {
         console.error('[LOG - ADMIN] Error al asegurar el administrador:', error.message);
+        return false; // Fallo transitorio: el llamante puede reintentar
     }
 }
 
