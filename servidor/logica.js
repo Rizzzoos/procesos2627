@@ -132,11 +132,45 @@ async function asegurarAdmin(email, password) {
     }
 }
 
+// 5. [VARIANTE 5] Decidir si un actor puede eliminar a un objetivo.
+// Regla pura de negocio: NO accede a la base de datos ni conoce HTTP.
+// Se aplican las reglas en este orden:
+//   1) Un usuario solo puede eliminarse a sí mismo -> NO_AUTORIZADO
+//   2) No se puede eliminar a un admin si es el último (administradores <= 1) -> ULTIMO_ADMIN
+//   3) En cualquier otro caso, permitido (motivo null)
+function puedeEliminar(actor, objetivo, administradores) {
+    // Validación de la entrada: rol desconocido o datos ausentes/de tipo incorrecto
+    const rolesValidos = ['usuario', 'admin'];
+    const entradaValida =
+        actor && objetivo &&
+        typeof actor.id === 'string' && typeof objetivo.id === 'string' &&
+        rolesValidos.includes(actor.rol) && rolesValidos.includes(objetivo.rol) &&
+        Number.isInteger(administradores);
+
+    if (!entradaValida) {
+        return { error: 'Datos incorrectos: se espera actor y objetivo con id (texto) y rol (usuario|admin), y administradores entero.' };
+    }
+
+    // Regla 1: un usuario normal solo puede eliminarse a sí mismo
+    if (actor.rol === 'usuario' && actor.id !== objetivo.id) {
+        return { permitido: false, motivo: 'NO_AUTORIZADO' };
+    }
+
+    // Regla 2: no se puede eliminar al último administrador (ni siquiera a sí mismo)
+    if (objetivo.rol === 'admin' && administradores <= 1) {
+        return { permitido: false, motivo: 'ULTIMO_ADMIN' };
+    }
+
+    // Regla 3: cualquier otro caso está permitido
+    return { permitido: true, motivo: null };
+}
+
 module.exports = {
     registrarUsuario,
     loginUsuario,
     listarUsuarios,
     comprobarEstado,
     eliminarUsuario,
-    asegurarAdmin
+    asegurarAdmin,
+    puedeEliminar
 };

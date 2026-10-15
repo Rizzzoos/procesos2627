@@ -56,3 +56,77 @@ test('Batería de pruebas de Gestión de Usuarios (Dasna)', async (t) => {
     await mongoose.connection.collection('usuarios').deleteOne({ email: emailTest });
     await mongoose.disconnect();
 });
+
+// ============================================================
+// [VARIANTE 5] Pruebas unitarias de la regla pura puedeEliminar()
+// No tocan la base de datos: comprueban la lógica directamente.
+// ============================================================
+
+test('variante5: un usuario normal no puede eliminar a otro usuario (NO_AUTORIZADO)', () => {
+    const r = logica.puedeEliminar(
+        { id: 'u1', rol: 'usuario' },
+        { id: 'u2', rol: 'usuario' },
+        2
+    );
+    assert.deepStrictEqual(r, { permitido: false, motivo: 'NO_AUTORIZADO' });
+});
+
+test('variante5: no se puede eliminar al último administrador, ni siquiera siendo el mismo (ULTIMO_ADMIN)', () => {
+    const aSíMismo = logica.puedeEliminar(
+        { id: 'a1', rol: 'admin' },
+        { id: 'a1', rol: 'admin' },
+        1
+    );
+    assert.deepStrictEqual(aSíMismo, { permitido: false, motivo: 'ULTIMO_ADMIN' });
+
+    const aOtroAdmin = logica.puedeEliminar(
+        { id: 'a1', rol: 'admin' },
+        { id: 'a2', rol: 'admin' },
+        1
+    );
+    assert.deepStrictEqual(aOtroAdmin, { permitido: false, motivo: 'ULTIMO_ADMIN' });
+});
+
+test('variante5: un administrador sí puede eliminar a otro admin si queda más de uno', () => {
+    const r = logica.puedeEliminar(
+        { id: 'a1', rol: 'admin' },
+        { id: 'a2', rol: 'admin' },
+        2
+    );
+    assert.deepStrictEqual(r, { permitido: true, motivo: null });
+});
+
+test('variante5: un usuario puede eliminarse a sí mismo y un admin puede borrar usuarios', () => {
+    const aSíMismo = logica.puedeEliminar(
+        { id: 'u1', rol: 'usuario' },
+        { id: 'u1', rol: 'usuario' },
+        1
+    );
+    assert.deepStrictEqual(aSíMismo, { permitido: true, motivo: null });
+
+    const adminBorraUsuario = logica.puedeEliminar(
+        { id: 'a1', rol: 'admin' },
+        { id: 'u9', rol: 'usuario' },
+        1
+    );
+    assert.deepStrictEqual(adminBorraUsuario, { permitido: true, motivo: null });
+});
+
+test('variante5: un rol desconocido o datos ausentes devuelven error (caso de error)', () => {
+    const rolDesconocido = logica.puedeEliminar(
+        { id: 'x', rol: 'superadmin' },
+        { id: 'y', rol: 'usuario' },
+        1
+    );
+    assert.ok(rolDesconocido.error, 'debe responder con campo error');
+
+    const datosAusentes = logica.puedeEliminar(undefined, undefined, undefined);
+    assert.ok(datosAusentes.error, 'debe responder con campo error');
+
+    const administradoresNoEntero = logica.puedeEliminar(
+        { id: 'a1', rol: 'admin' },
+        { id: 'u1', rol: 'usuario' },
+        'varios'
+    );
+    assert.ok(administradoresNoEntero.error, 'debe responder con campo error');
+});

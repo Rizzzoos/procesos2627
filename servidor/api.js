@@ -93,6 +93,18 @@ function crearRouter() {
         else res.status(403).json({ error: resultado.error });
     });
 
+    // [VARIANTE 5] Decidir si un actor puede eliminar a un objetivo (ruta pública, no requiere sesión)
+    router.post('/prueba/eliminar', (req, res) => {
+        const { actor, objetivo, administradores } = req.body || {};
+        const resultado = logica.puedeEliminar(actor, objetivo, administradores);
+
+        if (resultado.error) {
+            res.status(400).json({ error: resultado.error });
+        } else {
+            res.status(200).json({ permitido: resultado.permitido, motivo: resultado.motivo });
+        }
+    });
+
     return router;
 }
 
