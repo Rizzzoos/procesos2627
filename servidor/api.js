@@ -7,6 +7,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const logica = require('./logica.js');
+const oauth = require('./oauth.js'); // Hito 4: inicio de sesión con Google
 
 // Middleware "Guardaespaldas". Comprueba la cookie antes de dejar pasar.
 function protegerRuta(req, res, next) {
@@ -50,6 +51,65 @@ function crearRouter() {
             res.status(200).json({ mensaje: resultado.mensaje });
         } else {
             res.status(400).json({ error: resultado.error });
+        }
+    });
+
+    // ========================================================
+    // HITO 4 - Confirmación de cuenta por correo
+    // ========================================================
+
+    // GET (el usuario pulsa el enlace del correo) -> confirma y redirige al login
+    // con un motivo en la URL para que la interfaz muestre el mensaje.
+    router.get('/confirmar', async (req, res) => {
+        const resultado = await logica.confirmarCuenta(req.query.token);
+        const motivo = resultado.exito ? 'confirmada' : 'error';
+        res.redirect(`/?resultado=${motivo}`);
+        // El detalle del error lo pierde la redirección, así que lo dejamos en el log
+        if (!resultado.exito) console.log(`[LOG - ALERTA] Confirmación rechazada: ${resultado.error}`);
+    });
+
+    // ========================================================
+    // HITO 4 - Inicio de sesión con Google (OAuth)
+    // ========================================================
+
+    // 1. Redirección a la pantalla de consentimiento de Google
+    router.get('/oauth/google', (req, res) => {
+        if (!oauth.configurado()) {
+            // No devolvemos JSON: el botón navega con location.href, así que
+            // volvemos a la portada con un motivo que la interfaz traduce.
+            return res.redirect('/?resultado=oauth_no_configurado');
+        }
+        res.redirect(oauth.crearUrlAutorizacion());
+    });
+
+    // 2. Google vuelve aquí con el código; lo canjeamos y creamos sesión
+    router.get('/oauth/google/callback', async (req, res) => {
+        // Errores claros para el usuario: siempre acabamos en el login con un motivo
+        const fallo = (motivo) => {
+            console.log(`[LOG - ALERTA] OAuth con Google fallido: ${motivo}`);
+            res.redirect(`/?resultado=${motivo}`);
+        };
+
+        if (!oauth.configurado()) return fallo('oauth_no_configurado');
+        if (req.query.error) return fallo('google_denegado'); // el usuario canceló
+        if (!req.query.code) return fallo('codigo_ausente');
+
+        try {
+            const perfil = await oauth.intercambiarCodigo(req.query.code);
+            const resultado = await logica.entrarConGoogle(perfil.email, perfil.nombre);
+
+            if (!resultado.exito) return fallo('oauth_fallo');
+
+            // Misma sesión que el login con contraseña
+            const token = jwt.sign(
+                { email: resultado.email, rol: resultado.rol },
+                process.env.JWT_SECRET,
+                { expiresIn: '2h' }
+            );
+            res.cookie('sesion_dasna', token, { httpOnly: true });
+            res.redirect('/dashboard.html');
+        } catch (error) {
+            return fallo('oauth_fallo');
         }
     });
 
