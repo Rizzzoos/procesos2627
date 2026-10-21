@@ -88,8 +88,12 @@ async function crearCuenta() {
         const resultado = await res.json();
 
         if (res.ok) {
-            // Cuenta creada: iniciamos sesión automáticamente y vamos al Dashboard
-            window.location.href = '/dashboard.html';
+            // HITO 4: la cuenta queda PENDIENTE hasta abrir el correo.
+            // No redirigimos: mostramos el aviso para que sepa qué hacer.
+            mostrarLogin();
+            const mensajeDiv = document.getElementById('mensaje');
+            mensajeDiv.textContent = resultado.mensaje;
+            mensajeDiv.style.color = '#4ade80'; // verde para éxito
         } else {
             mensajeDiv.textContent = resultado.error;
             mensajeDiv.style.color = 'red';
@@ -99,3 +103,36 @@ async function crearCuenta() {
         mensajeDiv.style.color = 'red';
     }
 }
+
+// --- HITO 4: acceso con Google (solo redirige; el servidor hace el resto) ---
+function entrarConGoogle() {
+    window.location.href = '/api/oauth/google';
+}
+
+// --- HITO 4: mensajes que llegan por la URL (confirmación / OAuth) ---
+// /?resultado=confirmada -> cuenta activa
+// /?resultado=error|google_denegado|... -> algo ha fallado, se explica igual
+function mostrarResultadoUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const resultado = params.get('resultado');
+    if (!resultado) return;
+
+    const mensajes = {
+        'confirmada': ['✅ Cuenta confirmada. Ya puedes iniciar sesión.', '#4ade80'],
+        'error': ['El enlace de confirmación no es válido o ha caducado. Regístrate de nuevo.', 'orange'],
+        'google_denegado': ['Has cancelado el inicio de sesión con Google.', 'orange'],
+        'oauth_no_configurado': ['El inicio de sesión con Google no está configurado en el servidor.', 'orange'],
+        'oauth_fallo': ['No se pudo completar el inicio de sesión con Google. Inténtalo de nuevo.', 'orange'],
+        'codigo_ausente': ['Google no devolvió el código de autorización. Inténtalo de nuevo.', 'orange']
+    };
+    const [texto, color] = mensajes[resultado] || ['Se ha producido un error. Inténtalo de nuevo.', 'red'];
+
+    mostrarLogin();
+    const div = document.getElementById('mensaje');
+    div.textContent = texto;
+    div.style.color = color;
+
+    // Limpiamos la URL para que no se repita el mensaje al recargar
+    window.history.replaceState({}, '', '/');
+}
+window.addEventListener('DOMContentLoaded', mostrarResultadoUrl);

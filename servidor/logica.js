@@ -4,9 +4,12 @@
 // No conoce Express ni HTTP (solo llamadas a la capa de datos).
 // ============================================================
 const bcrypt = require('bcrypt');
+const crypto = require('node:crypto'); // Hito 4: tokens de confirmación
 const datos = require('./datos.js');
+const correo = require('./correo.js'); // Hito 4: envío de correos (servicio externo)
 
 // Función 1: Solo para crear cuentas nuevas
+// Hito 4: la cuenta nace PENDIENTE y se envía un correo de confirmación.
 async function registrarUsuario(email, password, nombre = '') {
     try {
         // Validaciones del registro (reglas de negocio)
@@ -22,11 +25,50 @@ async function registrarUsuario(email, password, nombre = '') {
         const salt = await bcrypt.genSalt(10);
         const passwordEncriptada = await bcrypt.hash(password, salt);
 
-        // Guardamos la contraseña encriptada, no la original
-        await datos.crearUsuario(email, passwordEncriptada, nombre);
+        // Token de un solo uso para confirmar la cuenta (caduca en 24 h)
+        const token = crypto.randomBytes(32).toString('hex');
+        const caduca = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-        console.log(`[LOG - SEGURIDAD] Nuevo usuario registrado: ${email}`);
-        return { exito: true, mensaje: 'Cuenta creada con éxito.' };
+        // Guardamos la contraseña encriptada, no la original
+        await datos.crearUsuario(email, passwordEncriptada, nombre, 'usuario', { token, caduca });
+
+        // Enviamos el correo (si falla, la cuenta queda pendiente y se puede reintentar)
+        try {
+            await correo.enviarConfirmacion(email, token);
+        } catch (error) {
+            console.error('[LOG - CORREO] No se pudo enviar el correo de confirmación:', error.message);
+            return {
+                exito: false,
+                error: 'La cuenta se ha creado pero no se pudo enviar el correo de confirmación. Inténtalo de nuevo en unos minutos.'
+            };
+        }
+
+        console.log(`[LOG - SEGURIDAD] Nuevo usuario registrado (pendiente de confirmar): ${email}`);
+        return {
+            exito: true,
+            mensaje: 'Cuenta creada. Hemos enviado un correo de confirmación: abre el enlace para activarla.'
+        };
+    } catch (error) {
+        return { exito: false, error: 'Error al conectar con la base de datos.' };
+    }
+}
+
+// Hito 4: confirmar la cuenta con el token del correo
+async function confirmarCuenta(token) {
+    if (!token || typeof token !== 'string') {
+        return { exito: false, error: 'Enlace de confirmación no válido.' };
+    }
+    try {
+        const usuario = await datos.buscarPorToken(token);
+        if (!usuario) {
+            return { exito: false, error: 'Este enlace de confirmación no es válido o ya se ha usado.' };
+        }
+        if (!usuario.confirmacionCaduca || usuario.confirmacionCaduca < new Date()) {
+            return { exito: false, error: 'El enlace de confirmación ha caducado. Regístrate de nuevo para recibir otro.' };
+        }
+        await datos.confirmarCuenta(usuario.email);
+        console.log(`[LOG - SEGURIDAD] Cuenta confirmada: ${usuario.email}`);
+        return { exito: true, mensaje: 'Cuenta confirmada. Ya puedes iniciar sesión.' };
     } catch (error) {
         return { exito: false, error: 'Error al conectar con la base de datos.' };
     }
@@ -38,6 +80,14 @@ async function loginUsuario(email, password) {
         const usuarioExistente = await datos.buscarPorEmail(email);
         if (!usuarioExistente) {
             return { exito: false, error: 'No existe ninguna cuenta con este correo.' };
+        }
+
+        // Hito 4: la cuenta debe estar confirmada con el correo
+        if (usuarioExistente.confirmada === false) {
+            return {
+                exito: false,
+                error: 'Tu cuenta aún no está confirmada. Revisa tu correo y abre el enlace de confirmación.'
+            };
         }
 
         // Comparar la contraseña introducida con el hash de la base de datos
@@ -165,8 +215,32 @@ function puedeEliminar(actor, objetivo, administradores) {
     return { permitido: true, motivo: null };
 }
 
+// Hito 4: iniciar sesión con un proveedor externo (Google).
+// La capa API ya ha validado el token con Google y nos da email y nombre.
+// Regla: si la cuenta no existe, se crea YA CONFIRMADA (Google ha verificado el correo).
+async function entrarConGoogle(email, nombre = '') {
+    try {
+        let usuario = await datos.buscarPorEmail(email);
+        if (!usuario) {
+            // Contraseña aleatoria inutilizable: esta cuenta solo entra por OAuth.
+            const aleatoria = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
+            usuario = await datos.crearUsuario(email, aleatoria, nombre || '', 'usuario', null);
+            console.log(`[LOG - SEGURIDAD] Cuenta creada con Google (confirmada): ${email}`);
+        } else if (usuario.confirmada === false) {
+            // Existía pendiente (la creó con contraseña): al confirmarla Google, queda activa.
+            await datos.confirmarCuenta(email);
+            console.log(`[LOG - SEGURIDAD] Cuenta pendiente confirmada vía Google: ${email}`);
+        }
+        return { exito: true, email: usuario.email, rol: usuario.rol };
+    } catch (error) {
+        return { exito: false, error: 'No se pudo completar el inicio de sesión con Google.' };
+    }
+}
+
 module.exports = {
     registrarUsuario,
+    confirmarCuenta,
+    entrarConGoogle,
     loginUsuario,
     listarUsuarios,
     comprobarEstado,
