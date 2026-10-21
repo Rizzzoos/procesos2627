@@ -17,10 +17,12 @@ test('Batería de pruebas de Gestión de Usuarios (Dasna)', async (t) => {
         assert.strictEqual(resultado.exito, true);
     });
 
-    await t.test('Prueba 2: Error al registrar un email ya existente (Caso de error)', async () => {
+    await t.test('Prueba 2: Registrar de nuevo un email PENDIENTE reenvía el correo (no bloquea)', async () => {
+        // La cuenta de la prueba 1 sigue pendiente: no puede entrar, así que en
+        // vez de dejarle sin salida, le reenviamos un correo nuevo.
         const resultado = await logica.registrarUsuario(emailTest, passwordTest);
-        assert.strictEqual(resultado.exito, false);
-        assert.strictEqual(resultado.error, 'Este correo ya tiene una cuenta. Inicia sesión.');
+        assert.strictEqual(resultado.exito, true);
+        assert.ok(resultado.mensaje.includes('reenviado'), 'avisa de que se ha reenviado el correo');
     });
 
     // ===== HITO 4: confirmación de la cuenta por correo =====
@@ -69,6 +71,13 @@ test('Batería de pruebas de Gestión de Usuarios (Dasna)', async (t) => {
         const resultado = await logica.loginUsuario(emailTest, 'clave_falsa');
         assert.strictEqual(resultado.exito, false);
         assert.strictEqual(resultado.error, 'Contraseña incorrecta. Inténtalo de nuevo.');
+    });
+
+    await t.test('Prueba 8: Registrar un email YA CONFIRMADO da error de duplicado (Caso de error)', async () => {
+        // emailTest ya está confirmada (Hito4d): aquí sí es un duplicado real.
+        const resultado = await logica.registrarUsuario(emailTest, passwordTest);
+        assert.strictEqual(resultado.exito, false);
+        assert.strictEqual(resultado.error, 'Este correo ya tiene una cuenta. Inicia sesión.');
     });
 
     await t.test('Prueba 5: Un usuario normal es rechazado al listar usuarios (Regla de rol)', async () => {
