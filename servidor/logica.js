@@ -18,6 +18,28 @@ async function registrarUsuario(email, password, nombre = '') {
         }
         const usuarioExistente = await datos.buscarPorEmail(email);
         if (usuarioExistente) {
+            // Si la cuenta existe pero está PENDIENTE de confirmar, no es un
+            // error: le reenviamos el correo con un token nuevo. Así nadie se
+            // queda bloqueado si el primer envío falló o no llegó.
+            if (usuarioExistente.confirmada === false) {
+                const tokenNuevo = crypto.randomBytes(32).toString('hex');
+                const caducaNueva = new Date(Date.now() + 24 * 60 * 60 * 1000);
+                await datos.guardarToken(email, tokenNuevo, caducaNueva);
+                try {
+                    await correo.enviarConfirmacion(email, tokenNuevo);
+                } catch (error) {
+                    console.error('[LOG - CORREO] No se pudo reenviar el correo de confirmación:', error.message);
+                    return {
+                        exito: false,
+                        error: 'No se pudo enviar el correo de confirmación. Inténtalo de nuevo en unos minutos.'
+                    };
+                }
+                console.log(`[LOG - SEGURIDAD] Correo de confirmación reenviado a: ${email}`);
+                return {
+                    exito: true,
+                    mensaje: 'Te hemos reenviado el correo de confirmación: abre el enlace para activar tu cuenta.'
+                };
+            }
             return { exito: false, error: 'Este correo ya tiene una cuenta. Inicia sesión.' };
         }
 

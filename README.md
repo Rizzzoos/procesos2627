@@ -17,7 +17,7 @@ El proyecto separa claramente la frontera entre capas:
 * **Capa API** (HTTP): `servidor/api.js` define los endpoints REST, las cookies y el JWT. Único módulo que conoce Express.
 * **Capa de lógica de negocio**: `servidor/logica.js` contiene las reglas de gestión de usuarios (registro, login, confirmación de cuentas, acceso con Google, roles admin/usuario, permisos de borrado). No conoce HTTP.
 * **Capa de acceso a datos**: `servidor/datos.js` es el único módulo que habla con MongoDB (Mongoose).
-* **Servicios externos** (Hito 4): `servidor/oauth.js` habla con Google (OAuth 2.0) y `servidor/correo.js` con Resend (envío de correos). Solo estos dos módulos conocen a los proveedores externos.
+* **Servicios externos** (Hito 4): `servidor/oauth.js` habla con Google (OAuth 2.0) y `servidor/correo.js` con el proveedor de correo (Brevo, con Resend como alternativa). Solo estos dos módulos conocen a los proveedores externos.
 * **Punto de entrada**: `servidor/index.js` monta la aplicación y conecta las capas.
 
 La comunicación cliente-servidor es exclusivamente vía API, y el backend sirve el frontend (mismo origen).
@@ -41,9 +41,10 @@ El proyecto requiere un archivo `.env` en la raíz (ver `.env.example`) con las 
 * `JWT_SECRET`
 * `PORT` (opcional)
 
-**Hito 4 - Confirmación de correo (Resend)**
-* `RESEND_API_KEY` — clave de API de [Resend](https://resend.com). Sin ella, el servidor no envía correos y deja el enlace de confirmación en el registro (modo desarrollo/CI).
-* `EMAIL_FROM` (opcional) — remitente que aparece en el correo (`Dasna <onboarding@resend.dev>` por defecto).
+**Hito 4 - Confirmación de correo (Brevo)**
+* `BREVO_API_KEY` — clave de API de [Brevo](https://app.brevo.com) (`SMTP & API → API Keys`). Sin ella, el servidor no envía correos y deja el enlace de confirmación en el registro (modo desarrollo/CI).
+* `EMAIL_FROM` — correo **verificado como remitente** en Brevo (pestaña *Senders*). `EMAIL_FROM_NAME` — nombre que aparece en el remitente (por defecto `Dasna`).
+* `RESEND_API_KEY` — alternativa compatible. Ojo: Resend **solo permite enviar al correo de la cuenta** si no verificas un dominio propio.
 
 **Hito 4 - Inicio de sesión con Google (OAuth 2.0)**
 * `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` — credenciales del *OAuth Client ID* de Google Cloud. Sin ellas, el botón de Google responde con un error claro.
@@ -53,15 +54,19 @@ El proyecto requiere un archivo `.env` en la raíz (ver `.env.example`) con las 
 
 ## Hito 4: confirmación de cuenta por correo
 1. Al registrarse, la cuenta nace **pendiente** (`confirmada: false`) y se genera un **token de un solo uso** con caducidad de 24 h.
-2. `servidor/correo.js` envía un correo con Resend que enlaza a `GET /api/confirmar?token=...`.
+2. `servidor/correo.js` envía un correo con **Brevo** que enlaza a `GET /api/confirmar?token=...`.
 3. El servidor valida el token (que exista, que no haya caducado y que no se haya usado), activa la cuenta y **borra el token** (no se puede reutilizar).
 4. Hasta confirmar, el login se rechaza con el mensaje: *"Tu cuenta aún no está confirmada. Revisa tu correo y abre el enlace de confirmación."*
-5. Las cuentas existentes antes de este hito y las creadas con Google quedan confirmadas por defecto.
+5. Si te registras con un correo que ya tiene una cuenta **pendiente**, en vez de bloquearte te **reenvía** el correo con un token nuevo (nadie se queda sin salida si un envío falla).
+6. Las cuentas existentes antes de este hito y las creadas con Google quedan confirmadas por defecto.
 
-### Configurar Resend
-1. Crea la cuenta en https://resend.com y verifica tu correo.
-2. Pestaña **API Keys** → **Create API Key** → copia la clave (`re_...`).
-3. Configúrala como `RESEND_API_KEY` en el `.env` local y en Cloud Run.
+### Configurar Brevo
+1. Crea la cuenta en https://app.brevo.com y verifica tu correo.
+2. Pestaña **Senders & Domains → Add a new sender** → pon como correo `garasandra8@gmail.com` y **verifícalo** (Brevo te envía un correo con un enlace).
+3. Pestaña **SMTP & API → API Keys → Generate a new API key** → copia la clave (`xkeysib-...`).
+4. Configúrala como `BREVO_API_KEY` en el `.env` local y en Cloud Run, y `EMAIL_FROM` con el correo verificado.
+
+> **¿Por qué Brevo y no Resend?** El modo gratuito de Resend solo permite enviar al correo de la cuenta: para mandar a cualquier destinatario (por ejemplo, al correo del evaluador) hace falta verificar un dominio propio. Brevo permite usar un correo normal como remitente verificado, sin dominio y sin coste.
 
 ## Hito 4: inicio de sesión con Google (OAuth 2.0)
 Se usa el flujo de *authorization code* con `servidor/oauth.js`:
@@ -83,12 +88,12 @@ Se usa el flujo de *authorization code* con `servidor/oauth.js`:
 Todos los errores devuelven un campo `error` con un mensaje claro en castellano, que la interfaz pinta en pantalla (rojo para fallos, verde para éxitos). El enlace del correo redirige a `/?resultado=...` con un motivo que la portada traduce en un mensaje legible (cuenta confirmada, enlace caducado, OAuth cancelado/no configurado, etc.).
 
 ## Pruebas automatizadas
-Ejecuta la batería de pruebas con `npm test` (21 pruebas):
-* 7 de gestión de usuarios (registro, duplicado, login, roles).
+Ejecuta la batería de pruebas con `npm test` (22 pruebas):
+* 8 de gestión de usuarios (registro, reenvío, duplicado, login, roles).
 * 5 del Hito 4 sobre confirmación de cuentas (pendiente, token inválido, sin token, confirmación real, token de un solo uso).
 * 3 del Hito 4 sobre acceso con Google (cuenta confirmada, sin duplicados, activación de pendientes).
 * 5 etiquetadas `variante5` sobre la regla pura `puedeEliminar()`.
-* Si falta `RESEND_API_KEY`, el envío de correo no rompe las pruebas: el enlace se imprime en el registro (útil en CI).
+* Si falta `BREVO_API_KEY`, el envío de correo no rompe las pruebas: el enlace se imprime en el registro (útil en CI).
 
 ## Versionado por hitos
 Cada hito se marca con una **etiqueta git** en el último commit de `main`, con el CI en verde y la aplicación desplegada funcionando: `hito-1`, `hito-2`, `hito-3`, `hito-4`.
@@ -96,7 +101,7 @@ Cada hito se marca con una **etiqueta git** en el último commit de `main`, con 
 ## Despliegue en la nube (Google Cloud Run)
 La aplicación está desplegada en Google Cloud Run, que la ejecuta en un contenedor (ver `Dockerfile`).
 Cloud Run inyecta automáticamente la variable `PORT`; el servidor la lee en `servidor/index.js`.
-Las variables `MONGO_URI`, `JWT_SECRET`, `RESEND_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y `URL_PUBLICA` se configuran como variables de entorno del servicio en Cloud Run, nunca en el repositorio.
+Las variables `MONGO_URI`, `JWT_SECRET`, `BREVO_API_KEY`, `EMAIL_FROM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y `URL_PUBLICA` se configuran como variables de entorno del servicio en Cloud Run, nunca en el repositorio.
 
 ## Acceso Administrador (Revisión)
 Para evaluar las funciones reservadas al rol de administrador, se ha configurado la siguiente cuenta:
