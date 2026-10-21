@@ -23,7 +23,44 @@ test('Batería de pruebas de Gestión de Usuarios (Dasna)', async (t) => {
         assert.strictEqual(resultado.error, 'Este correo ya tiene una cuenta. Inicia sesión.');
     });
 
-    await t.test('Prueba 3: Inicio de sesión exitoso con clave correcta', async () => {
+    // ===== HITO 4: confirmación de la cuenta por correo =====
+
+    await t.test('Hito4a: la cuenta nueva queda PENDIENTE y el login se rechaza con mensaje claro', async () => {
+        const resultado = await logica.loginUsuario(emailTest, passwordTest);
+        assert.strictEqual(resultado.exito, false);
+        assert.ok(resultado.error.includes('no está confirmada'), 'avisa de que falta confirmar');
+    });
+
+    await t.test('Hito4b: confirmar con un token inventado devuelve error claro (Caso de error)', async () => {
+        const resultado = await logica.confirmarCuenta('token_que_no_existe_123');
+        assert.strictEqual(resultado.exito, false);
+        assert.ok(resultado.error.length > 0, 'devuelve un mensaje de error entendible');
+    });
+
+    await t.test('Hito4c: confirmar sin token devuelve error claro (Caso de error)', async () => {
+        const resultado = await logica.confirmarCuenta(undefined);
+        assert.strictEqual(resultado.exito, false);
+    });
+
+    await t.test('Hito4d: confirmamos la cuenta con el token real guardado en la BD', async () => {
+        // El token sale de la BD: la API nunca lo devuelve por seguridad
+        const doc = await mongoose.connection.collection('usuarios').findOne({ email: emailTest });
+        assert.ok(doc && doc.tokenConfirmacion, 'el registro guardó un token de confirmación');
+        assert.strictEqual(doc.confirmada, false, 'la cuenta nace pendiente');
+
+        const resultado = await logica.confirmarCuenta(doc.tokenConfirmacion);
+        assert.strictEqual(resultado.exito, true);
+    });
+
+    await t.test('Hito4e: el token NO se puede reutilizar tras confirmar (un solo uso)', async () => {
+        const doc = await mongoose.connection.collection('usuarios').findOne({ email: emailTest });
+        assert.strictEqual(doc.tokenConfirmacion, undefined, 'el token se borró al confirmar');
+
+        const resultado = await logica.confirmarCuenta('el_mismo_token_de_antes');
+        assert.strictEqual(resultado.exito, false);
+    });
+
+    await t.test('Prueba 3: Inicio de sesión exitoso con clave correcta (ya confirmada)', async () => {
         const resultado = await logica.loginUsuario(emailTest, passwordTest);
         assert.strictEqual(resultado.exito, true);
     });
@@ -52,8 +89,53 @@ test('Batería de pruebas de Gestión de Usuarios (Dasna)', async (t) => {
         assert.ok(Array.isArray(resultado.datos));
     });
 
-    // Limpieza: Borramos el usuario de prueba y desconectamos
+    // ===== HITO 4: inicio de sesión con proveedor externo (Google) =====
+
+    const emailGoogle = `oauth_${Date.now()}@gmail.com`;
+
+    await t.test('Hito4f: Google crea la cuenta SIN contraseña y YA CONFIRMADA', async () => {
+        const resultado = await logica.entrarConGoogle(emailGoogle, 'Usuaria Google');
+        assert.strictEqual(resultado.exito, true);
+        assert.strictEqual(resultado.email, emailGoogle);
+
+        const doc = await mongoose.connection.collection('usuarios').findOne({ email: emailGoogle });
+        assert.strictEqual(doc.confirmada, true, 'Google ya verificó el correo: no hace falta confirmar');
+        assert.ok(!doc.tokenConfirmacion, 'no genera token de confirmación');
+    });
+
+    await t.test('Hito4g: repetir el acceso con Google no crea cuentas duplicadas', async () => {
+        const antes = await mongoose.connection.collection('usuarios')
+            .countDocuments({ email: emailGoogle });
+        const resultado = await logica.entrarConGoogle(emailGoogle, 'Usuaria Google');
+        assert.strictEqual(resultado.exito, true);
+        const despues = await mongoose.connection.collection('usuarios')
+            .countDocuments({ email: emailGoogle });
+        assert.strictEqual(despues, antes, 'sigue habiendo una sola cuenta');
+    });
+
+    await t.test('Hito4h: una cuenta pendiente de confirmar se ACTIVA al entrar con Google', async () => {
+        // emailTest ya fue confirmada en Hito4d; creamos otra pendiente a mano
+        const emailPendiente = `pendiente_${Date.now()}@universo.com`;
+        const bcrypt = require('bcrypt');
+        await mongoose.connection.collection('usuarios').insertOne({
+            email: emailPendiente,
+            password: await bcrypt.hash('secreta123', 10),
+            rol: 'usuario',
+            confirmada: false
+        });
+
+        const resultado = await logica.entrarConGoogle(emailPendiente, '');
+        assert.strictEqual(resultado.exito, true);
+
+        const doc = await mongoose.connection.collection('usuarios').findOne({ email: emailPendiente });
+        assert.strictEqual(doc.confirmada, true, 'Google confirma la cuenta en su lugar');
+
+        await mongoose.connection.collection('usuarios').deleteOne({ email: emailPendiente });
+    });
+
+    // Limpieza: Borramos los usuarios de prueba y desconectamos
     await mongoose.connection.collection('usuarios').deleteOne({ email: emailTest });
+    await mongoose.connection.collection('usuarios').deleteOne({ email: emailGoogle });
     await mongoose.disconnect();
 });
 
