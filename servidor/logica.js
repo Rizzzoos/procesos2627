@@ -476,6 +476,34 @@ async function borrarRegistroModulo(email, clave, id) {
     }
 }
 
+// Actualizar los datos de un registro propio (p. ej. el diario de un día)
+async function actualizarRegistroModulo(email, clave, id, datosNuevos) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    if (!CATALOGO[clave]) return { exito: false, error: `El módulo "${clave}" no existe.` };
+    if (!id || !mongoose.isValidObjectId(id)) {
+        return { exito: false, error: 'Identificador de registro no válido.' };
+    }
+    if (!esObjetoPlano(datosNuevos)) {
+        return { exito: false, error: 'Los datos deben ser un objeto con al menos un campo.' };
+    }
+    if (Object.keys(datosNuevos).length > 50) {
+        return { exito: false, error: 'Demasiados campos en el registro (máximo 50).' };
+    }
+    if (JSON.stringify(datosNuevos).length > MAX_BYTES_DATOS) {
+        return { exito: false, error: 'El registro es demasiado grande (máximo 60 KB).' };
+    }
+
+    try {
+        const actualizado = await datos.actualizarRegistro(email, clave, id, datosNuevos);
+        if (!actualizado) {
+            return { exito: false, error: 'Este registro no existe o no es tuyo.' };
+        }
+        return { exito: true, mensaje: 'Registro actualizado.', id: actualizado._id, fecha: actualizado.fecha };
+    } catch (error) {
+        return { exito: false, error: 'Error al actualizar el registro.' };
+    }
+}
+
 module.exports = {
     registrarUsuario,
     confirmarCuenta,
@@ -492,5 +520,6 @@ module.exports = {
     actualizarModulos,
     listarRegistrosModulo,
     crearRegistroModulo,
-    borrarRegistroModulo
+    borrarRegistroModulo,
+    actualizarRegistroModulo
 };

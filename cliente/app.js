@@ -120,7 +120,9 @@ function claveDia(fecha) {
 
 function resumenDe(datos) {
     if (datos == null) return '—';
-    const texto = (typeof datos === 'object' ? (datos.titulo || datos.nota || datos.texto || datos.tarea) : datos) || JSON.stringify(datos);
+    const texto = (typeof datos === 'object'
+        ? (datos.titulo || datos.resumen || datos.concepto || datos.nota || datos.texto || datos.tarea)
+        : datos) || JSON.stringify(datos);
     return String(texto).slice(0, 70);
 }
 
@@ -429,6 +431,10 @@ async function vistaModulo(clave) {
     const cont = document.getElementById('vista');
     cont.innerHTML = '<div class="skeleton"></div>';
 
+    // Módulos con ficha propia (sin el formulario genérico)
+    if (clave === 'diario') return fichaDiario(cont);
+    if (clave === 'ahorros') return fichaAhorros(cont);
+
     const r = await rest.listarRegistros(clave);
     cont.innerHTML = '';
     if (!r.exito) return aviso(r.error || 'No se pudo leer el módulo.', 'error');
@@ -498,6 +504,220 @@ async function vistaModulo(clave) {
         lista.appendChild(t);
     }
     cont.appendChild(lista);
+}
+
+// Escapado de textos que vienen de la usuaría (nada de HTML en los huecos)
+function esc(valor) {
+    return String(valor == null ? '' : valor).replace(/[&<>"']/g, (c) => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+
+// ============================================================
+// Ficha del Diario: un día seleccionado, su resumen y sus preguntas
+// (sin fechas escritas a mano: el día lo eliges con ‹ ›)
+// ============================================================
+async function fichaDiario(cont) {
+    let diaSel = claveDia(new Date());
+    const envoltorio = document.createElement('div');
+    envoltorio.className = 'ficha-propia';
+    cont.appendChild(envoltorio);
+
+    const desdeClave = (k) => {
+        const [a, m, d] = k.split('-').map(Number);
+        return new Date(a, m - 1, d);
+    };
+
+    const render = async () => {
+        envoltorio.innerHTML = '<div class="skeleton"></div>';
+        const r = await rest.listarRegistros('diario');
+        if (!r.exito) return aviso(r.error || 'No se pudo leer el diario.', 'error');
+
+        const porDia = new Map();
+        for (const reg of r.datos) porDia.set(claveDia(reg.fecha), reg);
+        const reg = porDia.get(diaSel) || null;
+        const d = (reg && reg.datos) || {};
+
+        const fecha = desdeClave(diaSel);
+        const esHoy = diaSel === claveDia(new Date());
+        const titulo = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+        const emociones = ['😞', '😕', '😐', '🙂', '😄'];
+
+        const dias = [...porDia.keys()].sort().reverse();
+        const listaDias = dias.length
+            ? `<div class="dia-lista">${dias.map((k) => {
+                const rd = porDia.get(k).datos || {};
+                const texto = rd.resumen || rd.mejor || '';
+                return `<button type="button" class="dia-chip${k === diaSel ? ' activo' : ''}" data-dia="${k}">${fechaCorta(k)}${texto ? ` · ${esc(String(texto).slice(0, 42))}` : ''}</button>`;
+            }).join('')}</div>`
+            : '<p class="pista">Todavía no has escrito ningún día. ¡El de hoy puede ser el primero! ✨</p>';
+
+        envoltorio.innerHTML = `
+            <div class="tarjeta dia-cab">
+                <button class="cal-pick pick-flecha" id="dia-menos" aria-label="Día anterior">‹</button>
+                <div class="dia-titulo">
+                    <h3 style="margin:0">${esc(titulo)}${esHoy ? ' · hoy' : ''}</h3>
+                    <p class="pista" style="margin:0.25rem 0 0">${reg ? 'Día escrito ✅' : 'Este día todavía no está escrito'}</p>
+                </div>
+                <button class="cal-pick pick-flecha" id="dia-mas" aria-label="Día siguiente" ${esHoy ? 'disabled' : ''}>›</button>
+            </div>
+            <div class="tarjeta">
+                <h3>📝 Resume tu día</h3>
+                <textarea class="entrada" id="dia-resumen" rows="4" placeholder="Lo mejor, lo peor, lo que quieras contar…">${esc(d.resumen)}</textarea>
+                <h3 style="margin-top:1.2rem">💬 Unas preguntitas (opcional)</h3>
+                <label class="etiqueta">¿Cómo te ha ido el día?</label>
+                <div class="humor" id="dia-humor">
+                    ${emociones.map((e, i) => `<button type="button" data-valor="${i + 1}"${Number(d.humor) === i + 1 ? ' class="activo"' : ''}>${e}</button>`).join('')}
+                </div>
+                <label class="etiqueta" style="margin-top:0.9rem">¿Qué tiempo hacía?</label>
+                <input class="entrada" id="dia-tiempo" placeholder="Ej: fresquito y soleado" value="${esc(d.tiempo)}">
+                <label class="etiqueta" style="margin-top:0.9rem">¿Qué ha sido lo mejor del día?</label>
+                <input class="entrada" id="dia-mejor" placeholder="Ej: la quedada de tarde" value="${esc(d.mejor)}">
+                <label class="etiqueta" style="margin-top:0.9rem">¿Algo que mejorar mañana?</label>
+                <input class="entrada" id="dia-mejorar" placeholder="Ej: dormir antes" value="${esc(d.mejorar)}">
+                <div class="fila-botones">
+                    <button class="boton-primario" id="dia-guardar">Guardar el día</button>
+                    ${reg ? '<button class="boton-peligro" id="dia-borrar">Borrar este día</button>' : ''}
+                </div>
+            </div>
+            <div class="tarjeta">
+                <h3>🗓️ Tus días escritos</h3>
+                ${listaDias}
+            </div>`;
+
+        envoltorio.querySelector('#dia-menos').addEventListener('click', () => {
+            const f = desdeClave(diaSel);
+            f.setDate(f.getDate() - 1);
+            diaSel = claveDia(f);
+            render();
+        });
+        if (!esHoy) {
+            envoltorio.querySelector('#dia-mas').addEventListener('click', () => {
+                const f = desdeClave(diaSel);
+                f.setDate(f.getDate() + 1);
+                diaSel = claveDia(f);
+                render();
+            });
+        }
+        envoltorio.querySelectorAll('#dia-humor button').forEach((b) =>
+            b.addEventListener('click', () => {
+                envoltorio.querySelectorAll('#dia-humor button').forEach((x) => x.classList.remove('activo'));
+                b.classList.add('activo');
+            }));
+        envoltorio.querySelectorAll('[data-dia]').forEach((b) =>
+            b.addEventListener('click', () => { diaSel = b.dataset.dia; render(); }));
+
+        envoltorio.querySelector('#dia-guardar').addEventListener('click', async () => {
+            const marcada = envoltorio.querySelector('#dia-humor button.activo');
+            const datos = {
+                resumen: envoltorio.querySelector('#dia-resumen').value.trim(),
+                humor: marcada ? Number(marcada.dataset.valor) : null,
+                tiempo: envoltorio.querySelector('#dia-tiempo').value.trim(),
+                mejor: envoltorio.querySelector('#dia-mejor').value.trim(),
+                mejorar: envoltorio.querySelector('#dia-mejorar').value.trim()
+            };
+            if (!datos.resumen && !datos.tiempo && !datos.mejor && !datos.mejorar && !datos.humor) {
+                return aviso('Escribe algo antes de guardar.', 'error');
+            }
+            const res = reg
+                ? await rest.actualizarRegistro('diario', reg.id, datos)
+                : await rest.crearRegistro('diario', datos, diaSel);
+            if (!res.exito) return aviso(res.error || 'No se pudo guardar.', 'error');
+            aviso(`Día guardado ✅ (${fechaCorta(diaSel)})`);
+            render();
+        });
+
+        if (reg) {
+            envoltorio.querySelector('#dia-borrar').addEventListener('click', async () => {
+                const res = await rest.borrarRegistro('diario', reg.id);
+                if (!res.exito) return aviso(res.error || 'No se pudo borrar.', 'error');
+                aviso('Día borrado');
+                render();
+            });
+        }
+    };
+
+    await render();
+}
+
+// ============================================================
+// Ficha de Ahorros: gastos e ingresos, cada uno con su día
+// ============================================================
+async function fichaAhorros(cont) {
+    const envoltorio = document.createElement('div');
+    envoltorio.className = 'ficha-propia';
+    cont.appendChild(envoltorio);
+
+    const render = async () => {
+        envoltorio.innerHTML = '<div class="skeleton"></div>';
+        const r = await rest.listarRegistros('ahorros');
+        if (!r.exito) return aviso(r.error || 'No se pudieron leer los ahorros.', 'error');
+
+        const gastos = r.datos.filter((x) => x.datos && x.datos.tipo === 'gasto');
+        const ingresos = r.datos.filter((x) => x.datos && x.datos.tipo === 'ingreso');
+        const mesActual = claveDia(new Date()).slice(0, 7);
+        const sumaMes = (lista) => lista
+            .filter((x) => claveDia(x.fecha).startsWith(mesActual))
+            .reduce((s, x) => s + (Number(x.datos.cantidad) || 0), 0);
+        const eur = (n) => n.toLocaleString('es-ES', { maximumFractionDigits: 2 }) + ' €';
+
+        const pintarSeccion = (tipo, titulo, lista) => `
+            <div class="tarjeta">
+                <h3>${titulo}</h3>
+                <div class="ahorro-alta">
+                    <input class="entrada" id="${tipo}-concepto" placeholder="Concepto" autocomplete="off">
+                    <input class="entrada" id="${tipo}-cantidad" type="number" min="0" step="0.01" placeholder="0,00 €">
+                    <input class="entrada" id="${tipo}-fecha" type="date" value="${claveDia(new Date())}">
+                    <button class="boton-primario" id="${tipo}-btn">Añadir</button>
+                </div>
+                ${lista.length ? `<div class="ahorro-lista">${lista.map((x) => `
+                    <div class="ahorro-fila">
+                        <span class="chip">📅 ${fechaCorta(x.fecha)}</span>
+                        <span class="ahorro-concepto">${esc((x.datos && x.datos.concepto) || '(sin concepto)')}</span>
+                        <span class="ahorro-cantidad-ver ${tipo}">${tipo === 'gasto' ? '−' : '+'}${eur(Number(x.datos && x.datos.cantidad) || 0)}</span>
+                        <button class="boton-peligro" data-borrar="${x.id}">Borrar</button>
+                    </div>`).join('')}</div>`
+                    : '<p class="pista" style="margin-top:0.9rem">Aquí todavía no hay nada.</p>'}
+            </div>`;
+
+        const totalGastos = sumaMes(gastos);
+        const totalIngresos = sumaMes(ingresos);
+        const saldo = totalIngresos - totalGastos;
+
+        envoltorio.innerHTML = `
+            <div class="tarjeta resumen-plata">
+                <div><p class="pista" style="margin:0">Ingresos del mes</p><strong class="verde">${eur(totalIngresos)}</strong></div>
+                <div><p class="pista" style="margin:0">Gastos del mes</p><strong class="rojo">${eur(totalGastos)}</strong></div>
+                <div><p class="pista" style="margin:0">Saldo del mes</p><strong class="${saldo >= 0 ? 'verde' : 'rojo'}">${eur(saldo)}</strong></div>
+            </div>
+            <div class="dos-flex">
+                ${pintarSeccion('gasto', '💸 Gastos', gastos)}
+                ${pintarSeccion('ingreso', '💰 Ingresos', ingresos)}
+            </div>`;
+
+        for (const tipo of ['gasto', 'ingreso']) {
+            envoltorio.querySelector(`#${tipo}-btn`).addEventListener('click', async () => {
+                const concepto = envoltorio.querySelector(`#${tipo}-concepto`).value.trim();
+                const cantidad = Number(envoltorio.querySelector(`#${tipo}-cantidad`).value);
+                const fecha = envoltorio.querySelector(`#${tipo}-fecha`).value || claveDia(new Date());
+                if (!concepto) return aviso('Escribe un concepto.', 'error');
+                if (!cantidad || cantidad <= 0) return aviso('La cantidad debe ser mayor que 0.', 'error');
+                const res = await rest.crearRegistro('ahorros', { tipo, concepto, cantidad }, fecha);
+                if (!res.exito) return aviso(res.error || 'No se pudo guardar.', 'error');
+                aviso(`${tipo === 'gasto' ? 'Gasto' : 'Ingreso'} añadido ✅`);
+                render();
+            });
+        }
+        envoltorio.querySelectorAll('[data-borrar]').forEach((b) =>
+            b.addEventListener('click', async () => {
+                const res = await rest.borrarRegistro('ahorros', b.dataset.borrar);
+                if (!res.exito) return aviso(res.error || 'No se pudo borrar.', 'error');
+                aviso('Movimiento borrado');
+                render();
+            }));
+    };
+
+    await render();
 }
 
 function vistaRegistros() {

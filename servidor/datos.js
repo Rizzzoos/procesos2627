@@ -89,6 +89,15 @@ async function contarRegistros(email, modulo) {
     return Registro.countDocuments({ email, modulo });
 }
 
+// Solo actualiza si el documento es DEL USUARIO y DEL MÓDULO (nunca ajeno)
+async function actualizarRegistro(email, modulo, id, datos) {
+    return Registro.findOneAndUpdate(
+        { _id: id, email, modulo },
+        { $set: { datos } },
+        { new: true }
+    );
+}
+
 // Crear un documento usuario en la colección "usuarios"
 // confirmacion: si se pasa { token, caduca }, la cuenta nace pendiente de confirmar.
 async function crearUsuario(email, password, nombre = '', rol = 'usuario', confirmacion = null) {
@@ -170,5 +179,6 @@ module.exports = {
     listarRegistros,
     crearRegistro,
     borrarRegistro,
-    contarRegistros
+    contarRegistros,
+    actualizarRegistro
 };

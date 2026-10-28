@@ -208,6 +208,13 @@ function crearRouter() {
         else res.status(400).json({ error: resultado.error });
     });
 
+    router.put('/modulos/:clave/registros/:id', protegerRuta, async (req, res) => {
+        const { datos } = req.body || {};
+        const resultado = await logica.actualizarRegistroModulo(req.usuario.email, req.params.clave, req.params.id, datos);
+        if (resultado.exito) res.status(200).json(resultado);
+        else res.status(400).json({ error: resultado.error });
+    });
+
     return router;
 }
 

@@ -187,6 +187,13 @@ async function borrarRegistro(clave, id) {
     });
 }
 
+async function actualizarRegistro(clave, id, datos) {
+    return peticionJson(`/api/modulos/${encodeURIComponent(clave)}/registros/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ datos })
+    });
+}
+
 async function listarUsuarios() {
     return peticionJson('/api/admin/usuarios');
 }
@@ -206,6 +213,7 @@ const rest = {
     obtenerModulos,
     listarRegistros,
     crearRegistro,
+    actualizarRegistro,
     borrarRegistro,
     listarUsuarios,
     estadoUsuario,

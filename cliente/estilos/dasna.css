@@ -258,6 +258,68 @@ body {
     font-size: 0.8rem;
     font-weight: 700;
 }
+
+/* Fichas con forma propia (Diario y Ahorros) */
+.ficha-propia .tarjeta { margin-bottom: 1.2rem; }
+.pick-flecha { padding: 0.45rem 0.8rem; font-size: 1.05rem; }
+.pick-flecha::after { content: none; }
+.dia-cab { display: flex; align-items: center; gap: 1rem; }
+.dia-titulo { flex: 1; text-align: center; text-transform: capitalize; }
+.fila-botones { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 1.1rem; align-items: center; }
+.humor { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
+.humor button {
+    font-size: 1.3rem;
+    padding: 0.35rem 0.55rem;
+    border-radius: 12px;
+    cursor: pointer;
+    background: var(--cristal);
+    border: 1px solid var(--cristal-borde);
+    transition: transform var(--velocidad) ease, background var(--velocidad) ease;
+}
+.humor button:hover { transform: translateY(-2px); }
+.humor button.activo { background: var(--acento); border-color: var(--acento); }
+.dia-lista { display: flex; flex-direction: column; gap: 0.45rem; margin-top: 0.6rem; }
+.dia-chip {
+    width: 100%;
+    text-align: left;
+    padding: 0.55rem 0.8rem;
+    border-radius: 12px;
+    cursor: pointer;
+    background: var(--cristal);
+    border: 1px solid var(--cristal-borde);
+    color: var(--texto);
+    font-family: inherit;
+    font-size: 0.86rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    transition: background var(--velocidad) ease;
+}
+.dia-chip:hover { background: var(--cristal-hover); }
+.dia-chip.activo { background: var(--acento); color: #06322c; }
+.dos-flex { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 0.2rem; }
+.resumen-plata { display: flex; gap: 2.4rem; flex-wrap: wrap; }
+.resumen-plata strong { font-size: 1.25rem; }
+.resumen-plata .verde { color: #4ade80; }
+.resumen-plata .rojo { color: #f87171; }
+.ahorro-alta { display: grid; grid-template-columns: 1fr 110px 150px auto; gap: 0.5rem; margin-top: 0.8rem; }
+.ahorro-lista { display: flex; flex-direction: column; gap: 0.45rem; margin-top: 1rem; }
+.ahorro-fila {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.7rem;
+    background: var(--cristal);
+    border: 1px solid var(--cristal-borde);
+    border-radius: 12px;
+}
+.ahorro-concepto { flex: 1; font-size: 0.9rem; font-weight: 600; }
+.ahorro-cantidad-ver { font-weight: 800; font-size: 0.9rem; }
+.ahorro-cantidad-ver.gasto { color: #f87171; }
+.ahorro-cantidad-ver.ingreso { color: #4ade80; }
+@media (max-width: 880px) {
+    .dos-flex { grid-template-columns: 1fr; }
+    .ahorro-alta { grid-template-columns: 1fr 1fr; }
+}
 .cal-rejilla { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .cal-nom { font-size: 0.62rem; text-align: center; color: var(--texto-tenue); font-weight: 800; padding: 0.2rem 0; letter-spacing: 1px; }
 .cal-dia {

@@ -337,6 +337,35 @@ test('Motor de módulos (Dasna)', async (t) => {
         assert.ok(r.error.includes('no existe'));
     });
 
+    await t.test('9. Actualizar un registro propio (y nunca el ajeno)', async () => {
+        const creado = await logica.crearRegistroModulo(emailA, 'diario', { resumen: 'antes' });
+        const id = String(creado.id);
+
+        // Otra usuaria no puede tocarlo
+        const ajeno = await logica.actualizarRegistroModulo(emailB, 'diario', id, { resumen: 'vandalismo' });
+        assert.strictEqual(ajeno.exito, false);
+        assert.ok(ajeno.error.includes('no existe o no es tuyo'));
+
+        // La dueña sí lo actualiza (varias veces se puede)
+        const ok = await logica.actualizarRegistroModulo(emailA, 'diario', id, { resumen: 'después', humor: 4 });
+        assert.strictEqual(ok.exito, true);
+        const otraVez = await logica.actualizarRegistroModulo(emailA, 'diario', id, { resumen: 'y ahora', humor: 5 });
+        assert.strictEqual(otraVez.exito, true);
+
+        const listado = await logica.listarRegistrosModulo(emailA, 'diario', {});
+        const guardado = listado.datos.find((r) => String(r.id) === id);
+        assert.strictEqual(guardado.datos.resumen, 'y ahora', 'guarda la última versión');
+        assert.strictEqual(guardado.datos.humor, 5, 'conserva campos numéricos');
+
+        // Validaciones
+        const datosMalos = await logica.actualizarRegistroModulo(emailA, 'diario', id, 'no-objeto');
+        assert.strictEqual(datosMalos.exito, false);
+
+        const idMalo = await logica.actualizarRegistroModulo(emailA, 'diario', 'esto-no-es-un-id', { a: 1 });
+        assert.strictEqual(idMalo.exito, false);
+        assert.ok(idMalo.error.includes('no válido'));
+    });
+
     // Limpieza
     await mongoose.connection.collection('modulos').deleteMany({ email: { $in: [email, emailA, emailB] } });
     await mongoose.connection.collection('registros').deleteMany({ email: { $in: [email, emailA, emailB] } });
