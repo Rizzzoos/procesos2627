@@ -21,6 +21,74 @@ const usuarioSchema = new mongoose.Schema({
 
 const Usuario = mongoose.model('Usuario', usuarioSchema);
 
+// ============================================================
+// HITO 5 - MOTOR DE MÓDULOS (vida personal)
+// Dos colecciones nuevas y genéricas:
+//   modulos  -> QUÉ módulos ve cada usuario y en qué orden
+//   registros-> LOS DATOS de cada módulo (JSON flexible)
+// Así, añadir un módulo nuevo no exige tocar la base de datos.
+// ============================================================
+const modulosSchema = new mongoose.Schema({
+    email: { type: String, required: true, unique: true },
+    // Orden exacto de las claves visibles, p. ej. ['ahorros','diario','gimnasio']
+    claves: { type: [String], default: [] },
+    actualizadoEn: { type: Date, default: Date.now }
+});
+
+const registrosSchema = new mongoose.Schema({
+    email: { type: String, required: true, index: true },   // dueño
+    modulo: { type: String, required: true, index: true },  // clave del módulo
+    fecha: { type: Date, default: Date.now },               // fecha que reporta el usuario
+    datos: { type: mongoose.Schema.Types.Mixed, required: true }, // JSON flexible por módulo
+    creadoEn: { type: Date, default: Date.now }
+});
+
+const Modulo = mongoose.model('Modulo', modulosSchema);
+const Registro = mongoose.model('Registro', registrosSchema);
+
+// --- Módulos: qué ve y en qué orden cada usuario ---
+
+async function buscarModulos(email) {
+    return Modulo.findOne({ email });
+}
+
+async function guardarModulos(email, claves) {
+    return Modulo.findOneAndUpdate(
+        { email },
+        { $set: { claves, actualizadoEn: new Date() } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+}
+
+// --- Registros: datos de cada módulo ---
+
+async function listarRegistros(email, modulo, { desde, hasta, limite = 200 } = {}) {
+    const filtro = { email, modulo };
+    if (desde || hasta) {
+        filtro.fecha = {};
+        if (desde) filtro.fecha.$gte = new Date(desde);
+        if (hasta) filtro.fecha.$lte = new Date(hasta);
+    }
+    return Registro.find(filtro)
+        .sort({ fecha: -1, _id: -1 })
+        .limit(Math.min(limite, 500));
+}
+
+async function crearRegistro(email, modulo, datos, fecha) {
+    const nuevo = new Registro({ email, modulo, datos, ...(fecha ? { fecha: new Date(fecha) } : {}) });
+    await nuevo.save();
+    return nuevo;
+}
+
+// Solo borra si el documento es DEL USUARIO y DEL MÓDULO (nunca ajeno)
+async function borrarRegistro(email, modulo, id) {
+    return Registro.findOneAndDelete({ _id: id, email, modulo });
+}
+
+async function contarRegistros(email, modulo) {
+    return Registro.countDocuments({ email, modulo });
+}
+
 // Crear un documento usuario en la colección "usuarios"
 // confirmacion: si se pasa { token, caduca }, la cuenta nace pendiente de confirmar.
 async function crearUsuario(email, password, nombre = '', rol = 'usuario', confirmacion = null) {
@@ -88,5 +156,12 @@ module.exports = {
     cambiarRol,
     buscarPorToken,
     confirmarCuenta,
-    guardarToken
+    guardarToken,
+    // Motor de módulos
+    buscarModulos,
+    guardarModulos,
+    listarRegistros,
+    crearRegistro,
+    borrarRegistro,
+    contarRegistros
 };
