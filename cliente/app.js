@@ -88,18 +88,143 @@ function metaDe(item) {
     return item;
 }
 
+// Estado del calendario del panel
+let calBase = new Date();      // mes que se muestra
+let calSel = null;             // día seleccionado (YYYY-MM-DD)
+let registrosCal = null;       // registros de todos los módulos (cargados una vez)
+
+async function cargarRegistrosCal() {
+    if (registrosCal) return registrosCal;
+    const listas = await Promise.all(
+        modulos.map((m) => rest.listarRegistros(m.clave).catch(() => ({ exito: false })))
+    );
+    registrosCal = [];
+    listas.forEach((r, i) => {
+        if (r && r.exito && Array.isArray(r.datos)) {
+            r.datos.forEach((reg) => registrosCal.push({
+                ...reg,
+                clave: modulos[i].clave,
+                icono: modulos[i].icono,
+                nombre: modulos[i].nombre
+            }));
+        }
+    });
+    return registrosCal;
+}
+
+function claveDia(fecha) {
+    const f = new Date(fecha);
+    if (Number.isNaN(f.getTime())) return '';
+    return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+}
+
+function resumenDe(datos) {
+    if (datos == null) return '—';
+    const texto = (typeof datos === 'object' ? (datos.titulo || datos.nota || datos.texto || datos.tarea) : datos) || JSON.stringify(datos);
+    return String(texto).slice(0, 70);
+}
+
+function pintarCalendario() {
+    const rejilla = document.getElementById('cal-rejilla');
+    if (!rejilla) return;
+    const anio = calBase.getFullYear();
+    const mes = calBase.getMonth();
+    const hoy = new Date();
+
+    const nombres = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+    document.getElementById('cal-mes').textContent =
+        calBase.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+
+    // Días con registros, agrupados por día
+    const porDia = new Map();
+    for (const reg of registrosCal || []) {
+        const k = claveDia(reg.fecha);
+        if (!k) continue;
+        if (!porDia.has(k)) porDia.set(k, []);
+        porDia.get(k).push(reg);
+    }
+
+    let html = nombres.map((n) => `<span class="cal-nom">${n}</span>`).join('');
+    const primerDia = new Date(anio, mes, 1);
+    const offset = (primerDia.getDay() + 6) % 7;          // lunes = 0
+    const diasMes = new Date(anio, mes + 1, 0).getDate();
+    const diasPrev = new Date(anio, mes, 0).getDate();
+
+    for (let i = 0; i < offset; i++) {
+        html += `<span class="cal-dia fuera">${diasPrev - offset + i + 1}</span>`;
+    }
+    for (let d = 1; d <= diasMes; d++) {
+        const fecha = new Date(anio, mes, d);
+        const k = claveDia(fecha);
+        const delDia = porDia.get(k) || [];
+        const esHoy = d === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
+        const puntos = delDia.slice(0, 3).map(() => '<i></i>').join('');
+        html += `<button class="cal-dia${esHoy ? ' hoy' : ''}${k === calSel ? ' sel' : ''}" data-fecha="${k}">
+            <span>${d}</span>${puntos ? `<span class="puntos">${puntos}</span>` : ''}</button>`;
+    }
+    rejilla.innerHTML = html;
+    rejilla.querySelectorAll('.cal-dia[data-fecha]').forEach((b) =>
+        b.addEventListener('click', () => { calSel = b.dataset.fecha; pintarCalendario(); }));
+
+    pintarDetalle();
+}
+
+function pintarDetalle() {
+    const det = document.getElementById('cal-detalle');
+    if (!det) return;
+    if (!calSel) {
+        det.innerHTML = '<p class="cal-vacio">Toca un día para ver lo que tienes apuntado ahí ✨</p>';
+        return;
+    }
+    const delDia = (registrosCal || []).filter((r) => claveDia(r.fecha) === calSel);
+    if (!delDia.length) {
+        const bonito = new Date(calSel + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+        det.innerHTML = `<p class="cal-vacio">Nada apuntado el ${bonito}.</p>`;
+        return;
+    }
+    det.innerHTML = delDia.map((r) => `
+        <a class="cal-item" href="#/m/${r.clave}">
+            <span>${r.icono}</span>
+            <span class="de-modulo">${r.nombre}</span>
+            <span class="dato">${resumenDe(r.datos)}</span>
+        </a>`).join('');
+}
+
 function vistaPanel() {
     cabecera('Panel', `Hola de nuevo, ${sesion.email.split('@')[0]} ✨`);
     const cont = document.getElementById('vista');
     cont.innerHTML = '';
+    registrosCal = null;   // al volver al panel, se leen los registros frescos
 
+    const dos = document.createElement('div');
+    dos.className = 'panel-dos';
+
+    // --- Calendario del mes (columna izquierda) ---
+    const cal = document.createElement('div');
+    cal.className = 'cristal calendario-panel';
+    cal.innerHTML = `
+        <div class="cal-cab">
+            <button class="cal-nav" data-paso="-12" title="Año anterior" aria-label="Año anterior">«</button>
+            <button class="cal-nav" data-paso="-1" title="Mes anterior" aria-label="Mes anterior">‹</button>
+            <span class="cal-mes" id="cal-mes"></span>
+            <button class="cal-nav" data-paso="1" title="Mes siguiente" aria-label="Mes siguiente">›</button>
+            <button class="cal-nav" data-paso="12" title="Año siguiente" aria-label="Año siguiente">»</button>
+        </div>
+        <div class="cal-rejilla" id="cal-rejilla"></div>
+        <div class="cal-detalle" id="cal-detalle"></div>`;
+    dos.appendChild(cal);
+    cal.querySelectorAll('.cal-nav').forEach((b) =>
+        b.addEventListener('click', () => {
+            calBase = new Date(calBase.getFullYear(), calBase.getMonth() + Number(b.dataset.paso), 1);
+            calSel = null;
+            pintarCalendario();
+        }));
+
+    // --- Recuadros de los apartados (columna derecha) ---
     const rejilla = document.createElement('div');
     rejilla.className = 'rejilla-panel';
-
     const claves = new Set(modulos.map((m) => m.clave));
 
-    // Todos los apartados como recuadros con su nombre:
-    // los activos navegan; los planeados llevan su etiqueta de fase.
     const items = [];
     for (const grupo of GRUPOS) {
         for (const item of grupo.items) {
@@ -129,8 +254,15 @@ function vistaPanel() {
         }
         rejilla.appendChild(a);
     }
+    dos.appendChild(rejilla);
 
-    cont.appendChild(rejilla);
+    cont.appendChild(dos);
+    pintarCalendario();
+
+    // Los puntos de los registros llegan después (una petición por módulo)
+    cargarRegistrosCal().then(() => {
+        if (document.getElementById('cal-rejilla')) pintarCalendario();
+    });
 }
 
 // ============================================================
