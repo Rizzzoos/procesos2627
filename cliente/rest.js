@@ -198,3 +198,16 @@ async function estadoUsuario(email) {
 async function eliminarUsuario(email) {
     return peticionJson(`/api/usuarios/${encodeURIComponent(email)}`, { method: 'DELETE' });
 }
+
+// Espacio de nombres para las vistas (app.js usa rest.funcion(...))
+const rest = {
+    obtenerSesion,
+    cerrarSesionApp,
+    obtenerModulos,
+    listarRegistros,
+    crearRegistro,
+    borrarRegistro,
+    listarUsuarios,
+    estadoUsuario,
+    eliminarUsuario
+};

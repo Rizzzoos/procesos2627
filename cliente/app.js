@@ -532,7 +532,7 @@ async function iniciar() {
     function aplicarTema(tema) {
         document.documentElement.dataset.tema = tema;
         btnTema.textContent = tema === 'oscuro' ? '☀️' : '🌙';
-        meta.setAttribute('content', tema === 'oscuro' ? '#0b1a33' : '#14b8a6');
+        meta.setAttribute('content', tema === 'oscuro' ? '#0b1a33' : '#23a6d5');
         try { localStorage.setItem('dasna-tema', tema); } catch (e) { /* opcional */ }
     }
     aplicarTema(document.documentElement.dataset.tema || 'claro');

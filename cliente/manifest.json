@@ -10,7 +10,7 @@
     "display_override": ["standalone", "minimal-ui"],
     "orientation": "portrait",
     "background_color": "#0b1a33",
-    "theme_color": "#14b8a6",
+    "theme_color": "#23a6d5",
     "categories": ["lifestyle", "productivity", "health"],
     "icons": [
         {
