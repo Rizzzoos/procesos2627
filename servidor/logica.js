@@ -192,6 +192,15 @@ async function asegurarAdmin(email, password) {
             } else {
                 console.log(`[LOG - ADMIN] Cuenta de administrador verificada: ${email}`);
             }
+            // Sincronía con el .env: si la contraseña guardada no coincide con
+            // ADMIN_PASSWORD, la actualizamos (una sola fuente de verdad).
+            const coincide = await bcrypt.compare(password, existente.password);
+            if (!coincide) {
+                const salt = await bcrypt.genSalt(10);
+                const hash = await bcrypt.hash(password, salt);
+                await datos.actualizarPassword(email, hash);
+                console.log('[LOG - ADMIN] Contraseña de administrador sincronizada desde ADMIN_PASSWORD.');
+            }
             return true;
         }
         const salt = await bcrypt.genSalt(10);
