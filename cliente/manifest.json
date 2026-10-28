@@ -4,13 +4,13 @@
     "description": "Tu aplicación personal: vision board, gimnasio, estudios, sueño, ahorros y diario en un solo lugar.",
     "lang": "es",
     "dir": "ltr",
-    "start_url": "/dashboard.html",
+    "start_url": "/app.html",
     "scope": "/",
     "display": "standalone",
     "display_override": ["standalone", "minimal-ui"],
     "orientation": "portrait",
-    "background_color": "#3b2a6d",
-    "theme_color": "#8b5cf6",
+    "background_color": "#0b1a33",
+    "theme_color": "#23a6d5",
     "categories": ["lifestyle", "productivity", "health"],
     "icons": [
         {
@@ -43,14 +43,14 @@
             "name": "Ahorros",
             "short_name": "Ahorros",
             "description": "Consulta tus objetivos de ahorro",
-            "url": "/dashboard.html?modulo=ahorros",
+            "url": "/app.html#/m/ahorros",
             "icons": [{ "src": "/icon-96.png", "sizes": "96x96", "type": "image/png" }]
         },
         {
             "name": "Diario",
             "short_name": "Diario",
             "description": "Escribe tu entrada del día",
-            "url": "/dashboard.html?modulo=diario",
+            "url": "/app.html#/m/diario",
             "icons": [{ "src": "/icon-96.png", "sizes": "96x96", "type": "image/png" }]
         }
     ]

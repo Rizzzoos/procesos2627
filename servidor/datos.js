@@ -125,6 +125,12 @@ async function cambiarRol(email, nuevoRol) {
     return Usuario.findOneAndUpdate({ email }, { rol: nuevoRol }, { new: true });
 }
 
+// Sincronizar la contraseña de un usuario con la del .env (solo la usa
+// asegurarAdmin para que ADMIN_PASSWORD sea la única fuente de verdad)
+async function actualizarPassword(email, password) {
+    return Usuario.findOneAndUpdate({ email }, { $set: { password } }, { new: true });
+}
+
 // Hito 4: buscar la cuenta por el token de confirmación (ojo: por el token, no por email)
 async function buscarPorToken(token) {
     return Usuario.findOne({ tokenConfirmacion: token });
@@ -154,6 +160,7 @@ module.exports = {
     listarTodos,
     eliminarPorEmail,
     cambiarRol,
+    actualizarPassword,
     buscarPorToken,
     confirmarCuenta,
     guardarToken,

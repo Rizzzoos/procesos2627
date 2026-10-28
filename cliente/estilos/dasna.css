@@ -1,0 +1,442 @@
+/* ============================================================
+   DASNA — SISTEMA DE DISEÑO (fase 1)
+   Glassmorphism con la estética de siempre: letras blancas sobre
+   el aura de toda la vida (naranja, rosa, azul y turquesa), que
+   respira despacio (ciclo de 40 s). Tema claro/oscuro incluido.
+   ============================================================ */
+
+:root {
+    /* Aura clásica de Dasna */
+    --aura-1: #ee7752;
+    --aura-2: #e73c7e;
+    --aura-3: #23a6d5;
+    --aura-4: #23d5ab;
+
+    /* Todo el texto sobre el degradado va en blanco */
+    --texto: #ffffff;
+    --texto-suave: rgba(255, 255, 255, 0.88);
+    --texto-tenue: rgba(255, 255, 255, 0.62);
+
+    /* Cristal */
+    --cristal: rgba(255, 255, 255, 0.16);
+    --cristal-fuerte: rgba(255, 255, 255, 0.26);
+    --cristal-hover: rgba(255, 255, 255, 0.24);
+    --cristal-borde: rgba(255, 255, 255, 0.35);
+    --sombra: 0 10px 32px rgba(0, 0, 0, 0.18);
+    --sombra-alta: 0 16px 44px rgba(0, 0, 0, 0.28);
+
+    /* Acentos */
+    --acento: #2dd4bf;      /* turquesa */
+    --acento-2: #c4b5fd;    /* violeta claro */
+    --peligro: #fb7185;
+    --ok: #4ade80;
+
+    --radio: 20px;
+    --radio-grande: 26px;
+    --blur: 18px;
+    --velocidad: 200ms;
+}
+
+[data-tema='oscuro'] {
+    --aura-1: #0b1a33;
+    --aura-2: #0d2b2b;
+    --aura-3: #0b2530;
+    --aura-4: #1a1440;
+
+    --texto: #e9eef8;
+    --texto-suave: #c3cede;
+    --texto-tenue: #8fa1b8;
+
+    --cristal: rgba(18, 30, 52, 0.55);
+    --cristal-fuerte: rgba(22, 36, 60, 0.72);
+    --cristal-hover: rgba(30, 46, 76, 0.62);
+    --cristal-borde: rgba(255, 255, 255, 0.14);
+    --sombra: 0 10px 32px rgba(0, 0, 0, 0.35);
+    --sombra-alta: 0 16px 44px rgba(0, 0, 0, 0.45);
+
+    --acento: #2dd4bf;
+    --acento-2: #a78bfa;
+}
+
+* { box-sizing: border-box; }
+
+/* ---------- Fondo que respira (lento:40 s) ---------- */
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--texto);
+    background: linear-gradient(-45deg, var(--aura-1), var(--aura-2), var(--aura-3), var(--aura-4));
+    background-size: 400% 400%;
+    animation: respirar 40s ease-in-out infinite;
+    display: flex;
+    overflow: hidden;
+}
+
+@keyframes respirar {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* El canvas de estelas queda por debajo de todo lo nuestro */
+.lateral, .contenido { position: relative; z-index: 1; }
+
+/* ---------- Barra lateral ---------- */
+.lateral {
+    width: 280px;
+    flex-shrink: 0;
+    height: 100vh;
+    padding: 1.4rem 1.1rem;
+    background: var(--cristal);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border-right: 1px solid var(--cristal-borde);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    overflow-y: auto;
+    transition: transform var(--velocidad) ease;
+}
+
+.lateral-logo {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: 3px;
+    padding: 0 0.4rem;
+    color: var(--texto);
+    text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+.lateral-logo small {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--texto-tenue);
+    text-shadow: none;
+}
+
+/* Botón de búsqueda (abre el buscador universal) */
+.abrir-buscador {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.8rem;
+    background: var(--cristal-fuerte);
+    border: 1px solid var(--cristal-borde);
+    border-radius: 14px;
+    color: var(--texto-suave);
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: background var(--velocidad) ease, transform var(--velocidad) ease;
+}
+.abrir-buscador:hover { background: var(--cristal-hover); transform: translateY(-1px); }
+.abrir-buscador kbd, .buscador-pista kbd {
+    margin-left: auto;
+    padding: 0.1rem 0.45rem;
+    border-radius: 6px;
+    border: 1px solid var(--cristal-borde);
+    background: var(--cristal);
+    font-size: 0.7rem;
+    color: var(--texto-suave);
+}
+
+/* ---------- Grupos del menú (colapsables) ---------- */
+.grupo-titulo {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 0.5rem;
+    background: none;
+    border: none;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--texto-tenue);
+    cursor: pointer;
+    box-shadow: none;
+    margin-top: 0.3rem;
+}
+.grupo-titulo .flecha { transition: transform var(--velocidad) ease; font-size: 0.7rem; }
+.grupo.cerrado .flecha { transform: rotate(-90deg); }
+.grupo.cerrado .grupo-lista { display: none; }
+
+.grupo-lista { display: flex; flex-direction: column; gap: 0.15rem; }
+
+.item-menu {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.7rem;
+    border-radius: 13px;
+    color: var(--texto-suave);
+    text-decoration: none;
+    font-size: 0.92rem;
+    font-weight: 500;
+    border: 1px solid transparent;
+    transition: background var(--velocidad) ease, transform var(--velocidad) ease, border-color var(--velocidad) ease;
+}
+.item-menu:hover { background: var(--cristal-hover); transform: translateX(3px); }
+.item-menu.activo {
+    background: var(--cristal-fuerte);
+    border-color: var(--cristal-borde);
+    color: var(--texto);
+    font-weight: 700;
+    text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.15);
+}
+.item-menu .icono { font-size: 1.05rem; width: 1.35rem; text-align: center; }
+.item-menu.proximo { opacity: 0.55; cursor: pointer; }
+.item-menu .marca {
+    margin-left: auto;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+    background: var(--cristal);
+    border: 1px solid var(--cristal-borde);
+    color: var(--texto-suave);
+}
+
+/* ---------- Mini-calendario ---------- */
+.mini-cal {
+    background: var(--cristal);
+    border: 1px solid var(--cristal-borde);
+    border-radius: var(--radio);
+    padding: 0.7rem;
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+}
+.mini-cal-cab { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
+.mini-cal-mes { font-size: 0.8rem; font-weight: 700; text-transform: capitalize; color: var(--texto); }
+.mini-cal-nav {
+    background: none; border: none; cursor: pointer;
+    color: var(--texto-suave); font-size: 0.9rem; padding: 0.15rem 0.4rem; border-radius: 8px;
+    transition: background var(--velocidad) ease;
+}
+.mini-cal-nav:hover { background: var(--cristal-hover); }
+.mini-cal-rejilla { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.mini-cal-rejilla .nom { font-size: 0.6rem; text-align: center; color: var(--texto-tenue); font-weight: 700; padding: 0.15rem 0; }
+.mini-dia {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; border-radius: 9px; color: var(--texto-suave);
+    cursor: pointer; border: none; background: none;
+    transition: background var(--velocidad) ease;
+}
+.mini-dia:hover { background: var(--cristal-hover); }
+.mini-dia.fuera { opacity: 0.35; }
+.mini-dia.hoy { background: var(--acento); color: #06322c; font-weight: 800; }
+
+/* ---------- Pie de la barra lateral ---------- */
+.lateral-pie {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--cristal-borde);
+}
+.sesion-email {
+    flex: 1; min-width: 0; font-size: 0.72rem; color: var(--texto-tenue);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.icono-btn {
+    background: var(--cristal-fuerte);
+    border: 1px solid var(--cristal-borde);
+    border-radius: 12px;
+    width: 2.2rem; height: 2.2rem;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 1rem; color: var(--texto);
+    transition: transform var(--velocidad) ease, background var(--velocidad) ease;
+}
+.icono-btn:hover { transform: translateY(-2px); background: var(--cristal-hover); }
+
+/* ---------- Contenido principal ---------- */
+.contenido {
+    flex: 1;
+    height: 100vh;
+    padding: 1.8rem 2.6rem;
+    overflow-y: auto;
+}
+
+.cabecera { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.6rem; }
+.cabecera h1 { margin: 0; font-size: 1.9rem; color: var(--texto); text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.15); }
+.cabecera p { margin: 0.25rem 0 0; color: var(--texto-suave); font-size: 0.95rem; }
+
+.solo-movil { display: none; }
+
+/* ---------- Tarjetas de cristal ---------- */
+.rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.2rem; }
+
+.tarjeta, .cristal {
+    background: var(--cristal);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border: 1px solid var(--cristal-borde);
+    border-radius: var(--radio-grande);
+    padding: 1.4rem;
+    box-shadow: var(--sombra);
+    transition: transform var(--velocidad) ease, box-shadow var(--velocidad) ease, background var(--velocidad) ease;
+}
+.tarjeta:hover { transform: translateY(-4px); box-shadow: var(--sombra-alta); background: var(--cristal-hover); }
+.tarjeta h3 { margin: 0 0 0.4rem; font-size: 1.15rem; color: var(--texto); }
+.tarjeta p { margin: 0; color: var(--texto-suave); font-size: 0.88rem; line-height: 1.5; }
+.tarjeta .enlace { color: var(--texto); font-weight: 800; text-decoration: none; font-size: 0.85rem; }
+.tarjeta .enlace:hover { text-decoration: underline; }
+
+.tarjeta-mini { padding: 1rem; border-radius: var(--radio); box-shadow: none; }
+
+/* ---------- Botones, entradas, chips ---------- */
+.boton, .boton-primario, .boton-suave, .boton-peligro {
+    padding: 0.65rem 1.1rem;
+    border: none;
+    border-radius: 14px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform var(--velocidad) ease, box-shadow var(--velocidad) ease, background var(--velocidad) ease;
+}
+.boton-primario {
+    background: linear-gradient(135deg, #a78bfa, #f687b3);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(167, 139, 250, 0.4);
+}
+.boton-primario:hover { transform: translateY(-2px); box-shadow: 0 9px 24px rgba(167, 139, 250, 0.55); }
+.boton-suave { background: var(--cristal-fuerte); border: 1px solid var(--cristal-borde); color: var(--texto); }
+.boton-suave:hover { background: var(--cristal-hover); transform: translateY(-2px); }
+.boton-peligro { background: rgba(251, 113, 133, 0.18); color: #fff; border: 1px solid rgba(251, 113, 133, 0.45); }
+.boton-peligro:hover { background: rgba(251, 113, 133, 0.3); transform: translateY(-2px); }
+
+.etiqueta { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--texto-tenue); margin-bottom: 0.35rem; }
+
+/* Entradas: leche oscura con texto blanco (legible sobre el aura) */
+.entrada, textarea.entrada, select.entrada {
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid var(--cristal-borde);
+    border-radius: 14px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    color: #ffffff;
+    transition: border-color var(--velocidad) ease, box-shadow var(--velocidad) ease;
+}
+.entrada::placeholder { color: rgba(255, 255, 255, 0.55); }
+.entrada:focus { outline: none; border-color: var(--acento); box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.25); }
+textarea.entrada { min-height: 92px; resize: vertical; font-family: Consolas, monospace; }
+[data-tema='oscuro'] .entrada, [data-tema='oscuro'] textarea.entrada, [data-tema='oscuro'] select.entrada {
+    background: rgba(15, 23, 42, 0.6);
+}
+
+.chip {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.2rem 0.65rem; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 700;
+    background: var(--cristal-fuerte); border: 1px solid var(--cristal-borde); color: var(--texto-suave);
+}
+.chip-ok { color: var(--ok); border-color: rgba(74, 222, 128, 0.45); }
+.chip-peligro { color: var(--peligro); border-color: rgba(251, 113, 133, 0.45); }
+
+/* ---------- Tabla ---------- */
+.tabla { width: 100%; border-collapse: collapse; }
+.tabla th { text-align: left; font-size: 0.68rem; letter-spacing: 1.2px; text-transform: uppercase; color: var(--texto-tenue); padding: 0.6rem 0.8rem; }
+.tabla td { padding: 0.7rem 0.8rem; border-top: 1px solid var(--cristal-borde); font-size: 0.9rem; color: var(--texto-suave); }
+.tabla tr { transition: background var(--velocidad) ease; }
+.tabla tbody tr:hover { background: var(--cristal-hover); }
+
+/* ---------- Registros del motor ---------- */
+.registro-datos { margin: 0.5rem 0 0; padding: 0.6rem 0.8rem; background: rgba(0, 0, 0, 0.22); border-radius: 12px; font-family: Consolas, monospace; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; color: var(--texto-suave); }
+[data-tema='oscuro'] .registro-datos { background: rgba(15, 23, 42, 0.6); }
+
+/* ---------- Buscador universal ---------- */
+.buscador-overlay {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(10, 20, 40, 0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex; justify-content: center; align-items: flex-start;
+    padding-top: 14vh;
+}
+.buscador-overlay.oculto { display: none; }
+.buscador-caja {
+    width: min(560px, 92vw);
+    background: rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--cristal-borde);
+    border-radius: var(--radio-grande);
+    box-shadow: var(--sombra-alta);
+    padding: 1rem;
+    animation: aparecer 180ms ease;
+}
+[data-tema='oscuro'] .buscador-caja { background: var(--cristal-fuerte); }
+@keyframes aparecer { from { opacity: 0; transform: translateY(-8px) scale(0.98); } to { opacity: 1; transform: none; } }
+.buscador-lista { list-style: none; margin: 0.7rem 0 0; padding: 0; max-height: 44vh; overflow-y: auto; }
+.buscador-opcion { display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 0.8rem; border-radius: 13px; cursor: pointer; font-size: 0.92rem; color: var(--texto-suave); }
+.buscador-opcion .icono { width: 1.4rem; text-align: center; }
+.buscador-opcion .grupo-de { margin-left: auto; font-size: 0.68rem; color: var(--texto-tenue); }
+.buscador-opcion.activo, .buscador-opcion:hover { background: var(--cristal-hover); color: var(--texto); }
+.buscador-opcion.proximo { opacity: 0.5; }
+.buscador-pista { margin-top: 0.6rem; font-size: 0.68rem; color: var(--texto-tenue); display: flex; gap: 0.5rem; align-items: center; }
+.buscador-pista kbd { margin-left: 0; }
+
+/* ---------- Avisos (toasts) ---------- */
+#toasts { position: fixed; right: 1.2rem; bottom: 1.2rem; z-index: 60; display: flex; flex-direction: column; gap: 0.5rem; }
+.toast {
+    background: rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid var(--cristal-borde);
+    border-left: 4px solid var(--acento);
+    border-radius: 14px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    color: var(--texto);
+    box-shadow: var(--sombra);
+    animation: subir 220ms ease;
+}
+[data-tema='oscuro'] .toast { background: var(--cristal-fuerte); }
+.toast.error { border-left-color: var(--peligro); }
+@keyframes subir { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Esqueletos de carga ---------- */
+.skeleton { border-radius: var(--radio); background: var(--cristal); position: relative; overflow: hidden; height: 84px; }
+.skeleton::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, var(--cristal-hover), transparent);
+    animation: brillo 1.2s infinite;
+}
+@keyframes brillo { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+/* ---------- Estados vacíos ---------- */
+.vacio { text-align: center; color: var(--texto-tenue); padding: 2.2rem 1rem; font-size: 0.9rem; }
+
+/* ---------- Foco visible (accesibilidad) ---------- */
+:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
+
+/* ---------- Móvil ---------- */
+@media (max-width: 920px) {
+    .lateral {
+        position: fixed; z-index: 40; transform: translateX(-105%);
+        background: rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+    }
+    [data-tema='oscuro'] .lateral { background: var(--cristal-fuerte); }
+    .lateral.abierta { transform: none; }
+    .solo-movil { display: flex; }
+    .contenido { padding: 1.2rem 1.1rem; }
+    .cabecera h1 { font-size: 1.5rem; }
+}
+
+/* ---------- Respeta a quien no quiere movimiento ---------- */
+@media (prefers-reduced-motion: reduce) {
+    body { animation: none; }
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+}

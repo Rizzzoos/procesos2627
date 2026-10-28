@@ -107,7 +107,7 @@ function crearRouter() {
                 { expiresIn: '2h' }
             );
             res.cookie('sesion_dasna', token, { httpOnly: true });
-            res.redirect('/dashboard.html');
+            res.redirect('/app.html');
         } catch (error) {
             return fallo('oauth_fallo');
         }
