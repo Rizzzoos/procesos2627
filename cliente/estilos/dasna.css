@@ -192,29 +192,70 @@ body {
 }
 
 /* Calendario visual del mes */
-.calendario-panel { padding: 1.1rem; }
+.calendario-panel { position: relative; padding: 1.1rem; }
 .cal-cab {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.3rem;
+    justify-content: center;
+    gap: 0.5rem;
     margin-bottom: 0.75rem;
 }
-.cal-nav {
+.cal-pick {
     background: var(--cristal-fuerte);
     border: 1px solid var(--cristal-borde);
-    border-radius: 10px;
-    width: 2rem;
-    height: 2rem;
-    cursor: pointer;
+    border-radius: 12px;
+    padding: 0.45rem 0.9rem;
+    font-size: 1rem;
+    font-weight: 800;
+    font-family: inherit;
     color: var(--texto);
-    font-size: 0.95rem;
-    font-weight: 700;
-    line-height: 1;
+    cursor: pointer;
     transition: background var(--velocidad) ease, transform var(--velocidad) ease;
 }
-.cal-nav:hover { background: var(--cristal-hover); transform: translateY(-1px); }
-.cal-mes { flex: 1; text-align: center; font-size: 0.98rem; font-weight: 800; text-transform: capitalize; }
+.cal-pick::after { content: ' ▾'; font-size: 0.68rem; color: var(--texto-tenue); }
+.cal-pick:hover { background: var(--cristal-hover); transform: translateY(-1px); }
+.cal-menu {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.35rem;
+    padding: 0.55rem;
+    margin-bottom: 0.65rem;
+    background: rgba(255, 255, 255, 0.3);
+    border: 1px solid var(--cristal-borde);
+    border-radius: 14px;
+    box-shadow: var(--sombra-alta);
+    animation: aparecer 150ms ease;
+}
+[data-tema='oscuro'] .cal-menu { background: var(--cristal-fuerte); }
+.cal-menu.oculto { display: none; }
+.cal-menu button {
+    padding: 0.4rem 0.2rem;
+    border: none;
+    border-radius: 9px;
+    background: var(--cristal);
+    color: var(--texto);
+    font-size: 0.76rem;
+    font-weight: 700;
+    font-family: inherit;
+    text-transform: capitalize;
+    cursor: pointer;
+    transition: background var(--velocidad) ease;
+}
+.cal-menu button:hover { background: var(--cristal-hover); }
+.cal-menu button.activo { background: var(--acento); color: #06322c; }
+.preview-fecha {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    padding: 0.38rem 0.8rem;
+    border-radius: 999px;
+    background: var(--cristal-fuerte);
+    border: 1px solid var(--cristal-borde);
+    color: var(--texto-suave);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
 .cal-rejilla { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .cal-nom { font-size: 0.62rem; text-align: center; color: var(--texto-tenue); font-weight: 800; padding: 0.2rem 0; letter-spacing: 1px; }
 .cal-dia {

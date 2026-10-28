@@ -124,6 +124,162 @@ function resumenDe(datos) {
     return String(texto).slice(0, 70);
 }
 
+// --- Fecha en lenguaje natural: "comida familiar mañana", "quedada amigos 26 octubre" ---
+const MESES_LARGOS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const MESES_TXT = {
+    ene: 1, enero: 1, feb: 2, febrero: 2, mar: 3, marzo: 3, abr: 4, abril: 4,
+    may: 5, mayo: 5, jun: 6, junio: 6, jul: 7, julio: 7, ago: 8, agosto: 8,
+    sep: 9, sept: 9, septiembre: 9, setiembre: 9,
+    oct: 10, octubre: 10, nov: 11, noviembre: 11, dic: 12, diciembre: 12
+};
+const NUMEROS_TXT = {
+    uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9,
+    diez: 10, once: 11, doce: 12, trece: 13, catorce: 14, quince: 15,
+    dieciseis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19,
+    veinte: 20, veintiuno: 21, veintidos: 22, veintitres: 23, veinticuatro: 24,
+    veinticinco: 25, veintiseis: 26, veintisiete: 27, veintiocho: 28, veintinueve: 29,
+    treinta: 30, treintayuno: 31
+};
+const RE_MESES = Object.keys(MESES_TXT).sort((a, b) => b.length - a.length).join('|');
+const RE_NUMS = Object.keys(NUMEROS_TXT).sort((a, b) => b.length - a.length).join('|');
+
+// Devuelve { fecha, resto }: la fecha interpretada y el texto sin la parte de fecha
+function interpretarFecha(texto) {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const sumar = (dias) => { const f = new Date(hoy); f.setDate(f.getDate() + dias); return f; };
+    const validar = (anio, mes, dia) => {
+        const f = new Date(anio, mes - 1, dia);
+        return f.getMonth() === mes - 1 && f.getDate() === dia ? f : null;
+    };
+    // Un "1 enero" escrito en diciembre se entiende del año que viene (si es muy vieja)
+    const subirAnioSiVieja = (f) => {
+        if (!f) return null;
+        const umbral = new Date(hoy);
+        umbral.setDate(umbral.getDate() - 180);
+        if (f < umbral) f.setFullYear(f.getFullYear() + 1);
+        return f;
+    };
+
+    let fecha = null;
+    let frag = '';
+    const intentar = (re, calculo) => {
+        if (fecha) return;
+        const m = re.exec(texto);
+        if (!m) return;
+        const f = calculo(m);
+        if (f) { fecha = f; frag = m[0]; }
+    };
+
+    intentar(/\bpasado\s+ma[ñn]ana\b/i, () => sumar(2));
+    intentar(/\bma[ñn]ana\b/i, () => sumar(1));
+    intentar(/\bayer\b/i, () => sumar(-1));
+    intentar(/\bhoy\b/i, () => new Date(hoy));
+    intentar(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/, (m) => validar(Number(m[1]), Number(m[2]), Number(m[3])));
+    intentar(/\b(\d{1,2})[/\-.](\d{1,2})(?:[/\-.](\d{2,4}))?\b/, (m) => {
+        const anio = m[3] ? (Number(m[3]) < 100 ? 2000 + Number(m[3]) : Number(m[3])) : hoy.getFullYear();
+        const f = validar(anio, Number(m[2]), Number(m[1]));
+        return m[3] ? f : subirAnioSiVieja(f);
+    });
+    intentar(new RegExp(`\\b(?:el\\s+)?(\\d{1,2})\\s+(?:de\\s+|del\\s+)?(${RE_MESES})\\b`, 'i'),
+        (m) => subirAnioSiVieja(validar(hoy.getFullYear(), MESES_TXT[m[2].toLowerCase()], Number(m[1]))));
+    intentar(new RegExp(`\\b(?:el\\s+)?(${RE_NUMS})\\s+(?:de\\s+|del\\s+)?(${RE_MESES})\\b`, 'i'),
+        (m) => subirAnioSiVieja(validar(hoy.getFullYear(), MESES_TXT[m[2].toLowerCase()], NUMEROS_TXT[m[1].toLowerCase()])));
+    intentar(/\b(?:el\s+)?(\d{1,2})\s+de\s+este\s+mes\b/i,
+        (m) => validar(hoy.getFullYear(), hoy.getMonth() + 1, Number(m[1])));
+    intentar(new RegExp(`\\b(?:el\\s+)?(${RE_NUMS})\\s+de\\s+este\\s+mes\\b`, 'i'),
+        (m) => validar(hoy.getFullYear(), hoy.getMonth() + 1, NUMEROS_TXT[m[1].toLowerCase()]));
+    intentar(/\bpr[oó]ximo\s+mes\b/i, () => {
+        const mes = hoy.getMonth() + 1;
+        const dia = Math.min(hoy.getDate(), new Date(hoy.getFullYear(), mes + 1, 0).getDate());
+        return new Date(hoy.getFullYear(), mes, dia);
+    });
+    intentar(/\b(?:el\s+|este\s+|pr[oó]ximo\s+)?(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/i, (m) => {
+        const mapa = { lunes: 1, martes: 2, miercoles: 3, jueves: 4, viernes: 5, sabado: 6, domingo: 0 };
+        const objetivo = mapa[m[1].toLowerCase().replace(/[éá]/g, (c) => (c === 'é' ? 'e' : 'a'))];
+        return sumar((objetivo - hoy.getDay() + 7) % 7);
+    });
+    intentar(/\b(?:el\s+)?(?:este\s+)?(?:finde|fin\s+de\s+semana)\b/i, () => {
+        const d = hoy.getDay();
+        if (d === 0 || d === 6) return new Date(hoy);
+        return sumar((6 - d + 7) % 7);
+    });
+
+    // Quitar la parte de fecha del texto y limpiar conectores sueltos
+    let resto = texto;
+    if (frag) {
+        resto = texto.replace(new RegExp(frag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), ' ');
+    }
+    resto = resto.replace(/\s+/g, ' ')
+        .replace(/^[\s,;:—-]+/, '')
+        .replace(/[\s,;:—-]+$/, '')
+        .replace(/^(?:de|del|el|la|los|en|para|a)\s+/i, '')
+        .replace(/\s+(?:de|del|el|la|los|en|para|a)$/i, '')
+        .trim();
+
+    return { fecha: fecha || new Date(hoy), resto };
+}
+
+function fechaBonita(f) {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    if (claveDia(f) === claveDia(hoy)) return 'hoy';
+    const manana = new Date(hoy);
+    manana.setDate(manana.getDate() + 1);
+    if (claveDia(f) === claveDia(manana)) return 'mañana';
+    return new Date(f).toLocaleDateString('es-ES', {
+        day: 'numeric',
+        month: 'long',
+        year: f.getFullYear() !== hoy.getFullYear() ? 'numeric' : undefined
+    });
+}
+
+// --- Menús desplegables del calendario (meses y años) ---
+function cerrarMenusCal() {
+    document.querySelectorAll('.cal-menu').forEach((m) => m.classList.add('oculto'));
+}
+
+function alternarMenu(id) {
+    const yo = document.getElementById(id);
+    if (!yo) return;
+    const seAbre = yo.classList.contains('oculto');
+    document.querySelectorAll('.cal-menu').forEach((m) => m.classList.add('oculto'));
+    if (!seAbre) return;
+    yo.classList.remove('oculto');
+    if (id === 'cal-menu-mes') pintarMenuMeses();
+    if (id === 'cal-menu-anio') pintarMenuAnios();
+}
+
+function pintarMenuMeses() {
+    const menu = document.getElementById('cal-menu-mes');
+    menu.innerHTML = MESES_LARGOS.map((nombre, i) =>
+        `<button data-mes="${i}"${i === calBase.getMonth() ? ' class="activo"' : ''}>${nombre}</button>`).join('');
+    menu.querySelectorAll('button').forEach((b) =>
+        b.addEventListener('click', () => {
+            calBase = new Date(calBase.getFullYear(), Number(b.dataset.mes), 1);
+            calSel = null;
+            cerrarMenusCal();
+            pintarCalendario();
+        }));
+}
+
+function pintarMenuAnios() {
+    const menu = document.getElementById('cal-menu-anio');
+    const actual = calBase.getFullYear();
+    let html = '';
+    for (let y = actual - 5; y <= actual + 5; y++) {
+        html += `<button data-anio="${y}"${y === actual ? ' class="activo"' : ''}>${y}</button>`;
+    }
+    menu.innerHTML = html;
+    menu.querySelectorAll('button').forEach((b) =>
+        b.addEventListener('click', () => {
+            calBase = new Date(Number(b.dataset.anio), calBase.getMonth(), 1);
+            calSel = null;
+            cerrarMenusCal();
+            pintarCalendario();
+        }));
+}
+
 function pintarCalendario() {
     const rejilla = document.getElementById('cal-rejilla');
     if (!rejilla) return;
@@ -132,8 +288,8 @@ function pintarCalendario() {
     const hoy = new Date();
 
     const nombres = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-    document.getElementById('cal-mes').textContent =
-        calBase.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    document.getElementById('cal-mes').textContent = MESES_LARGOS[mes];
+    document.getElementById('cal-anio').textContent = String(anio);
 
     // Días con registros, agrupados por día
     const porDia = new Map();
@@ -204,21 +360,16 @@ function vistaPanel() {
     cal.className = 'cristal calendario-panel';
     cal.innerHTML = `
         <div class="cal-cab">
-            <button class="cal-nav" data-paso="-12" title="Año anterior" aria-label="Año anterior">«</button>
-            <button class="cal-nav" data-paso="-1" title="Mes anterior" aria-label="Mes anterior">‹</button>
-            <span class="cal-mes" id="cal-mes"></span>
-            <button class="cal-nav" data-paso="1" title="Mes siguiente" aria-label="Mes siguiente">›</button>
-            <button class="cal-nav" data-paso="12" title="Año siguiente" aria-label="Año siguiente">»</button>
+            <button class="cal-pick" id="cal-mes" title="Elegir mes"></button>
+            <button class="cal-pick" id="cal-anio" title="Elegir año"></button>
         </div>
+        <div class="cal-menu oculto" id="cal-menu-mes"></div>
+        <div class="cal-menu oculto" id="cal-menu-anio"></div>
         <div class="cal-rejilla" id="cal-rejilla"></div>
         <div class="cal-detalle" id="cal-detalle"></div>`;
     dos.appendChild(cal);
-    cal.querySelectorAll('.cal-nav').forEach((b) =>
-        b.addEventListener('click', () => {
-            calBase = new Date(calBase.getFullYear(), calBase.getMonth() + Number(b.dataset.paso), 1);
-            calSel = null;
-            pintarCalendario();
-        }));
+    cal.querySelector('#cal-mes').addEventListener('click', () => alternarMenu('cal-menu-mes'));
+    cal.querySelector('#cal-anio').addEventListener('click', () => alternarMenu('cal-menu-anio'));
 
     // --- Recuadros de los apartados (columna derecha) ---
     const rejilla = document.createElement('div');
@@ -281,27 +432,36 @@ async function vistaModulo(clave) {
     cont.innerHTML = '';
     if (!r.exito) return aviso(r.error || 'No se pudo leer el módulo.', 'error');
 
-    // Tarjeta: crear un registro (motor genérico: JSON + fecha opcional)
+    // Tarjeta: crear un registro escribiendo con palabras (la fecha la interpreta el cliente)
     const crear = cristal(`
         <div class="tarjeta" style="margin-bottom:1.2rem">
             <h3>➕ Nuevo registro</h3>
-            <p>Escribe los datos en JSON. La fecha es opcional (por defecto, hoy).</p>
-            <label class="etiqueta" style="margin-top:0.9rem">Datos (JSON)</label>
-            <textarea class="entrada" id="nuevo-json" placeholder='{"nota": "mi primer registro"}'></textarea>
-            <label class="etiqueta" style="margin-top:0.7rem">Fecha (opcional)</label>
-            <input type="date" class="entrada" id="nuevo-fecha" style="max-width:220px">
+            <p>Escríbelo con tus palabras y yo pillo la fecha: «comida familiar mañana», «quedada amigos 26 octubre»…</p>
+            <label class="etiqueta" style="margin-top:0.9rem">¿Qué añades?</label>
+            <input class="entrada" id="nuevo-texto" placeholder="Ej: comida familiar el veinte de este mes" autocomplete="off">
+            <div class="preview-fecha" id="nuevo-preview">📅 Escribe algo con una fecha: «mañana», «26 octubre»…</div>
             <div style="margin-top:0.9rem"><button class="boton-primario" id="btn-guardar">Guardar registro</button></div>
         </div>`);
     cont.appendChild(crear);
 
+    const inpTexto = cont.querySelector('#nuevo-texto');
+    inpTexto.addEventListener('input', () => {
+        const frase = inpTexto.value.trim();
+        const prev = document.getElementById('nuevo-preview');
+        if (!frase) { prev.textContent = '📅 Escribe algo con una fecha: «mañana», «26 octubre»…'; return; }
+        const it = interpretarFecha(frase);
+        prev.textContent = `📅 ${fechaBonita(it.fecha)}${it.resto ? ' · «' + it.resto + '»' : ''}`;
+    });
+
     cont.querySelector('#btn-guardar').addEventListener('click', async () => {
-        let datos;
-        try { datos = JSON.parse(cont.querySelector('#nuevo-json').value); }
-        catch (e) { return aviso('El JSON no es válido.', 'error'); }
-        const fecha = cont.querySelector('#nuevo-fecha').value || undefined;
-        const res = await rest.crearRegistro(clave, datos, fecha);
+        const frase = inpTexto.value.trim();
+        if (!frase) return aviso('Escribe primero qué quieres añadir.', 'error');
+        const it = interpretarFecha(frase);
+        const titulo = (it.resto || frase).slice(0, 160);
+        const fecha = claveDia(it.fecha);
+        const res = await rest.crearRegistro(clave, { titulo }, fecha);
         if (!res.exito) return aviso(res.error || 'No se pudo guardar.', 'error');
-        aviso('Registro guardado ✅');
+        aviso(`Guardado: «${titulo}» · ${fechaBonita(it.fecha)} ✅`);
         vistaModulo(clave);
     });
 
@@ -589,6 +749,12 @@ async function iniciar() {
     document.getElementById('buscador-input').addEventListener('input', (e) => pintarBuscador(e.target.value));
     document.getElementById('buscador-overlay').addEventListener('click', (e) => {
         if (e.target.id === 'buscador-overlay') cerrarBuscador();
+    });
+
+    // Los menús del calendario del panel se cierran al tocar fuera
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.cal-pick') || e.target.closest('.cal-menu')) return;
+        cerrarMenusCal();
     });
 
     document.addEventListener('keydown', (e) => {
