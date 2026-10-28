@@ -1,8 +1,9 @@
 /* ============================================================
-   DASNA — SISTEMA DE DISEÑO (fase 1)
+   DASNA — SISTEMA DE DISEÑO
    Glassmorphism con la estética de siempre: letras blancas sobre
    el aura de toda la vida (naranja, rosa, azul y turquesa), que
-   respira despacio (ciclo de 40 s). Tema claro/oscuro incluido.
+   respira despacio (ciclo de 40 s). Sin barra lateral: cabecera
+   superior + panel de recuadros. Tema claro/oscuro incluido.
    ============================================================ */
 
 :root {
@@ -60,7 +61,7 @@
 
 * { box-sizing: border-box; }
 
-/* ---------- Fondo que respira (lento:40 s) ---------- */
+/* ---------- Fondo que respira (lento: 40 s) ---------- */
 body {
     margin: 0;
     min-height: 100vh;
@@ -70,6 +71,7 @@ body {
     background-size: 400% 400%;
     animation: respirar 40s ease-in-out infinite;
     display: flex;
+    flex-direction: column;
     overflow: hidden;
 }
 
@@ -80,53 +82,41 @@ body {
 }
 
 /* El canvas de estelas queda por debajo de todo lo nuestro */
-.lateral, .contenido { position: relative; z-index: 1; }
+.barra-superior, .contenido { position: relative; z-index: 1; }
 
-/* ---------- Barra lateral ---------- */
-.lateral {
-    width: 280px;
-    flex-shrink: 0;
-    height: 100vh;
-    padding: 1.4rem 1.1rem;
+/* ---------- Cabecera superior ---------- */
+.barra-superior {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.8rem 1.6rem;
     background: var(--cristal);
     backdrop-filter: blur(var(--blur));
     -webkit-backdrop-filter: blur(var(--blur));
-    border-right: 1px solid var(--cristal-borde);
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-    overflow-y: auto;
-    transition: transform var(--velocidad) ease;
+    border-bottom: 1px solid var(--cristal-borde);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+    flex-shrink: 0;
 }
 
-.lateral-logo {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    font-size: 1.6rem;
+.barra-izq { display: flex; align-items: center; gap: 1rem; min-width: 0; }
+.barra-dcha { display: flex; align-items: center; gap: 0.55rem; }
+
+.barra-logo {
+    font-size: 1.35rem;
     font-weight: 800;
     letter-spacing: 3px;
-    padding: 0 0.4rem;
     color: var(--texto);
     text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.15);
-}
-
-.lateral-logo small {
-    font-size: 0.62rem;
-    font-weight: 600;
-    letter-spacing: 1px;
-    color: var(--texto-tenue);
-    text-shadow: none;
+    white-space: nowrap;
 }
 
 /* Botón de búsqueda (abre el buscador universal) */
 .abrir-buscador {
-    width: 100%;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.6rem 0.8rem;
+    padding: 0.55rem 0.9rem;
     background: var(--cristal-fuerte);
     border: 1px solid var(--cristal-borde);
     border-radius: 14px;
@@ -136,123 +126,30 @@ body {
     transition: background var(--velocidad) ease, transform var(--velocidad) ease;
 }
 .abrir-buscador:hover { background: var(--cristal-hover); transform: translateY(-1px); }
-.abrir-buscador kbd, .buscador-pista kbd {
-    margin-left: auto;
-    padding: 0.1rem 0.45rem;
-    border-radius: 6px;
-    border: 1px solid var(--cristal-borde);
-    background: var(--cristal);
-    font-size: 0.7rem;
-    color: var(--texto-suave);
-}
 
-/* ---------- Grupos del menú (colapsables) ---------- */
-.grupo-titulo {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.45rem 0.5rem;
-    background: none;
-    border: none;
-    font-size: 0.68rem;
-    font-weight: 800;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--texto-tenue);
-    cursor: pointer;
-    box-shadow: none;
-    margin-top: 0.3rem;
-}
-.grupo-titulo .flecha { transition: transform var(--velocidad) ease; font-size: 0.7rem; }
-.grupo.cerrado .flecha { transform: rotate(-90deg); }
-.grupo.cerrado .grupo-lista { display: none; }
-
-.grupo-lista { display: flex; flex-direction: column; gap: 0.15rem; }
-
-.item-menu {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.6rem 0.7rem;
-    border-radius: 13px;
-    color: var(--texto-suave);
-    text-decoration: none;
-    font-size: 0.92rem;
-    font-weight: 500;
-    border: 1px solid transparent;
-    transition: background var(--velocidad) ease, transform var(--velocidad) ease, border-color var(--velocidad) ease;
-}
-.item-menu:hover { background: var(--cristal-hover); transform: translateX(3px); }
-.item-menu.activo {
-    background: var(--cristal-fuerte);
-    border-color: var(--cristal-borde);
-    color: var(--texto);
-    font-weight: 700;
-    text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.15);
-}
-.item-menu .icono { font-size: 1.05rem; width: 1.35rem; text-align: center; }
-.item-menu.proximo { opacity: 0.55; cursor: pointer; }
-.item-menu .marca {
-    margin-left: auto;
-    font-size: 0.6rem;
-    font-weight: 700;
-    padding: 0.12rem 0.45rem;
-    border-radius: 999px;
-    background: var(--cristal);
-    border: 1px solid var(--cristal-borde);
-    color: var(--texto-suave);
-}
-
-/* ---------- Mini-calendario ---------- */
-.mini-cal {
-    background: var(--cristal);
-    border: 1px solid var(--cristal-borde);
-    border-radius: var(--radio);
-    padding: 0.7rem;
-    backdrop-filter: blur(var(--blur));
-    -webkit-backdrop-filter: blur(var(--blur));
-}
-.mini-cal-cab { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
-.mini-cal-mes { font-size: 0.8rem; font-weight: 700; text-transform: capitalize; color: var(--texto); }
-.mini-cal-nav {
-    background: none; border: none; cursor: pointer;
-    color: var(--texto-suave); font-size: 0.9rem; padding: 0.15rem 0.4rem; border-radius: 8px;
-    transition: background var(--velocidad) ease;
-}
-.mini-cal-nav:hover { background: var(--cristal-hover); }
-.mini-cal-rejilla { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.mini-cal-rejilla .nom { font-size: 0.6rem; text-align: center; color: var(--texto-tenue); font-weight: 700; padding: 0.15rem 0; }
-.mini-dia {
-    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-    font-size: 0.7rem; border-radius: 9px; color: var(--texto-suave);
-    cursor: pointer; border: none; background: none;
-    transition: background var(--velocidad) ease;
-}
-.mini-dia:hover { background: var(--cristal-hover); }
-.mini-dia.fuera { opacity: 0.35; }
-.mini-dia.hoy { background: var(--acento); color: #06322c; font-weight: 800; }
-
-/* ---------- Pie de la barra lateral ---------- */
-.lateral-pie {
-    margin-top: auto;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding-top: 0.7rem;
-    border-top: 1px solid var(--cristal-borde);
-}
+/* Correo de la sesión (se oculta en pantallas pequeñas) */
 .sesion-email {
-    flex: 1; min-width: 0; font-size: 0.72rem; color: var(--texto-tenue);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 240px;
+    font-size: 0.74rem;
+    color: var(--texto-tenue);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 0.3rem;
 }
+
 .icono-btn {
     background: var(--cristal-fuerte);
     border: 1px solid var(--cristal-borde);
     border-radius: 12px;
-    width: 2.2rem; height: 2.2rem;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: 1rem; color: var(--texto);
+    width: 2.3rem;
+    height: 2.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--texto);
     transition: transform var(--velocidad) ease, background var(--velocidad) ease;
 }
 .icono-btn:hover { transform: translateY(-2px); background: var(--cristal-hover); }
@@ -260,18 +157,77 @@ body {
 /* ---------- Contenido principal ---------- */
 .contenido {
     flex: 1;
-    height: 100vh;
-    padding: 1.8rem 2.6rem;
+    padding: 1.7rem 2.4rem 2.4rem;
     overflow-y: auto;
 }
 
-.cabecera { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.6rem; }
-.cabecera h1 { margin: 0; font-size: 1.9rem; color: var(--texto); text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.15); }
+.cabecera { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.cabecera h1 { margin: 0; font-size: 1.85rem; color: var(--texto); text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.15); }
 .cabecera p { margin: 0.25rem 0 0; color: var(--texto-suave); font-size: 0.95rem; }
 
-.solo-movil { display: none; }
+/* Enlace de vuelta (dentro de las vistas que no son el panel) */
+.volver {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.85rem;
+    background: var(--cristal-fuerte);
+    border: 1px solid var(--cristal-borde);
+    border-radius: 13px;
+    color: var(--texto);
+    text-decoration: none;
+    font-size: 0.86rem;
+    font-weight: 700;
+    transition: background var(--velocidad) ease, transform var(--velocidad) ease;
+}
+.volver:hover { background: var(--cristal-hover); transform: translateX(-2px); }
+.volver.oculto { display: none; }
 
-/* ---------- Tarjetas de cristal ---------- */
+/* ---------- Panel: recuadros pequeños ---------- */
+.rejilla-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    gap: 0.9rem;
+    max-width: 900px;
+}
+
+.caja {
+    position: relative;
+    background: var(--cristal);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border: 1px solid var(--cristal-borde);
+    border-radius: 18px;
+    padding: 1.05rem 0.6rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    text-align: center;
+    text-decoration: none;
+    color: var(--texto);
+    box-shadow: var(--sombra);
+    transition: transform var(--velocidad) ease, background var(--velocidad) ease, box-shadow var(--velocidad) ease;
+}
+.caja:hover { transform: translateY(-4px); background: var(--cristal-hover); box-shadow: var(--sombra-alta); }
+.caja-icono { font-size: 1.7rem; line-height: 1; }
+.caja-nombre { font-size: 0.82rem; font-weight: 700; line-height: 1.15; word-break: break-word; }
+.caja-nota {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    font-size: 0.56rem;
+    font-weight: 800;
+    padding: 0.1rem 0.42rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid var(--cristal-borde);
+    color: var(--texto-suave);
+    letter-spacing: 0.3px;
+}
+.caja.proxima { opacity: 0.6; }
+
+/* ---------- Tarjetas de cristal (vistas internas) ---------- */
 .rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.2rem; }
 
 .tarjeta, .cristal {
@@ -383,8 +339,6 @@ textarea.entrada { min-height: 92px; resize: vertical; font-family: Consolas, mo
 .buscador-opcion .grupo-de { margin-left: auto; font-size: 0.68rem; color: var(--texto-tenue); }
 .buscador-opcion.activo, .buscador-opcion:hover { background: var(--cristal-hover); color: var(--texto); }
 .buscador-opcion.proximo { opacity: 0.5; }
-.buscador-pista { margin-top: 0.6rem; font-size: 0.68rem; color: var(--texto-tenue); display: flex; gap: 0.5rem; align-items: center; }
-.buscador-pista kbd { margin-left: 0; }
 
 /* ---------- Avisos (toasts) ---------- */
 #toasts { position: fixed; right: 1.2rem; bottom: 1.2rem; z-index: 60; display: flex; flex-direction: column; gap: 0.5rem; }
@@ -421,18 +375,15 @@ textarea.entrada { min-height: 92px; resize: vertical; font-family: Consolas, mo
 :focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
 
 /* ---------- Móvil ---------- */
-@media (max-width: 920px) {
-    .lateral {
-        position: fixed; z-index: 40; transform: translateX(-105%);
-        background: rgba(255, 255, 255, 0.3);
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
-    }
-    [data-tema='oscuro'] .lateral { background: var(--cristal-fuerte); }
-    .lateral.abierta { transform: none; }
-    .solo-movil { display: flex; }
-    .contenido { padding: 1.2rem 1.1rem; }
+@media (max-width: 720px) {
+    .sesion-email { display: none; }
+    .barra-superior { padding: 0.7rem 1rem; gap: 0.6rem; }
+    .barra-izq { gap: 0.6rem; }
+    .barra-logo { font-size: 1.15rem; letter-spacing: 2px; }
+    .abrir-buscador { padding: 0.5rem 0.7rem; font-size: 0.82rem; }
+    .contenido { padding: 1.2rem 1rem 2rem; }
     .cabecera h1 { font-size: 1.5rem; }
+    .rejilla-panel { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 0.7rem; }
 }
 
 /* ---------- Respeta a quien no quiere movimiento ---------- */

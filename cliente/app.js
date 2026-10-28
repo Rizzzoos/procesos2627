@@ -1,8 +1,8 @@
 // ============================================================
-// DASNA — shell de la aplicación (fase 1)
-// Presentación: pinta el menú, las vistas, el mini-calendario y
-// el buscador. TODA la comunicación con el servidor vive en
-// rest.js (frontera ARQ-03).
+// DASNA — shell de la aplicación
+// Sin barra lateral: cabecera arriba (buscar, tema, sesión) y
+// un PANEL de recuadros pequeños, uno por apartado.
+// Toda la comunicación con el servidor vive en rest.js (ARQ-03).
 // ============================================================
 
 // --- Estructura de navegación (aprobada en el diseño) ---
@@ -12,7 +12,7 @@ const GRUPOS = [
     {
         nombre: 'Principal', items: [
             { id: 'panel', icono: '📊', nombre: 'Panel' },
-            { id: 'calendario', icono: '🗓️', nombre: 'Calendario', proximo: 'Fase 2' }
+            { id: 'calendario', icono: '🗓️', nombre: 'Calendario' }
         ]
     },
     {
@@ -46,9 +46,6 @@ const GRUPOS = [
 let sesion = null;   // { email, rol } de /api/auth/me
 let modulos = [];    // módulos activos del usuario (del servidor)
 
-// Pequeño navegador de fechas del mini-calendario
-let calBase = new Date();
-
 // ============================================================
 // Utilidades de presentación
 // ============================================================
@@ -80,7 +77,7 @@ function fechaCorta(valor) {
 }
 
 // ============================================================
-// Barra lateral
+// Panel: recuadros pequeños, uno por apartado
 // ============================================================
 
 function metaDe(item) {
@@ -91,140 +88,54 @@ function metaDe(item) {
     return item;
 }
 
-function pintarMenu() {
-    const nav = document.getElementById('menu');
-    nav.innerHTML = '';
-    const claves = new Set(modulos.map((m) => m.clave));
-
-    const grupos = GRUPOS.map((g) => ({ ...g }));
-    if (sesion && sesion.rol === 'admin') {
-        grupos.push({
-            nombre: 'Administración', items: [{ id: 'usuarios', icono: '🛡️', nombre: 'Usuarios' }]
-        });
-    }
-
-    for (const grupo of grupos) {
-        const div = document.createElement('div');
-        div.className = 'grupo';
-
-        const titulo = document.createElement('button');
-        titulo.className = 'grupo-titulo';
-        titulo.innerHTML = `<span>${grupo.nombre}</span><span class="flecha">▾</span>`;
-        titulo.addEventListener('click', () => div.classList.toggle('cerrado'));
-        div.appendChild(titulo);
-
-        const lista = document.createElement('div');
-        lista.className = 'grupo-lista';
-
-        for (const item of grupo.items) {
-            const meta = metaDe(item);
-            if (!meta) continue;                        // módulo fuera del catálogo: no se pinta
-            if (item.modulo && !claves.has(item.modulo)) continue; // desactivado por la persona
-
-            const a = document.createElement('a');
-            const esProximo = !!meta.proximo;
-            a.className = 'item-menu' + (esProximo ? ' proximo' : '');
-            a.dataset.vista = meta.id;
-            a.href = esProximo ? 'javascript:void(0)' : '#/' + meta.id;
-            a.innerHTML = `<span class="icono">${meta.icono}</span><span>${meta.nombre}</span>` +
-                (esProximo ? `<span class="marca">${meta.proximo}</span>` : '');
-
-            if (esProximo) {
-                a.addEventListener('click', () => aviso(`"${meta.nombre}" llega en la ${meta.proximo} 🚧`, 'error'));
-            } else {
-                a.addEventListener('click', () => document.getElementById('lateral').classList.remove('abierta'));
-            }
-            lista.appendChild(a);
-        }
-
-        div.appendChild(lista);
-        nav.appendChild(div);
-    }
-}
-
-function marcarActivo() {
-    const limpio = location.hash.replace(/^#\/?/, '') || 'panel';
-    document.querySelectorAll('.item-menu').forEach((el) => {
-        el.classList.toggle('activo', el.dataset.vista === limpio);
-    });
-}
-
-// ============================================================
-// Mini-calendario (solo fechas; los eventos llegan en la fase 2)
-// ============================================================
-
-function pintarMiniCal() {
-    const cont = document.getElementById('mini-cal');
-    const anio = calBase.getFullYear();
-    const mes = calBase.getMonth();
-    const hoy = new Date();
-
-    const nombres = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-    const mesNombre = calBase.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-
-    let html = `<div class="mini-cal-cab">
-        <button class="mini-cal-nav" data-paso="-1" aria-label="Mes anterior">◀</button>
-        <span class="mini-cal-mes">${mesNombre}</span>
-        <button class="mini-cal-nav" data-paso="1" aria-label="Mes siguiente">▶</button>
-    </div><div class="mini-cal-rejilla">`;
-
-    for (const n of nombres) html += `<span class="nom">${n}</span>`;
-
-    const primerDia = new Date(anio, mes, 1);
-    const offset = (primerDia.getDay() + 6) % 7;          // lunes = 0
-    const diasMes = new Date(anio, mes + 1, 0).getDate();
-    const diasPrev = new Date(anio, mes, 0).getDate();
-
-    for (let i = 0; i < offset; i++) {
-        html += `<span class="mini-dia fuera">${diasPrev - offset + i + 1}</span>`;
-    }
-    for (let d = 1; d <= diasMes; d++) {
-        const esHoy = d === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
-        html += `<button class="mini-dia${esHoy ? ' hoy' : ''}" data-dia="${d}">${d}</button>`;
-    }
-    html += '</div>';
-    cont.innerHTML = html;
-
-    cont.querySelectorAll('.mini-cal-nav').forEach((b) =>
-        b.addEventListener('click', () => {
-            calBase = new Date(anio, mes + Number(b.dataset.paso), 1);
-            pintarMiniCal();
-        }));
-    cont.querySelectorAll('.mini-dia[data-dia]').forEach((b) =>
-        b.addEventListener('click', () => {
-            // Con la fase 2, este clic abrirá la vista del calendario en ese día
-            aviso(`Fase 2: aquí se abrirá el calendario del ${b.dataset.dia} 🗓️`, 'error');
-        }));
-}
-
-// ============================================================
-// Vistas
-// ============================================================
-
 function vistaPanel() {
     cabecera('Panel', `Hola de nuevo, ${sesion.email.split('@')[0]} ✨`);
     const cont = document.getElementById('vista');
     cont.innerHTML = '';
 
     const rejilla = document.createElement('div');
-    rejilla.className = 'rejilla';
+    rejilla.className = 'rejilla-panel';
 
-    const tarjetas = [
-        ['🗓️', 'Calendario global', 'Tus exámenes, tareas, eventos y viajes en una sola vista. Llega en la Fase 2.', 'calendario'],
-        ['🗂️', 'Registros del motor', `Tienes ${modulos.length} módulos activos. Explora y añade registros de prueba.`, 'registros'],
-        ['💬', 'Ayuda', 'Atajos de teclado, fases del proyecto y cómo funciona Dasna.', 'ayuda']
-    ];
+    const claves = new Set(modulos.map((m) => m.clave));
 
-    for (const [icono, titulo, texto, destino] of tarjetas) {
-        const t = document.createElement('div');
-        t.className = 'tarjeta';
-        t.innerHTML = `<h3>${icono} ${titulo}</h3><p>${texto}</p>
-            <p style="margin-top:0.8rem"><a class="enlace" href="#/${destino}">Abrir →</a></p>`;
-        rejilla.appendChild(t);
+    // Todos los apartados como recuadros con su nombre:
+    // los activos navegan; los planeados llevan su etiqueta de fase.
+    const items = [];
+    for (const grupo of GRUPOS) {
+        for (const item of grupo.items) {
+            if (item.id === 'panel') continue;           // ya estás en el panel
+            const meta = metaDe(item);
+            if (!meta) continue;                          // módulo fuera del catálogo
+            if (item.modulo && !claves.has(item.modulo)) continue; // desactivado
+            items.push(meta);
+        }
+    }
+    if (sesion && sesion.rol === 'admin') {
+        items.push({ id: 'usuarios', icono: '🛡️', nombre: 'Usuarios' });
+    }
+
+    for (const meta of items) {
+        const a = document.createElement('a');
+        const esProximo = !!meta.proximo;
+        a.className = 'caja' + (esProximo ? ' proxima' : '');
+        a.href = esProximo ? 'javascript:void(0)' : '#/' + meta.id;
+        a.title = meta.nombre + (esProximo ? ` — llega en la ${meta.proximo}` : '');
+        a.innerHTML = `<span class="caja-icono">${meta.icono}</span>
+            <span class="caja-nombre">${meta.nombre}</span>` +
+            (esProximo ? `<span class="caja-nota">${meta.proximo}</span>` : '');
+
+        if (esProximo) {
+            a.addEventListener('click', () => aviso(`"${meta.nombre}" llega en la ${meta.proximo} 🚧`, 'error'));
+        }
+        rejilla.appendChild(a);
     }
 
     cont.appendChild(rejilla);
 }
+
+// ============================================================
+// Vistas
+// ============================================================
 
 async function vistaModulo(clave) {
     const meta = modulos.find((m) => m.clave === clave);
@@ -385,7 +296,8 @@ function vistaCalendario() {
             <h3 style="margin-top:0">Fase 2 🚧</h3>
             <p style="color:var(--texto-suave);line-height:1.6">Aquí vivirá tu <strong>calendario global</strong>: los exámenes y tareas de
             Estudios, las quedadas de Eventos y la salida de tus Viajes, todo en una sola vista con filtros.
-            De momento puedes navegar los meses con el mini-calendario de la izquierda.</p>
+            De momento este apartado está en construcción; el plan completo está en la vista
+            <a class="enlace" href="#/ayuda">Ayuda</a>.</p>
         </div>`;
 }
 
@@ -394,9 +306,9 @@ function vistaAyuda() {
     document.getElementById('vista').innerHTML = `
         <div class="rejilla">
             <div class="tarjeta"><h3>⌨️ Atajos</h3><p><strong>Ctrl / ⌘ + K</strong>: buscador universal.<br>
-            <strong>C</strong>: calendario (cuando esté disponible).<br>El tema claro/oscuro lo cambias con 🌙 abajo.</p></div>
+            <strong>C</strong>: calendario (cuando esté disponible).<br>El tema claro/oscuro lo cambias con 🌙 arriba a la derecha.</p></div>
             <div class="tarjeta"><h3>🧱 Módulos</h3><p>Cada módulo guarda <em>registros</em> (JSON con fecha) en tu cuenta.
-            Los marcados como «Fase N» son las ideas planeadas que faltan por construir.</p></div>
+            Los recuadros con etiqueta de fase son las ideas planeadas que faltan por construir.</p></div>
             <div class="tarjeta"><h3>🗺️ Fases</h3><p>Fase 1: diseño y navegación (ahora). Fase 2: calendario, estudios y eventos.
             Fase 3: comidas, viajes y agua. Fase 4: outfits, gimnasio, ahorros y diario. Fase 5: panel de métricas.</p></div>
         </div>`;
@@ -426,6 +338,7 @@ const VISTAS = {
 
 function enrutar() {
     const limpio = location.hash.replace(/^#\/?/, '') || 'panel';
+    document.getElementById('volver').classList.toggle('oculto', limpio === 'panel');
     if (limpio.startsWith('m/')) {
         vistaModulo(limpio.slice(2));
     } else if (VISTAS[limpio]) {
@@ -433,7 +346,6 @@ function enrutar() {
     } else {
         vistaProximo();
     }
-    marcarActivo();
 }
 
 // ============================================================
@@ -446,7 +358,7 @@ let buscadorIndice = 0;
 function opcionesDeBusqueda() {
     const fijas = [
         { id: 'panel', icono: '📊', nombre: 'Panel', grupo: 'Principal' },
-        { id: 'calendario', icono: '🗓️', nombre: 'Calendario', grupo: 'Principal', proximo: 'Fase 2' },
+        { id: 'calendario', icono: '🗓️', nombre: 'Calendario', grupo: 'Principal' },
         { id: 'registros', icono: '🗂️', nombre: 'Registros', grupo: 'Utilidades' },
         { id: 'ayuda', icono: '💬', nombre: 'Ayuda', grupo: 'Utilidades' }
     ];
@@ -521,8 +433,6 @@ async function iniciar() {
     const r = await rest.obtenerModulos();
     modulos = (r && r.exito && r.modulos) || [];
 
-    pintarMenu();
-    pintarMiniCal();
     window.addEventListener('hashchange', enrutar);
     enrutar();
 
@@ -539,10 +449,8 @@ async function iniciar() {
     btnTema.addEventListener('click', () =>
         aplicarTema(document.documentElement.dataset.tema === 'oscuro' ? 'claro' : 'oscuro'));
 
-    // --- Cerrar sesión y menú móvil ---
+    // --- Cerrar sesión ---
     document.getElementById('btn-salir').addEventListener('click', () => rest.cerrarSesionApp());
-    document.getElementById('btn-menu').addEventListener('click', () =>
-        document.getElementById('lateral').classList.toggle('abierta'));
 
     // --- Buscador ---
     document.getElementById('btn-buscador').addEventListener('click', abrirBuscador);

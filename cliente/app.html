@@ -24,33 +24,25 @@
 </head>
 <body>
 
-    <!-- ================= BARRA LATERAL ================= -->
-    <aside class="lateral" id="lateral">
-        <div class="lateral-logo">
-            DASNA <small id="lateral-slogan">organiza tu vida</small>
+    <!-- ================= CABECERA (arriba) ================= -->
+    <header class="barra-superior">
+        <div class="barra-izq">
+            <span class="barra-logo">DASNA</span>
+            <button class="abrir-buscador" id="btn-buscador">
+                🔍 Buscar
+            </button>
         </div>
-
-        <button class="abrir-buscador" id="btn-buscador">
-            🔍 Buscar
-        </button>
-
-        <!-- Los grupos los pinta app.js con el catálogo del servidor -->
-        <nav id="menu" aria-label="Módulos"></nav>
-
-        <!-- Mini-calendario: siempre visible (acceso rápido) -->
-        <div class="mini-cal" id="mini-cal"></div>
-
-        <div class="lateral-pie">
+        <div class="barra-dcha">
             <span class="sesion-email" id="sesion-email">…</span>
             <button class="icono-btn" id="btn-tema" title="Cambiar tema (claro/oscuro)" aria-label="Cambiar tema">🌙</button>
             <button class="icono-btn" id="btn-salir" title="Cerrar sesión" aria-label="Cerrar sesión">🚪</button>
         </div>
-    </aside>
+    </header>
 
     <!-- ================= CONTENIDO ================= -->
     <main class="contenido">
         <header class="cabecera">
-            <button class="icono-btn solo-movil" id="btn-menu" aria-label="Abrir menú">☰</button>
+            <a class="volver oculto" id="volver" href="#/panel">← Panel</a>
             <div>
                 <h1 id="vista-titulo">Panel</h1>
                 <p id="vista-sub">Cargando…</p>
