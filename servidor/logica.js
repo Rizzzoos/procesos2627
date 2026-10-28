@@ -5,6 +5,7 @@
 // ============================================================
 const bcrypt = require('bcrypt');
 const crypto = require('node:crypto'); // Hito 4: tokens de confirmación
+const mongoose = require('mongoose');  // Hitos 5: validación de ObjectId
 const datos = require('./datos.js');
 const correo = require('./correo.js'); // Hito 4: envío de correos (servicio externo)
 
@@ -259,6 +260,213 @@ async function entrarConGoogle(email, nombre = '') {
     }
 }
 
+// ============================================================
+// HITO 5 - MOTOR DE MÓDULOS (vida personal)
+// Catálogo de módulos y reglas comunes a todos ellos.
+// Añadir un módulo = añadir una línea aquí + una vista en cliente.
+// ============================================================
+const CATALOGO = {
+    visionboard: {
+        nombre: 'Vision Board',
+        icono: '✨',
+        descripcion: 'Plasma tus metas visualmente y mantén tu enfoque diario intacto.'
+    },
+    gimnasio: {
+        nombre: 'Gimnasio',
+        icono: '💪',
+        descripcion: 'Registra tus rutinas, levanta más peso y trackea tu progreso físico.'
+    },
+    estudio: {
+        nombre: 'Estudio',
+        icono: '📚',
+        descripcion: 'Mide tus sesiones de concentración profunda con la técnica Pomodoro.'
+    },
+    sueno: {
+        nombre: 'Sueño',
+        icono: '🌙',
+        descripcion: 'Monitoriza tus horas de descanso para garantizar una recuperación óptima.'
+    },
+    ahorros: {
+        nombre: 'Ahorros',
+        icono: '💰',
+        descripcion: 'Controla tus finanzas, establece objetivos económicos y visualiza tu capital.'
+    },
+    diario: {
+        nombre: 'Diario',
+        icono: '📖',
+        descripcion: 'Vuelca tus pensamientos, reflexiones y agradecimientos del día a día.'
+    }
+};
+
+// Orden por defecto de la barra lateral (los 6 activos de fábrica)
+const ORDEN_POR_DEFECTO = Object.keys(CATALOGO);
+
+// Límites de seguridad comunes a todos los módulos
+const MAX_REGISTROS_MODULO = 10000;
+const MAX_BYTES_DATOS = 60 * 1024;   // 60 KB por registro
+const MAX_CLAVES_MODULOS = 50;
+
+function esEmailValido(email) {
+    return typeof email === 'string' && email.includes('@') && email.length <= 254;
+}
+
+function esObjetoPlano(datos) {
+    return datos !== null
+        && typeof datos === 'object'
+        && !Array.isArray(datos)
+        && Object.keys(datos).length > 0;
+}
+
+// Devuelve el catálogo como lista para el cliente
+function listarModulos() {
+    return ORDEN_POR_DEFECTO.map((clave) => ({ clave, ...CATALOGO[clave] }));
+}
+
+// Qué módulos tiene activos el usuario (si nunca lo guardó: los 6 por defecto)
+async function obtenerModulos(email) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    try {
+        const guardado = await datos.buscarModulos(email);
+        const claves = guardado && guardado.claves && guardado.claves.length
+            ? guardado.claves
+            : ORDEN_POR_DEFECTO;
+
+        // Se cruza con el catálogo: si algún día borramos un módulo, no rompe
+        const modulos = claves
+            .filter((clave) => CATALOGO[clave])
+            .map((clave) => ({ clave, ...CATALOGO[clave] }));
+
+        return { exito: true, modulos, disponibles: listarModulos() };
+    } catch (error) {
+        return { exito: false, error: 'Error al leer tus módulos.' };
+    }
+}
+
+// Guardar la configuración de la barra lateral (orden + visibles)
+async function actualizarModulos(email, claves) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+
+    if (!Array.isArray(claves) || claves.length === 0) {
+        return { exito: false, error: 'Debe haber al menos un módulo visible.' };
+    }
+    if (claves.length > MAX_CLAVES_MODULOS) {
+        return { exito: false, error: `Demasiados módulos (máximo ${MAX_CLAVES_MODULOS}).` };
+    }
+    if (claves.some((c) => typeof c !== 'string')) {
+        return { exito: false, error: 'Formato de módulos no válido.' };
+    }
+    const duplicados = new Set(claves).size !== claves.length;
+    if (duplicados) return { exito: false, error: 'No puede haber módulos repetidos.' };
+
+    const desconocidos = claves.filter((c) => !CATALOGO[c]);
+    if (desconocidos.length) {
+        return { exito: false, error: `Módulos no reconocidos: ${desconocidos.join(', ')}.` };
+    }
+
+    try {
+        await datos.guardarModulos(email, claves);
+        return await obtenerModulos(email);
+    } catch (error) {
+        return { exito: false, error: 'Error al guardar tus módulos.' };
+    }
+}
+
+// Resolver la clave: existe el módulo y el filtro de fechas es válido
+function resolverModulo(clave, filtros = {}) {
+    if (!CATALOGO[clave]) {
+        return { error: `El módulo "${clave}" no existe. Disponibles: ${ORDEN_POR_DEFECTO.join(', ')}.` };
+    }
+    const { desde, hasta, limite } = filtros;
+    for (const [nombre, valor] of Object.entries({ desde, hasta })) {
+        if (valor !== undefined && Number.isNaN(new Date(valor).getTime())) {
+            return { error: `El filtro "${nombre}" no es una fecha válida.` };
+        }
+    }
+    if (limite !== undefined) {
+        const n = Number(limite);
+        if (!Number.isFinite(n) || n < 1 || n > 500) {
+            return { error: 'El límite debe estar entre 1 y 500.' };
+        }
+    }
+    return { catalogo: CATALOGO[clave] };
+}
+
+// Listar los registros del usuario en un módulo
+async function listarRegistrosModulo(email, clave, filtros) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    const resuelto = resolverModulo(clave, filtros);
+    if (resuelto.error) return { exito: false, error: resuelto.error };
+
+    try {
+        const registros = await datos.listarRegistros(email, clave, {
+            desde: filtros.desde,
+            hasta: filtros.hasta,
+            limite: filtros.limite ? Number(filtros.limite) : undefined
+        });
+        return {
+            exito: true,
+            modulo: clave,
+            datos: registros.map((r) => ({
+                id: r._id,
+                fecha: r.fecha,
+                datos: r.datos
+            }))
+        };
+    } catch (error) {
+        return { exito: false, error: 'Error al leer los registros.' };
+    }
+}
+
+// Crear un registro en un módulo
+async function crearRegistroModulo(email, clave, datosNuevo, fecha) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    const resuelto = resolverModulo(clave);
+    if (resuelto.error) return { exito: false, error: resuelto.error };
+
+    if (!esObjetoPlano(datosNuevo)) {
+        return { exito: false, error: 'Los datos deben ser un objeto con al menos un campo.' };
+    }
+    if (Object.keys(datosNuevo).length > 50) {
+        return { exito: false, error: 'Demasiados campos en el registro (máximo 50).' };
+    }
+    if (JSON.stringify(datosNuevo).length > MAX_BYTES_DATOS) {
+        return { exito: false, error: 'El registro es demasiado grande (máximo 60 KB).' };
+    }
+    if (fecha !== undefined && Number.isNaN(new Date(fecha).getTime())) {
+        return { exito: false, error: 'La fecha no es válida.' };
+    }
+
+    try {
+        const cuenta = await datos.contarRegistros(email, clave);
+        if (cuenta >= MAX_REGISTROS_MODULO) {
+            return { exito: false, error: `Límite de registros alcanzado en ${CATALOGO[clave].nombre}.` };
+        }
+        const creado = await datos.crearRegistro(email, clave, datosNuevo, fecha);
+        return { exito: true, mensaje: 'Registro guardado.', id: creado._id, fecha: creado.fecha };
+    } catch (error) {
+        return { exito: false, error: 'Error al guardar el registro.' };
+    }
+}
+
+// Borrar un registro propio (si es de otro usuario, no se toca)
+async function borrarRegistroModulo(email, clave, id) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    if (!CATALOGO[clave]) return { exito: false, error: `El módulo "${clave}" no existe.` };
+    if (!id || !mongoose.isValidObjectId(id)) {
+        return { exito: false, error: 'Identificador de registro no válido.' };
+    }
+
+    try {
+        const borrado = await datos.borrarRegistro(email, clave, id);
+        if (!borrado) {
+            return { exito: false, error: 'Este registro no existe o no es tuyo.' };
+        }
+        return { exito: true, mensaje: 'Registro eliminado.' };
+    } catch (error) {
+        return { exito: false, error: 'Error al eliminar el registro.' };
+    }
+}
+
 module.exports = {
     registrarUsuario,
     confirmarCuenta,
@@ -268,5 +476,12 @@ module.exports = {
     comprobarEstado,
     eliminarUsuario,
     asegurarAdmin,
-    puedeEliminar
+    puedeEliminar,
+    // Motor de módulos
+    listarModulos,
+    obtenerModulos,
+    actualizarModulos,
+    listarRegistrosModulo,
+    crearRegistroModulo,
+    borrarRegistroModulo
 };

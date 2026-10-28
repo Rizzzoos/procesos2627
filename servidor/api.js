@@ -165,6 +165,49 @@ function crearRouter() {
         }
     });
 
+    // ========================================================
+    // HITO 5 - MOTOR DE MÓDULOS (genérico para todos)
+    // Rutas protegidas: siempre trabajan sobre el usuario
+    // de la sesión, nunca sobre un email que llegue en la URL.
+    // ========================================================
+
+    // Configuración de la barra lateral: qué módulos y en qué orden
+    router.get('/modulos', protegerRuta, async (req, res) => {
+        const resultado = await logica.obtenerModulos(req.usuario.email);
+        if (resultado.exito) res.status(200).json(resultado);
+        else res.status(400).json({ error: resultado.error });
+    });
+
+    router.put('/modulos', protegerRuta, async (req, res) => {
+        const resultado = await logica.actualizarModulos(req.usuario.email, req.body && req.body.claves);
+        if (resultado.exito) res.status(200).json(resultado);
+        else res.status(400).json({ error: resultado.error });
+    });
+
+    // Datos de un módulo (listar / crear / borrar)
+    router.get('/modulos/:clave/registros', protegerRuta, async (req, res) => {
+        const resultado = await logica.listarRegistrosModulo(req.usuario.email, req.params.clave, {
+            desde: req.query.desde,
+            hasta: req.query.hasta,
+            limite: req.query.limite
+        });
+        if (resultado.exito) res.status(200).json(resultado);
+        else res.status(400).json({ error: resultado.error });
+    });
+
+    router.post('/modulos/:clave/registros', protegerRuta, async (req, res) => {
+        const { datos, fecha } = req.body || {};
+        const resultado = await logica.crearRegistroModulo(req.usuario.email, req.params.clave, datos, fecha);
+        if (resultado.exito) res.status(201).json(resultado);
+        else res.status(400).json({ error: resultado.error });
+    });
+
+    router.delete('/modulos/:clave/registros/:id', protegerRuta, async (req, res) => {
+        const resultado = await logica.borrarRegistroModulo(req.usuario.email, req.params.clave, req.params.id);
+        if (resultado.exito) res.status(200).json(resultado);
+        else res.status(400).json({ error: resultado.error });
+    });
+
     return router;
 }
 

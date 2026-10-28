@@ -221,3 +221,124 @@ test('variante5: un rol desconocido o datos ausentes devuelven error (caso de er
     );
     assert.ok(administradoresNoEntero.error, 'debe responder con campo error');
 });
+
+// ============================================================
+// HITO 5 - Pruebas del motor de módulos (barra lateral + registros)
+// ============================================================
+
+test('Motor de módulos (Dasna)', async (t) => {
+    await mongoose.connect(process.env.MONGO_URI);
+
+    const emailA = `modulos_a_${Date.now()}@universo.com`;
+    const emailB = `modulos_b_${Date.now()}@universo.com`;
+    const emailBase = `modulos_${Date.now()}@universo.com`;
+    // Un email siempre válido para las pruebas que no necesitan usuario real
+    const email = emailBase;
+
+    await t.test('1. Un usuario nuevo ve los 6 módulos por defecto', async () => {
+        const r = await logica.obtenerModulos(email);
+        assert.strictEqual(r.exito, true);
+        assert.strictEqual(r.modulos.length, 6);
+        assert.ok(r.modulos.every((m) => m.nombre && m.icono && m.descripcion));
+        assert.strictEqual(r.modulos[0].clave, 'visionboard', 'respeta el orden por defecto');
+    });
+
+    await t.test('2. Se puede reordenar y ocultar módulos (barra lateral configurable)', async () => {
+        const r = await logica.actualizarModulos(email, ['ahorros', 'diario', 'gimnasio']);
+        assert.strictEqual(r.exito, true);
+        assert.deepStrictEqual(
+            r.modulos.map((m) => m.clave),
+            ['ahorros', 'diario', 'gimnasio'],
+            'respeta el orden que eligió la usuaria'
+        );
+    });
+
+    await t.test('3. Rechaza módulos desconocidos o listas inválidas (Caso de error)', async () => {
+        const desconocido = await logica.actualizarModulos(email, ['ahorros', 'inventado']);
+        assert.strictEqual(desconocido.exito, false);
+        assert.ok(desconocido.error.includes('inventado'));
+
+        const vacio = await logica.actualizarModulos(email, []);
+        assert.strictEqual(vacio.exito, false);
+
+        const repetido = await logica.actualizarModulos(email, ['diario', 'diario']);
+        assert.strictEqual(repetido.exito, false);
+
+        const noLista = await logica.actualizarModulos(email, 'diario');
+        assert.strictEqual(noLista.exito, false);
+    });
+
+    await t.test('4. Crear y listar registros en un módulo', async () => {
+        const creado = await logica.crearRegistroModulo(email, 'ahorros', { concepto: 'Chucherías', cantidad: 4.5 });
+        assert.strictEqual(creado.exito, true);
+
+        const listado = await logica.listarRegistrosModulo(email, 'ahorros', {});
+        assert.strictEqual(listado.exito, true);
+        assert.strictEqual(listado.datos.length, 1);
+        assert.strictEqual(listado.datos[0].datos.concepto, 'Chucherías');
+        assert.strictEqual(listado.datos[0].datos.cantidad, 4.5, 'conserva los campos numéricos');
+    });
+
+    await t.test('5. Las validaciones comunes funcionan (Caso de error)', async () => {
+        const claveMala = await logica.crearRegistroModulo(email, 'no-existe', { a: 1 });
+        assert.strictEqual(claveMala.exito, false);
+        assert.ok(claveMala.error.includes('no existe'));
+
+        const datosVacios = await logica.crearRegistroModulo(email, 'ahorros', {});
+        assert.strictEqual(datosVacios.exito, false);
+
+        const datosArray = await logica.crearRegistroModulo(email, 'ahorros', [1, 2, 3]);
+        assert.strictEqual(datosArray.exito, false);
+
+        const fechaMala = await logica.crearRegistroModulo(email, 'ahorros', { a: 1 }, 'ayer_noche');
+        assert.strictEqual(fechaMala.exito, false);
+        assert.ok(fechaMala.error.includes('fecha'));
+
+        const fechaListaMala = await logica.listarRegistrosModulo(email, 'ahorros', { desde: 'no-es-fecha' });
+        assert.strictEqual(fechaListaMala.exito, false);
+    });
+
+    await t.test('6. Cada usuaria solo ve SUS registros (aislamiento)', async () => {
+        await logica.crearRegistroModulo(emailA, 'diario', { texto: 'diario privado de A' });
+
+        const veB = await logica.listarRegistrosModulo(emailB, 'diario', {});
+        assert.strictEqual(veB.exito, true);
+        assert.strictEqual(veB.datos.length, 0, 'B no ve nada de A');
+
+        const veA = await logica.listarRegistrosModulo(emailA, 'diario', {});
+        assert.strictEqual(veA.datos.length, 1, 'A sí ve lo suyo');
+    });
+
+    await t.test('7. Solo se borra lo propio y con id válido (Caso de error)', async () => {
+        const creado = await logica.crearRegistroModulo(emailA, 'diario', { texto: 'para borrar' });
+        const idPropio = String(creado.id);
+
+        // Otro usuario intenta borrarlo: no debe existir para él
+        const intentoAjeno = await logica.borrarRegistroModulo(emailB, 'diario', idPropio);
+        assert.strictEqual(intentoAjeno.exito, false);
+        assert.ok(intentoAjeno.error.includes('no existe o no es tuyo'));
+
+        // Sigue existiendo para A (la del test 6 + esta)
+        const sigueAhi = await logica.listarRegistrosModulo(emailA, 'diario', {});
+        assert.strictEqual(sigueAhi.datos.length, 2, 'el intento ajeno no borró nada');
+
+        // A lo borra de verdad
+        const propio = await logica.borrarRegistroModulo(emailA, 'diario', idPropio);
+        assert.strictEqual(propio.exito, true);
+
+        const idMalo = await logica.borrarRegistroModulo(emailA, 'diario', 'esto-no-es-un-id');
+        assert.strictEqual(idMalo.exito, false);
+        assert.ok(idMalo.error.includes('no válido'));
+    });
+
+    await t.test('8. El módulo inexistente también falla al borrar (Caso de error)', async () => {
+        const r = await logica.borrarRegistroModulo(email, 'otra-cosa', new mongoose.Types.ObjectId());
+        assert.strictEqual(r.exito, false);
+        assert.ok(r.error.includes('no existe'));
+    });
+
+    // Limpieza
+    await mongoose.connection.collection('modulos').deleteMany({ email: { $in: [email, emailA, emailB] } });
+    await mongoose.connection.collection('registros').deleteMany({ email: { $in: [email, emailA, emailB] } });
+    await mongoose.disconnect();
+});
