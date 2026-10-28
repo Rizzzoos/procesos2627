@@ -314,9 +314,10 @@ function pintarCalendario() {
         const k = claveDia(fecha);
         const delDia = porDia.get(k) || [];
         const esHoy = d === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
-        const puntos = delDia.slice(0, 3).map(() => '<i></i>').join('');
-        html += `<button class="cal-dia${esHoy ? ' hoy' : ''}${k === calSel ? ' sel' : ''}" data-fecha="${k}">
-            <span>${d}</span>${puntos ? `<span class="puntos">${puntos}</span>` : ''}</button>`;
+        const marca = delDia.length === 1 ? '<span class="puntos"><i></i></span>'
+            : delDia.length > 1 ? `<span class="cuenta">${delDia.length}</span>` : '';
+        html += `<button class="cal-dia${esHoy ? ' hoy' : ''}${delDia.length ? ' con-registro' : ''}${k === calSel ? ' sel' : ''}" data-fecha="${k}">
+            <span>${d}</span>${marca}</button>`;
     }
     rejilla.innerHTML = html;
     rejilla.querySelectorAll('.cal-dia[data-fecha]').forEach((b) =>

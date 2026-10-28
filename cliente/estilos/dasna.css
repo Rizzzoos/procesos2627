@@ -29,6 +29,8 @@
     /* Acentos */
     --acento: #2dd4bf;      /* turquesa */
     --acento-2: #c4b5fd;    /* violeta claro */
+    --acento-lav: rgba(45, 212, 191, 0.16);    /* fondo suave para días con registros */
+    --acento-borde: rgba(45, 212, 191, 0.55);  /* borde de esos días */
     --peligro: #fb7185;
     --ok: #4ade80;
 
@@ -277,10 +279,44 @@ body {
 .cal-dia.fuera { background: none; opacity: 0.32; cursor: default; }
 .cal-dia.fuera:hover { background: none; transform: none; }
 .cal-dia.hoy { box-shadow: inset 0 0 0 2px var(--acento); color: var(--texto); font-weight: 800; }
+.cal-dia.con-registro {
+    background: var(--acento-lav);
+    border: 1px solid var(--acento-borde);
+    color: var(--texto);
+    font-weight: 800;
+}
+.cal-dia.con-registro:hover { background: var(--acento-lav); }
+.cal-dia.con-registro > span:first-child { transform: translateY(-3px); font-size: 0.85rem; }
 .cal-dia.sel { background: var(--acento); color: #06322c; font-weight: 800; }
-.cal-dia .puntos { position: absolute; bottom: 4px; left: 0; right: 0; display: flex; justify-content: center; gap: 3px; }
-.cal-dia .puntos i { width: 5px; height: 5px; border-radius: 50%; background: var(--acento-2); display: block; }
+.cal-dia .puntos { position: absolute; bottom: 4px; left: 0; right: 0; display: flex; justify-content: center; }
+.cal-dia .puntos i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--acento);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+    display: block;
+}
 .cal-dia.sel .puntos i { background: #06322c; }
+.cal-dia .cuenta {
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 15px;
+    height: 13px;
+    padding: 0 3px;
+    border-radius: 999px;
+    background: var(--acento);
+    color: #06322c;
+    font-size: 0.56rem;
+    font-weight: 800;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cal-dia.sel .cuenta { background: #06322c; color: var(--acento); }
 .cal-detalle {
     margin-top: 0.85rem;
     border-top: 1px solid var(--cristal-borde);
