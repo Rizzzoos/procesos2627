@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es" data-tema="claro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dasna — Mi panel</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#14b8a6" id="meta-tema">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="/estilos/dasna.css">
+    <script>
+        // Tema antes de pintar nada (sin parpadeo): preferencia guardada o la del sistema
+        (function () {
+            try {
+                var guardado = localStorage.getItem('dasna-tema');
+                var tema = guardado || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+                document.documentElement.dataset.tema = tema;
+            } catch (e) { /* sin almacenamiento: tema claro */ }
+        })();
+    </script>
+</head>
+<body>
+
+    <!-- ================= BARRA LATERAL ================= -->
+    <aside class="lateral" id="lateral">
+        <div class="lateral-logo">
+            DASNA <small id="lateral-slogan">organiza tu vida</small>
+        </div>
+
+        <button class="abrir-buscador" id="btn-buscador">
+            🔍 Buscar <kbd>Ctrl K</kbd>
+        </button>
+
+        <!-- Los grupos los pinta app.js con el catálogo del servidor -->
+        <nav id="menu" aria-label="Módulos"></nav>
+
+        <!-- Mini-calendario: siempre visible (acceso rápido) -->
+        <div class="mini-cal" id="mini-cal"></div>
+
+        <div class="lateral-pie">
+            <span class="sesion-email" id="sesion-email">…</span>
+            <button class="icono-btn" id="btn-tema" title="Cambiar tema (claro/oscuro)" aria-label="Cambiar tema">🌙</button>
+            <button class="icono-btn" id="btn-salir" title="Cerrar sesión" aria-label="Cerrar sesión">🚪</button>
+        </div>
+    </aside>
+
+    <!-- ================= CONTENIDO ================= -->
+    <main class="contenido">
+        <header class="cabecera">
+            <button class="icono-btn solo-movil" id="btn-menu" aria-label="Abrir menú">☰</button>
+            <div>
+                <h1 id="vista-titulo">Panel</h1>
+                <p id="vista-sub">Cargando…</p>
+            </div>
+        </header>
+
+        <section id="vista" aria-live="polite"></section>
+    </main>
+
+    <!-- ================= BUSCADOR UNIVERSAL ================= -->
+    <div class="buscador-overlay oculto" id="buscador-overlay">
+        <div class="buscador-caja" role="dialog" aria-label="Buscador">
+            <input class="entrada" id="buscador-input" placeholder="Busca un módulo o vista…" autocomplete="off">
+            <ul class="buscador-lista" id="buscador-lista"></ul>
+            <div class="buscador-pista"><kbd>↑</kbd><kbd>↓</kbd> moverse · <kbd>↵</kbd> abrir · <kbd>esc</kbd> cerrar</div>
+        </div>
+    </div>
+
+    <div id="toasts"></div>
+
+    <script src="/estelas.js"></script>
+    <script src="/rest.js"></script>
+    <script src="/app.js"></script>
+</body>
+</html>

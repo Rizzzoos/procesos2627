@@ -42,8 +42,8 @@ async function enviarDatos(ruta) {
         const resultado = await res.json();
 
         if (res.ok) {
-            // Si el login es correcto, vamos al Dashboard
-            window.location.href = '/dashboard.html';
+            // Si el login es correcto, vamos al panel de la app
+            window.location.href = '/app.html';
         } else {
             // Si hay error, lo mostramos
             mensajeDiv.textContent = resultado.error;
@@ -136,3 +136,65 @@ function mostrarResultadoUrl() {
     window.history.replaceState({}, '', '/');
 }
 window.addEventListener('DOMContentLoaded', mostrarResultadoUrl);
+
+// ============================================================
+// FASE 1: API del motor de módulos y de la sesión
+// Solo comunicación con el servidor: la presentación vive en
+// app.js y las vistas (frontera ARQ-03).
+// ============================================================
+
+async function peticionJson(ruta, opciones = {}) {
+    try {
+        const res = await fetch(ruta, {
+            headers: { 'Content-Type': 'application/json' },
+            ...opciones
+        });
+        return await res.json();
+    } catch (error) {
+        return { error: 'Error de conexión con el servidor.' };
+    }
+}
+
+// Sesión actual ({ email, rol }) o null si no hay cookie válida
+async function obtenerSesion() {
+    const r = await peticionJson('/api/auth/me');
+    return r && r.email ? r : null;
+}
+
+async function cerrarSesionApp() {
+    await peticionJson('/api/logout', { method: 'POST' });
+    window.location.href = '/index.html';
+}
+
+async function obtenerModulos() {
+    return peticionJson('/api/modulos');
+}
+
+async function listarRegistros(clave) {
+    return peticionJson(`/api/modulos/${encodeURIComponent(clave)}/registros`);
+}
+
+async function crearRegistro(clave, datos, fecha) {
+    return peticionJson(`/api/modulos/${encodeURIComponent(clave)}/registros`, {
+        method: 'POST',
+        body: JSON.stringify({ datos, fecha })
+    });
+}
+
+async function borrarRegistro(clave, id) {
+    return peticionJson(`/api/modulos/${encodeURIComponent(clave)}/registros/${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+    });
+}
+
+async function listarUsuarios() {
+    return peticionJson('/api/admin/usuarios');
+}
+
+async function estadoUsuario(email) {
+    return peticionJson(`/api/admin/usuarios/${encodeURIComponent(email)}/estado`);
+}
+
+async function eliminarUsuario(email) {
+    return peticionJson(`/api/usuarios/${encodeURIComponent(email)}`, { method: 'DELETE' });
+}
