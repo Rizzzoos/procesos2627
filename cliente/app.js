@@ -945,7 +945,7 @@ async function fichaComidas(cont) {
     envoltorio.className = 'ficha-propia';
     cont.appendChild(envoltorio);
 
-    let pestana = 'comidas';    // comidas | despensa | ideas | compra
+    let pestana = 'ideas';      // ideas | comidas | despensa | compra (empieza en Ideas)
     let ideaBusq = '';
     let ideaTiempo = 'todas';   // todas | rapido | medio | largo
     let ideaTengo = false;
@@ -1024,13 +1024,13 @@ async function fichaComidas(cont) {
             }).join('');
         };
 
-        // --- Pestañas ---
-        const tabs = `
-            <div class="com-tabs">
-                ${[['comidas', '🍳 Comidas'], ['despensa', '🥬 Despensa'], ['ideas', '💡 Ideas'],
+        // --- Menú lateral (el contenido va al lado) ---
+        const menuLateral = `
+            <nav class="com-menu">
+                ${[['ideas', '💡 Ideas'], ['comidas', '🍳 Comidas'], ['despensa', '🥬 Despensa'],
                     ['compra', `🛒 Compra${pendientes.length ? ` (${pendientes.length})` : ''}`]]
                     .map(([k, t]) => `<button type="button" data-pestana="${k}" class="${pestana === k ? 'activo' : ''}">${t}</button>`).join('')}
-            </div>`;
+            </nav>`;
 
         // --- Pestaña Comidas ---
         const pintarComidas = () => {
@@ -1222,12 +1222,12 @@ async function fichaComidas(cont) {
             <datalist id="alimentos-dl">${alimentos.map((a) => `<option value="${esc(a.datos.nombre)}">`).join('')}</datalist>
             <datalist id="unidades-dl">${UNIDADES.map((u) => `<option value="${u}">`).join('')}</datalist>`;
 
-        envoltorio.innerHTML = datalists + tabs + `<div class="com-cuerpo">${
+        envoltorio.innerHTML = datalists + `<div class="com-layout">${menuLateral}<div class="com-cuerpo">${
             pestana === 'comidas' ? pintarComidas()
                 : pestana === 'despensa' ? pintarDespensa()
                     : pestana === 'ideas' ? pintarIdeas()
                         : pintarCompra()
-        }</div>`;
+        }</div></div>`;
 
         // --- Añadir ingredientes a la compra (sin duplicar lo pendiente) ---
         const anadirACompra = async (listasDeIngs) => {

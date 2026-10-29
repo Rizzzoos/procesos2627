@@ -394,21 +394,28 @@ body {
 .recap-texto { margin: 0.35rem 0; line-height: 1.5; }
 .recap-dato { margin: 0.3rem 0; font-size: 0.88rem; color: var(--texto-suave); }
 /* ---------- Módulo Comidas ---------- */
-.com-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
-.com-tabs button {
+.com-layout { display: grid; grid-template-columns: 200px 1fr; gap: 1.2rem; align-items: start; }
+.com-menu { display: flex; flex-direction: column; gap: 0.5rem; position: sticky; top: 0.4rem; }
+.com-menu button {
     border: 1px solid var(--cristal-borde);
     background: var(--cristal);
     color: var(--texto-suave);
     font-family: inherit;
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     font-weight: 700;
-    padding: 0.55rem 1rem;
-    border-radius: 999px;
+    padding: 0.6rem 1rem;
+    border-radius: 14px;
     cursor: pointer;
+    text-align: left;
     transition: background var(--velocidad) ease, transform var(--velocidad) ease;
 }
-.com-tabs button:hover { transform: translateY(-2px); background: var(--cristal-hover); }
-.com-tabs button.activo { background: var(--acento); color: #06322c; border-color: var(--acento); }
+.com-menu button:hover { transform: translateX(3px); background: var(--cristal-hover); }
+.com-menu button.activo { background: var(--acento); color: #06322c; border-color: var(--acento); }
+@media (max-width: 760px) {
+    .com-layout { grid-template-columns: 1fr; }
+    .com-menu { flex-direction: row; flex-wrap: wrap; position: static; }
+    .com-menu button { text-align: center; }
+}
 .com-ing-fila { display: grid; grid-template-columns: 1fr 90px 90px 34px; gap: 0.5rem; margin-bottom: 0.5rem; }
 .com-ing-quitar, .com-item-x {
     border: 1px solid var(--cristal-borde);
