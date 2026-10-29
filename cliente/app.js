@@ -519,6 +519,7 @@ function esc(valor) {
 // ============================================================
 async function fichaDiario(cont) {
     let diaSel = claveDia(new Date());
+    cont.innerHTML = '';
     const envoltorio = document.createElement('div');
     envoltorio.className = 'ficha-propia';
     cont.appendChild(envoltorio);
@@ -540,7 +541,8 @@ async function fichaDiario(cont) {
 
         const fecha = desdeClave(diaSel);
         const esHoy = diaSel === claveDia(new Date());
-        const titulo = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+        const titulo = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+            .replace(/^./, (c) => c.toUpperCase());
         const emociones = ['😞', '😕', '😐', '🙂', '😄'];
 
         const dias = [...porDia.keys()].sort().reverse();
@@ -644,6 +646,7 @@ async function fichaDiario(cont) {
 // Ficha de Ahorros: gastos e ingresos, cada uno con su día
 // ============================================================
 async function fichaAhorros(cont) {
+    cont.innerHTML = '';
     const envoltorio = document.createElement('div');
     envoltorio.className = 'ficha-propia';
     cont.appendChild(envoltorio);
