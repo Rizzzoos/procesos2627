@@ -66,7 +66,8 @@
 /* ---------- Fondo que respira (lento: 40 s) ---------- */
 body {
     margin: 0;
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: var(--texto);
     background: linear-gradient(-45deg, var(--aura-1), var(--aura-2), var(--aura-3), var(--aura-4));
