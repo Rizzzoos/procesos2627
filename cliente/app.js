@@ -18,7 +18,7 @@ const GRUPOS = [
     {
         nombre: 'Vida diaria', items: [
             { modulo: 'estudio' },
-            { id: 'comidas', icono: '🍽️', nombre: 'Comidas', proximo: 'Fase 3' },
+            { modulo: 'comidas' },
             { id: 'viajes', icono: '✈️', nombre: 'Viajes', proximo: 'Fase 3' },
             { id: 'eventos', icono: '🎉', nombre: 'Eventos', proximo: 'Fase 2' },
             { id: 'agua', icono: '💧', nombre: 'Beber agua', proximo: 'Fase 3' },
@@ -95,8 +95,9 @@ let registrosCal = null;       // registros de todos los módulos (cargados una 
 
 async function cargarRegistrosCal() {
     if (registrosCal) return registrosCal;
-    // El diario es privado: no aparece en el calendario del panel
-    const visibles = modulos.filter((m) => m.clave !== 'diario');
+    // El diario y las comidas no salen en el calendario del panel
+    // (son cosas privadas del día a día, no eventos con fecha)
+    const visibles = modulos.filter((m) => m.clave !== 'diario' && m.clave !== 'comidas');
     const listas = await Promise.all(
         visibles.map((m) => rest.listarRegistros(m.clave).catch(() => ({ exito: false })))
     );
@@ -123,7 +124,7 @@ function claveDia(fecha) {
 function resumenDe(datos) {
     if (datos == null) return '—';
     const texto = (typeof datos === 'object'
-        ? (datos.titulo || datos.resumen || datos.concepto || datos.nota || datos.texto || datos.tarea)
+        ? (datos.titulo || datos.resumen || datos.concepto || datos.nombre || datos.nota || datos.texto || datos.tarea)
         : datos) || JSON.stringify(datos);
     return String(texto).slice(0, 70);
 }
@@ -436,6 +437,7 @@ async function vistaModulo(clave) {
     // Módulos con ficha propia (sin el formulario genérico)
     if (clave === 'diario') return fichaDiario(cont);
     if (clave === 'ahorros') return fichaAhorros(cont);
+    if (clave === 'comidas') return fichaComidas(cont);
 
     const r = await rest.listarRegistros(clave);
     cont.innerHTML = '';
@@ -928,6 +930,501 @@ async function fichaAhorros(cont) {
     await render();
 }
 
+// ============================================================
+// Ficha de Comidas: despensa, recetas propias, ideas y lista
+// de la compra. Cada cosa es un registro con `tipo`:
+//   alimento | comida | preparado | compra
+// ============================================================
+async function fichaComidas(cont) {
+    cont.innerHTML = '';
+    const envoltorio = document.createElement('div');
+    envoltorio.className = 'ficha-propia';
+    cont.appendChild(envoltorio);
+
+    let pestana = 'comidas';    // comidas | despensa | ideas | compra
+    let ideaBusq = '';
+    let ideaTiempo = 'todas';   // todas | rapido | medio | largo
+    let ideaTengo = false;
+    let filtroSuper = 'todos';
+
+    const render = async () => {
+        envoltorio.innerHTML = '<div class="skeleton"></div>';
+        const r = await rest.listarRegistros('comidas', { limite: 500 });
+        if (!r.exito) return aviso(r.error || 'No se pudo leer el módulo.', 'error');
+
+        const q = (sel) => envoltorio.querySelector(sel);
+        const comidas = r.datos.filter((x) => x.datos && x.datos.tipo === 'comida');
+        const alimentos = r.datos.filter((x) => x.datos && x.datos.tipo === 'alimento');
+        const preparados = r.datos.filter((x) => x.datos && x.datos.tipo === 'preparado');
+        const compra = r.datos.filter((x) => x.datos && x.datos.tipo === 'compra');
+        const pendientes = compra.filter((x) => !x.datos.comprado);
+
+        const eur = (n) => Number(n).toLocaleString('es-ES', { maximumFractionDigits: 2 }) + ' €';
+        const normal = (s) => String(s || '').trim().toLowerCase();
+        const valorEmoji = (v) => (v === 'me gusta' ? '👍' : v === 'malo' ? '👎' : v === 'regular' ? '😐' : '');
+        const valoraDe = (nombre) => alimentos.find((x) => normal(x.datos.nombre) === normal(nombre));
+        // Lo que "tienes en casa": alimentos marcados + tapers/congelados
+        const tengo = new Set([
+            ...alimentos.filter((a) => a.datos.enCasa).map((a) => normal(a.datos.nombre)),
+            ...preparados.map((p) => normal(p.datos.nombre))
+        ]);
+        const iconoPrep = (c) => (c === 'congelado' ? '🧊' : c === 'taper' ? '🫙' : '🥡');
+
+        const filaIng = (i) => `
+            <div class="com-ing-fila">
+                <input class="entrada" list="alimentos-dl" data-campo="nombre" placeholder="Ingrediente${i ? ` ${i + 1}` : ''}" autocomplete="off">
+                <input class="entrada" data-campo="cantidad" placeholder="Cant." inputmode="decimal">
+                <input class="entrada" data-campo="unidad" placeholder="Unidad" autocomplete="off">
+                <button type="button" class="com-ing-quitar" title="Quitar ingrediente">✕</button>
+            </div>`;
+
+        // --- Resultados de Ideas (se repintan solos al filtrar) ---
+        const htmlIdeas = () => {
+            const lista = comidas.filter((x) => {
+                const d = x.datos;
+                const mins = Number(d.minutos) || 0;
+                if (ideaTiempo === 'rapido' && mins > 15) return false;
+                if (ideaTiempo === 'medio' && (mins <= 15 || mins > 45)) return false;
+                if (ideaTiempo === 'largo' && mins <= 45) return false;
+                const ings = d.ingredientes || [];
+                if (ideaTengo && (!ings.length || ings.some((i) => !tengo.has(normal(i.nombre))))) return false;
+                if (ideaBusq) {
+                    const busca = normal(ideaBusq);
+                    if (!normal(d.nombre).includes(busca) && !ings.some((i) => normal(i.nombre).includes(busca))) return false;
+                }
+                return true;
+            });
+            if (!lista.length) return '<p class="pista">Ninguna comida encaja con esos filtros… ¡invéntate una nueva! 🍳</p>';
+            return lista.map((x) => {
+                const d = x.datos;
+                const ings = d.ingredientes || [];
+                const chips = ings.length
+                    ? ings.map((i) => `<span class="chip ${tengo.has(normal(i.nombre)) ? 'chip-ok' : 'chip-no'}">${tengo.has(normal(i.nombre)) ? '✅' : '❌'} ${esc(i.nombre)}</span>`).join(' ')
+                    : '<span class="pista">Sin ingredientes anotados</span>';
+                const faltan = ings.filter((i) => !tengo.has(normal(i.nombre)));
+                return `<div class="com-fila-card">
+                    <div class="com-fila-cab"><strong>${esc(d.nombre)}</strong><span class="chip">⏱ ${Number(d.minutos) || '?'} min</span></div>
+                    <div class="com-ings">${chips}</div>
+                    <div class="com-acciones">
+                        ${faltan.length && ings.length
+                            ? `<button class="boton-suave" data-faltantes="${x.id}">🛒 Comprar lo que falta (${faltan.length})</button>`
+                            : `<button class="boton-suave" data-anadir="${x.id}">🛒 A la compra</button>`}
+                        <button class="boton-peligro" data-borrar-comida="${x.id}">Borrar</button>
+                    </div>
+                </div>`;
+            }).join('');
+        };
+
+        // --- Pestañas ---
+        const tabs = `
+            <div class="com-tabs">
+                ${[['comidas', '🍳 Comidas'], ['despensa', '🥬 Despensa'], ['ideas', '💡 Ideas'],
+                    ['compra', `🛒 Compra${pendientes.length ? ` (${pendientes.length})` : ''}`]]
+                    .map(([k, t]) => `<button type="button" data-pestana="${k}" class="${pestana === k ? 'activo' : ''}">${t}</button>`).join('')}
+            </div>`;
+
+        // --- Pestaña Comidas ---
+        const pintarComidas = () => `
+            <div class="dos-flex">
+                <div class="tarjeta">
+                    <h3>🍳 Nueva comida</h3>
+                    <datalist id="alimentos-dl">${alimentos.map((a) => `<option value="${esc(a.datos.nombre)}">`).join('')}</datalist>
+                    <label class="etiqueta">Nombre del plato</label>
+                    <input class="entrada" id="c-nombre" placeholder="Ej: Lentejas con chorizo" autocomplete="off">
+                    <label class="etiqueta" style="margin-top:0.9rem">¿Cuánto tarda? (minutos)</label>
+                    <input class="entrada" id="c-minutos" type="number" min="1" placeholder="Ej: 35">
+                    <label class="etiqueta" style="margin-top:0.9rem">Ingredientes</label>
+                    <div id="c-ings">${[0, 1, 2].map(filaIng).join('')}</div>
+                    <button type="button" class="boton-suave" id="c-mas-ing" style="margin-top:0.6rem">➕ Añadir ingrediente</button>
+                    <div class="fila-botones"><button class="boton-primario" id="c-guardar">Guardar comida</button></div>
+                </div>
+                <div class="tarjeta">
+                    <h3>🍲 Tus comidas (${comidas.length})</h3>
+                    ${comidas.length ? comidas.map((x) => {
+                        const d = x.datos;
+                        const chips = (d.ingredientes || []).map((i) =>
+                            `<span class="chip">${esc(i.nombre)}${i.cantidad ? ` · ${esc(i.cantidad)}${i.unidad ? ' ' + esc(i.unidad) : ''}` : ''}</span>`).join(' ');
+                        return `<div class="com-fila-card">
+                            <div class="com-fila-cab"><strong>${esc(d.nombre)}</strong><span class="chip">⏱ ${Number(d.minutos) || '?'} min</span></div>
+                            <div class="com-ings">${chips || '<span class="pista">Sin ingredientes</span>'}</div>
+                            <div class="com-acciones">
+                                <button class="boton-suave" data-anadir="${x.id}">🛒 A la compra</button>
+                                <button class="boton-peligro" data-borrar-comida="${x.id}">Borrar</button>
+                            </div>
+                        </div>`;
+                    }).join('') : '<p class="pista">Todavía no tienes comidas. ¡La primera, arriba! 👆</p>'}
+                </div>
+            </div>`;
+
+        // --- Pestaña Despensa ---
+        const pintarDespensa = () => `
+            <div class="dos-flex">
+                <div class="tarjeta">
+                    <h3>🥬 Alimentos</h3>
+                    <p class="pista">Lo que sueles comprar. Valóralo (👍 😐 👎) y se te avisará en la lista de la compra.</p>
+                    <div class="com-alta">
+                        <input class="entrada" id="a-nombre" placeholder="Ej: Tomate frito" autocomplete="off">
+                        <input class="entrada" id="a-unidad" placeholder="Unidad (ud, kg…)" autocomplete="off">
+                        <select class="entrada" id="a-valor">
+                            <option value="">Sin valorar</option>
+                            <option value="me gusta">👍 Me gusta</option>
+                            <option value="regular">😐 Regular</option>
+                            <option value="malo">👎 Malo</option>
+                        </select>
+                        <label class="com-check"><input type="checkbox" id="a-casa"> Lo tengo en casa ahora</label>
+                        <button class="boton-primario" id="a-guardar">Añadir alimento</button>
+                    </div>
+                    ${alimentos.length ? `<div class="com-lista">${alimentos.map((x) => `
+                        <div class="com-fila">
+                            <span>${esc(x.datos.nombre)}${x.datos.unidad ? ` <span class="pista">(${esc(x.datos.unidad)})</span>` : ''}</span>
+                            <span>${valorEmoji(x.datos.valoracion)}${x.datos.enCasa ? ' 🏠' : ''}</span>
+                            <button class="boton-peligro" data-borrar-alimento="${x.id}">Borrar</button>
+                        </div>`).join('')}</div>` : '<p class="pista">Sin alimentos todavía.</p>'}
+                </div>
+                <div class="tarjeta">
+                    <h3>🧊 Tapers y congelados</h3>
+                    <p class="pista">Cosas hechas para un día con prisa. Ve bajando las raciones según las vayas usando.</p>
+                    <div class="com-alta">
+                        <input class="entrada" id="p-nombre" placeholder="Ej: Albóndigas en salsa" autocomplete="off">
+                        <select class="entrada" id="p-tipo">
+                            <option value="congelado">🧊 Congelado</option>
+                            <option value="taper">🫙 Taper</option>
+                            <option value="nevera">🥡 Nevera</option>
+                        </select>
+                        <input class="entrada" id="p-raciones" type="number" min="1" placeholder="Raciones">
+                        <button class="boton-primario" id="p-guardar">Añadir</button>
+                    </div>
+                    ${preparados.length ? `<div class="com-lista">${preparados.map((x) => `
+                        <div class="com-fila">
+                            <span>${iconoPrep(x.datos.categoria)} ${esc(x.datos.nombre)}
+                                <span class="chip">×${Number(x.datos.raciones) || 1}</span>${(Number(x.datos.raciones) || 1) <= 1 ? ' <span class="com-aviso">⚡ se acaba</span>' : ''}</span>
+                            <span>
+                                <button class="boton-suave" data-usar="${x.id}">Usada</button>
+                                <button class="boton-peligro" data-borrar-preparado="${x.id}">Borrar</button>
+                            </span>
+                        </div>`).join('')}</div>` : '<p class="pista">No tienes nada preparado.</p>'}
+                </div>
+            </div>`;
+
+        // --- Pestaña Ideas ---
+        const pintarIdeas = () => {
+            const rapidos = preparados.map((p) => `
+                <div class="com-fila-card">
+                    <div class="com-fila-cab"><strong>${iconoPrep(p.datos.categoria)} ${esc(p.datos.nombre)}</strong>
+                        <span class="chip">×${Number(p.datos.raciones) || 1} raciones</span></div>
+                    <p class="pista" style="margin:0.4rem 0 0">Ya lo tienes en casa: opción rápida de hoy.</p>
+                </div>`).join('');
+            return `
+                ${preparados.length ? `<div class="tarjeta"><h3>⚡ Rápido: ya lo tienes</h3>${rapidos}</div>` : ''}
+                <div class="tarjeta">
+                    <h3>💡 Ideas para cocinar</h3>
+                    <div class="com-filtros">
+                        <input class="entrada" id="idea-busq" placeholder="🔎 Busca por plato o ingrediente…" value="${esc(ideaBusq)}" autocomplete="off">
+                        <div class="periodo-toggle">
+                            ${[['todas', 'Todas'], ['rapido', '⚡ ≤15'], ['medio', '🕐 15-45'], ['largo', '🐢 >45']]
+                                .map(([k, t]) => `<button type="button" data-tiempo="${k}" class="${ideaTiempo === k ? 'activo' : ''}">${t}</button>`).join('')}
+                        </div>
+                        <label class="com-check"><input type="checkbox" id="idea-tengo" ${ideaTengo ? 'checked' : ''}> Solo con lo que tengo</label>
+                    </div>
+                    <div id="idea-resultados">${htmlIdeas()}</div>
+                </div>`;
+        };
+
+        // --- Pestaña Compra ---
+        const pintarCompra = () => {
+            const supers = [...new Set(compra.map((x) => normal(x.datos.super)).filter(Boolean))];
+            const enLista = compra.filter((x) => !filtroSuper || filtroSuper === 'todos' || normal(x.datos.super) === normal(filtroSuper));
+            const pend = enLista.filter((x) => !x.datos.comprado);
+            const hechos = enLista.filter((x) => x.datos.comprado);
+            const subtotales = supers.map((s) => {
+                const total = compra
+                    .filter((x) => normal(x.datos.super) === s && Number(x.datos.precio) > 0)
+                    .reduce((sum, x) => sum + Number(x.datos.precio), 0);
+                return `<span class="chip">${esc(s)}: ${eur(total)}</span>`;
+            }).join(' ');
+
+            const filaItem = (x) => {
+                const d = x.datos;
+                const val = valoraDe(d.nombre);
+                const v = val && val.datos.valoracion;
+                return `<div class="com-item ${d.comprado ? 'hecho' : ''}">
+                    <label class="com-check"><input type="checkbox" data-tachar="${x.id}" ${d.comprado ? 'checked' : ''}></label>
+                    <span class="com-item-nombre">${esc(d.nombre)}${d.cantidad ? ` <span class="pista">· ${esc(d.cantidad)}${d.unidad ? ' ' + esc(d.unidad) : ''}</span>` : ''}
+                        ${v ? ` <span title="${esc(v)}">${valorEmoji(v)}</span>` : ''}</span>
+                    <input class="entrada com-mini" data-super="${x.id}" placeholder="Super" value="${esc(d.super || '')}" autocomplete="off">
+                    <input class="entrada com-mini" data-precio="${x.id}" type="number" min="0" step="0.01" placeholder="€" value="${d.precio != null && d.precio !== '' ? Number(d.precio) : ''}">
+                    <button type="button" class="com-item-x" data-borrar-compra="${x.id}" title="Quitar de la lista">✕</button>
+                </div>`;
+            };
+
+            return `
+                <div class="tarjeta">
+                    <h3>🛒 Lista de la compra ${pendientes.length ? `<span class="chip">${pendientes.length} pendientes</span>` : ''}</h3>
+                    <div class="com-acciones">
+                        <button class="boton-suave" id="com-generar">🧺 Generar desde mis comidas</button>
+                        ${hechos.length ? '<button class="boton-suave" id="com-limpiar">🧹 Quitar comprados</button>' : ''}
+                        ${compra.length ? '<button class="boton-peligro" id="com-vaciar">🗑 Vaciar lista</button>' : ''}
+                        ${supers.length ? `<select class="entrada com-mini" id="com-super" style="max-width:200px">
+                            <option value="todos">🏪 Voy a… (todos)</option>
+                            ${supers.map((s) => `<option value="${esc(s)}" ${filtroSuper === s ? 'selected' : ''}>🏪 ${esc(s)}</option>`).join('')}
+                        </select>` : ''}
+                    </div>
+                    <div class="com-generador oculto" id="com-generador">
+                        ${comidas.length ? comidas.map((x) => `<label class="com-check"><input type="checkbox" data-gen="${x.id}"> ${esc(x.datos.nombre)} <span class="pista">(${(x.datos.ingredientes || []).length} ingredientes)</span></label>`).join('') + '<div class="fila-botones"><button class="boton-primario" id="com-generar-ok">Añadir lo marcado a la lista</button></div>' : '<p class="pista">Primero guarda comidas en la pestaña 🍳.</p>'}
+                    </div>
+                    ${pend.length || hechos.length ? `
+                        <div class="com-lista">
+                            ${pend.map(filaItem).join('')}
+                            ${hechos.map(filaItem).join('')}
+                        </div>
+                        ${subtotales ? `<p class="pista" style="margin-top:0.8rem">💰 Subtotales: ${subtotales}</p>` : ''}
+                        <p class="pista" style="margin-top:0.4rem">Pon super y precio a cada producto y comparo dónde sale más barato 🏪</p>`
+            : '<p class="pista" style="margin-top:0.9rem">La lista está vacía: genera desde tus comidas o añade a mano aquí abajo 👇</p>'}
+                </div>
+                <div class="tarjeta">
+                    <h3>✍️ Añadir a mano</h3>
+                    <div class="com-alta">
+                        <input class="entrada" id="m-nombre" placeholder="Ej: Plátanos" autocomplete="off">
+                        <input class="entrada" id="m-cantidad" placeholder="Cant. (opcional)" autocomplete="off">
+                        <button class="boton-primario" id="m-guardar">Añadir a la lista</button>
+                    </div>
+                </div>`;
+        };
+
+        envoltorio.innerHTML = tabs + `<div class="com-cuerpo">${
+            pestana === 'comidas' ? pintarComidas()
+                : pestana === 'despensa' ? pintarDespensa()
+                    : pestana === 'ideas' ? pintarIdeas()
+                        : pintarCompra()
+        }</div>`;
+
+        // --- Añadir ingredientes a la compra (sin duplicar lo pendiente) ---
+        const anadirACompra = async (listasDeIngs) => {
+            const enLista = new Set(pendientes.map((p) => normal(p.datos.nombre)));
+            let n = 0;
+            for (const ings of listasDeIngs) {
+                for (const i of ings) {
+                    if (!i || !i.nombre || enLista.has(normal(i.nombre))) continue;
+                    const res = await rest.crearRegistro('comidas', {
+                        tipo: 'compra', nombre: i.nombre, cantidad: i.cantidad || '', unidad: i.unidad || '',
+                        comprado: false, super: '', precio: null
+                    });
+                    if (res.exito) { enLista.add(normal(i.nombre)); n++; }
+                }
+            }
+            aviso(n ? `${n} ${n === 1 ? 'producto añadido' : 'productos añadidos'} a la compra 🛒` : 'Ya estaba todo en la lista');
+            render();
+        };
+
+        // --- Pestañas ---
+        envoltorio.querySelectorAll('[data-pestana]').forEach((b) =>
+            b.addEventListener('click', () => { pestana = b.dataset.pestana; render(); }));
+
+        // --- Ideas: los filtros repintan solo los resultados ---
+        const inpIdea = q('#idea-busq');
+        if (inpIdea) {
+            inpIdea.addEventListener('input', () => {
+                ideaBusq = inpIdea.value;
+                q('#idea-resultados').innerHTML = htmlIdeas();
+            });
+            envoltorio.querySelectorAll('[data-tiempo]').forEach((b) =>
+                b.addEventListener('click', () => {
+                    ideaTiempo = b.dataset.tiempo;
+                    envoltorio.querySelectorAll('[data-tiempo]').forEach((x) => x.classList.toggle('activo', x === b));
+                    q('#idea-resultados').innerHTML = htmlIdeas();
+                }));
+            q('#idea-tengo').addEventListener('change', (e) => {
+                ideaTengo = e.target.checked;
+                q('#idea-resultados').innerHTML = htmlIdeas();
+            });
+        }
+
+        // --- Comidas: alta ---
+        if (q('#c-guardar')) {
+            q('#c-mas-ing').addEventListener('click', () => {
+                const div = document.createElement('div');
+                div.innerHTML = filaIng(1);
+                q('#c-ings').appendChild(div.firstElementChild);
+                const nueva = div.firstElementChild.querySelector('input');
+                if (nueva) nueva.focus();
+            });
+            envoltorio.querySelectorAll('.com-ing-quitar').forEach((b) =>
+                b.addEventListener('click', () => {
+                    const filas = q('#c-ings').querySelectorAll('.com-ing-fila');
+                    if (filas.length > 1) b.closest('.com-ing-fila').remove();
+                    else filas.forEach((f) => f.querySelectorAll('input').forEach((i) => { i.value = ''; }));
+                }));
+            q('#c-guardar').addEventListener('click', async () => {
+                const nombre = q('#c-nombre').value.trim();
+                if (!nombre) return aviso('Ponle nombre a la comida.', 'error');
+                const ingredientes = [...q('#c-ings').querySelectorAll('.com-ing-fila')]
+                    .map((fila) => ({
+                        nombre: fila.querySelector('[data-campo="nombre"]').value.trim(),
+                        cantidad: fila.querySelector('[data-campo="cantidad"]').value.trim(),
+                        unidad: fila.querySelector('[data-campo="unidad"]').value.trim()
+                    })).filter((i) => i.nombre);
+                const minutos = Number(q('#c-minutos').value) || null;
+                const res = await rest.crearRegistro('comidas', { tipo: 'comida', nombre, minutos, ingredientes });
+                if (!res.exito) return aviso(res.error || 'No se pudo guardar.', 'error');
+                aviso(`Comida guardada: ${nombre} 🍲`);
+                render();
+            });
+        }
+
+        // --- Despensa: altas ---
+        if (q('#a-guardar')) {
+            q('#a-guardar').addEventListener('click', async () => {
+                const nombre = q('#a-nombre').value.trim();
+                if (!nombre) return aviso('Escribe el nombre del alimento.', 'error');
+                const res = await rest.crearRegistro('comidas', {
+                    tipo: 'alimento', nombre,
+                    unidad: q('#a-unidad').value.trim(),
+                    valoracion: q('#a-valor').value || null,
+                    enCasa: q('#a-casa').checked
+                });
+                if (!res.exito) return aviso(res.error || 'No se pudo guardar.', 'error');
+                aviso(`Alimento añadido: ${nombre} 🥬`);
+                render();
+            });
+        }
+        if (q('#p-guardar')) {
+            q('#p-guardar').addEventListener('click', async () => {
+                const nombre = q('#p-nombre').value.trim();
+                if (!nombre) return aviso('Escribe qué tienes preparado.', 'error');
+                const res = await rest.crearRegistro('comidas', {
+                    tipo: 'preparado', nombre,
+                    categoria: q('#p-tipo').value,
+                    raciones: Number(q('#p-raciones').value) || 1
+                });
+                if (!res.exito) return aviso(res.error || 'No se pudo guardar.', 'error');
+                aviso(`Anotado: ${nombre} 🧊`);
+                render();
+            });
+        }
+
+        // --- Botones que aparecen en varias pestañas ---
+        envoltorio.querySelectorAll('[data-anadir]').forEach((b) =>
+            b.addEventListener('click', () => {
+                const x = comidas.find((c) => c.id === b.dataset.anadir);
+                if (x) anadirACompra([x.datos.ingredientes || []]);
+            }));
+        envoltorio.querySelectorAll('[data-faltantes]').forEach((b) =>
+            b.addEventListener('click', () => {
+                const x = comidas.find((c) => c.id === b.dataset.faltantes);
+                if (x) anadirACompra([(x.datos.ingredientes || []).filter((i) => !tengo.has(normal(i.nombre)))]);
+            }));
+        const borrarEn = (sel, claveDs, etiqueta) => envoltorio.querySelectorAll(sel).forEach((b) =>
+            b.addEventListener('click', async () => {
+                const res = await rest.borrarRegistro('comidas', b.dataset[claveDs]);
+                if (!res.exito) return aviso(res.error || 'No se pudo borrar.', 'error');
+                aviso(`${etiqueta} borrado`);
+                render();
+            }));
+        borrarEn('[data-borrar-comida]', 'borrarComida', 'Comida');
+        borrarEn('[data-borrar-alimento]', 'borrarAlimento', 'Alimento');
+        borrarEn('[data-borrar-preparado]', 'borrarPreparado', 'Preparado');
+        borrarEn('[data-borrar-compra]', 'borrarCompra', 'Producto');
+
+        // --- Despensa: usar una ración ---
+        envoltorio.querySelectorAll('[data-usar]').forEach((b) =>
+            b.addEventListener('click', async () => {
+                const x = preparados.find((p) => p.id === b.dataset.usar);
+                if (!x) return;
+                const quedan = (Number(x.datos.raciones) || 1) - 1;
+                if (quedan <= 0) {
+                    const res = await rest.borrarRegistro('comidas', x.id);
+                    if (!res.exito) return aviso(res.error || 'No se pudo actualizar.', 'error');
+                    aviso(`¡Se te acaban los ${x.datos.nombre}! Apunta receta nueva 🍳`, 'error');
+                } else {
+                    const res = await rest.actualizarRegistro('comidas', x.id, { ...x.datos, raciones: quedan });
+                    if (!res.exito) return aviso(res.error || 'No se pudo actualizar.', 'error');
+                    aviso(`Quedan ${quedan} de ${x.datos.nombre}`);
+                }
+                render();
+            }));
+
+        // --- Compra: tachar, super y precio ---
+        envoltorio.querySelectorAll('[data-tachar]').forEach((b) =>
+            b.addEventListener('change', async () => {
+                const x = compra.find((c) => c.id === b.dataset.tachar);
+                if (!x) return;
+                const res = await rest.actualizarRegistro('comidas', x.id, { ...x.datos, comprado: b.checked });
+                if (!res.exito) return aviso(res.error || 'No se pudo actualizar.', 'error');
+                render();
+            }));
+        envoltorio.querySelectorAll('[data-super]').forEach((inp) =>
+            inp.addEventListener('change', async () => {
+                const x = compra.find((c) => c.id === inp.dataset.super);
+                if (!x) return;
+                const res = await rest.actualizarRegistro('comidas', x.id, { ...x.datos, super: inp.value.trim() });
+                if (!res.exito) return aviso(res.error || 'No se pudo guardar.', 'error');
+                aviso('Super guardado 🏪');
+                render();
+            }));
+        envoltorio.querySelectorAll('[data-precio]').forEach((inp) =>
+            inp.addEventListener('change', async () => {
+                const x = compra.find((c) => c.id === inp.dataset.precio);
+                if (!x) return;
+                const precio = inp.value === '' ? null : Number(inp.value);
+                const res = await rest.actualizarRegistro('comidas', x.id, { ...x.datos, precio });
+                if (!res.exito) return aviso(res.error || 'No se pudo guardar.', 'error');
+                aviso('Precio guardado 💰');
+                render();
+            }));
+
+        // --- Compra: generar, limpiar y alta manual ---
+        if (q('#com-generar')) {
+            q('#com-generar').addEventListener('click', () => q('#com-generador').classList.toggle('oculto'));
+            const ok = q('#com-generar-ok');
+            if (ok) ok.addEventListener('click', () => {
+                const marcadas = [...envoltorio.querySelectorAll('[data-gen]:checked')]
+                    .map((c) => comidas.find((x) => x.id === c.dataset.gen))
+                    .filter(Boolean);
+                if (!marcadas.length) return aviso('Marca alguna comida primero.', 'error');
+                anadirACompra(marcadas.map((c) => c.datos.ingredientes || []));
+            });
+        }
+        const limpiar = q('#com-limpiar');
+        if (limpiar) limpiar.addEventListener('click', async () => {
+            const hechos = compra.filter((x) => x.datos.comprado);
+            let n = 0;
+            for (const x of hechos) {
+                const res = await rest.borrarRegistro('comidas', x.id);
+                if (res.exito) n++;
+            }
+            aviso(`${n} comprados quitados 🧹`);
+            render();
+        });
+        const vaciar = q('#com-vaciar');
+        if (vaciar) vaciar.addEventListener('click', async () => {
+            if (!window.confirm('¿Vaciar toda la lista de la compra?')) return;
+            let n = 0;
+            for (const x of compra) {
+                const res = await rest.borrarRegistro('comidas', x.id);
+                if (res.exito) n++;
+            }
+            aviso(`Lista vacía (${n} productos)`);
+            render();
+        });
+        const selSuper = q('#com-super');
+        if (selSuper) selSuper.addEventListener('change', () => { filtroSuper = selSuper.value; render(); });
+        const guardarManual = q('#m-guardar');
+        if (guardarManual) guardarManual.addEventListener('click', async () => {
+            const nombre = q('#m-nombre').value.trim();
+            if (!nombre) return aviso('Escribe el producto.', 'error');
+            const res = await rest.crearRegistro('comidas', {
+                tipo: 'compra', nombre, cantidad: q('#m-cantidad').value.trim(), unidad: '',
+                comprado: false, super: '', precio: null
+            });
+            if (!res.exito) return aviso(res.error || 'No se pudo añadir.', 'error');
+            aviso(`${nombre} en la lista 🛒`);
+            render();
+        });
+    };
+
+    await render();
+}
+
 function vistaRegistros() {
     cabecera('🗂️ Registros', 'Explora los datos del motor de módulos.');
     const cont = document.getElementById('vista');
@@ -1030,8 +1527,8 @@ function vistaAyuda() {
             <strong>C</strong>: calendario (cuando esté disponible).<br>El tema claro/oscuro lo cambias con 🌙 arriba a la derecha.</p></div>
             <div class="tarjeta"><h3>🧱 Módulos</h3><p>Cada módulo guarda <em>registros</em> (JSON con fecha) en tu cuenta.
             Los recuadros con etiqueta de fase son las ideas planeadas que faltan por construir.</p></div>
-            <div class="tarjeta"><h3>🗺️ Fases</h3><p>Fase 1: diseño y navegación (ahora). Fase 2: calendario, estudios y eventos.
-            Fase 3: comidas, viajes y agua. Fase 4: outfits, gimnasio, ahorros y diario. Fase 5: panel de métricas.</p></div>
+            <div class="tarjeta"><h3>🗺️ Fases</h3><p>Fase 1: diseño y navegación ✅. Fase 2: calendario ✅, Estudio ✅ (eventos pendiente).
+            Fase 3: comidas ✅, viajes y agua. Fase 4: outfits. Además quedan archivos y el panel de métricas.</p></div>
         </div>`;
 }
 

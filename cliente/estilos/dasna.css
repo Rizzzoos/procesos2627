@@ -393,6 +393,93 @@ body {
 }
 .recap-texto { margin: 0.35rem 0; line-height: 1.5; }
 .recap-dato { margin: 0.3rem 0; font-size: 0.88rem; color: var(--texto-suave); }
+/* ---------- Módulo Comidas ---------- */
+.com-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
+.com-tabs button {
+    border: 1px solid var(--cristal-borde);
+    background: var(--cristal);
+    color: var(--texto-suave);
+    font-family: inherit;
+    font-size: 0.88rem;
+    font-weight: 700;
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background var(--velocidad) ease, transform var(--velocidad) ease;
+}
+.com-tabs button:hover { transform: translateY(-2px); background: var(--cristal-hover); }
+.com-tabs button.activo { background: var(--acento); color: #06322c; border-color: var(--acento); }
+.com-ing-fila { display: grid; grid-template-columns: 1fr 90px 90px 34px; gap: 0.5rem; margin-bottom: 0.5rem; }
+.com-ing-quitar, .com-item-x {
+    border: 1px solid var(--cristal-borde);
+    background: var(--cristal);
+    color: var(--texto-suave);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background var(--velocidad) ease;
+}
+.com-ing-quitar:hover, .com-item-x:hover { background: var(--cristal-hover); color: #e0526b; }
+.com-lista { display: flex; flex-direction: column; gap: 0.55rem; margin-top: 0.9rem; }
+.com-fila {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    background: var(--cristal);
+    border: 1px solid var(--cristal-borde);
+    border-radius: 13px;
+    padding: 0.55rem 0.8rem;
+    font-size: 0.92rem;
+}
+.com-fila-card {
+    background: var(--cristal);
+    border: 1px solid var(--cristal-borde);
+    border-radius: 15px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 0.7rem;
+}
+.com-fila-cab { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.com-ings { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+.com-acciones { display: flex; gap: 0.5rem; margin-top: 0.7rem; flex-wrap: wrap; align-items: center; }
+.com-alta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; margin-top: 0.8rem; }
+.com-alta .boton-primario, .com-alta .com-check { grid-column: 1 / -1; }
+.com-check { display: inline-flex; align-items: center; gap: 0.45rem; color: var(--texto-suave); font-size: 0.88rem; cursor: pointer; }
+.com-aviso { color: var(--acento); font-weight: 700; font-size: 0.8rem; }
+.com-ings .chip-ok { border-color: rgba(46, 190, 138, 0.55); }
+.com-ings .chip-no { border-color: rgba(224, 82, 107, 0.55); opacity: 0.8; }
+.com-filtros { display: flex; flex-wrap: wrap; gap: 0.7rem; align-items: center; margin-top: 0.7rem; }
+.com-filtros .entrada { flex: 1 1 220px; }
+.com-item {
+    display: grid;
+    grid-template-columns: auto 1fr 110px 90px 34px;
+    gap: 0.5rem;
+    align-items: center;
+    background: var(--cristal);
+    border: 1px solid var(--cristal-borde);
+    border-radius: 13px;
+    padding: 0.5rem 0.75rem;
+}
+.com-item.hecho .com-item-nombre { text-decoration: line-through; opacity: 0.55; }
+.com-item-nombre { font-size: 0.93rem; }
+.com-mini { padding: 0.38rem 0.55rem; font-size: 0.82rem; }
+.com-generador {
+    background: var(--cristal);
+    border: 1px solid var(--cristal-borde);
+    border-radius: 13px;
+    padding: 0.8rem;
+    margin-top: 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+.com-generador.oculto { display: none; }
+@media (max-width: 720px) {
+    .com-ing-fila { grid-template-columns: 1fr 70px 70px 30px; }
+    .com-item { grid-template-columns: auto 1fr; }
+    .com-item .com-mini { grid-column: span 1; }
+    .com-alta { grid-template-columns: 1fr; }
+}
 .foto-slot {
     display: inline-flex;
     align-items: center;

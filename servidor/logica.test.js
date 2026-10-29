@@ -235,10 +235,10 @@ test('Motor de módulos (Dasna)', async (t) => {
     // Un email siempre válido para las pruebas que no necesitan usuario real
     const email = emailBase;
 
-    await t.test('1. Un usuario nuevo ve los 6 módulos por defecto', async () => {
+    await t.test('1. Un usuario nuevo ve los 7 módulos por defecto', async () => {
         const r = await logica.obtenerModulos(email);
         assert.strictEqual(r.exito, true);
-        assert.strictEqual(r.modulos.length, 6);
+        assert.strictEqual(r.modulos.length, 7);
         assert.ok(r.modulos.every((m) => m.nombre && m.icono && m.descripcion));
         assert.strictEqual(r.modulos[0].clave, 'visionboard', 'respeta el orden por defecto');
     });

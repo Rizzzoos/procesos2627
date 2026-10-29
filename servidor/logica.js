@@ -304,6 +304,11 @@ const CATALOGO = {
         nombre: 'Diario',
         icono: '📖',
         descripcion: 'Vuelca tus pensamientos, reflexiones y agradecimientos del día a día.'
+    },
+    comidas: {
+        nombre: 'Comidas',
+        icono: '🍽️',
+        descripcion: 'Tu cocina al día: alimentos, recetas propias, ideas y lista de la compra.'
     }
 };
 

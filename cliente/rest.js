@@ -170,8 +170,13 @@ async function obtenerModulos() {
     return peticionJson('/api/modulos');
 }
 
-async function listarRegistros(clave) {
-    return peticionJson(`/api/modulos/${encodeURIComponent(clave)}/registros`);
+async function listarRegistros(clave, filtros = {}) {
+    const q = new URLSearchParams();
+    if (filtros.limite) q.set('limite', filtros.limite);
+    if (filtros.desde) q.set('desde', filtros.desde);
+    if (filtros.hasta) q.set('hasta', filtros.hasta);
+    const sufijo = q.toString() ? `?${q.toString()}` : '';
+    return peticionJson(`/api/modulos/${encodeURIComponent(clave)}/registros${sufijo}`);
 }
 
 async function crearRegistro(clave, datos, fecha) {
