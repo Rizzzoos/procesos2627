@@ -12,7 +12,7 @@
 // lo detecta y monta la caché nueva en la siguiente recarga.
 // ============================================================
 
-const CACHE = 'dasna-v16';
+const CACHE = 'dasna-v17';
 
 const SHELL = [
     '/',

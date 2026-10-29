@@ -18,10 +18,11 @@
     --texto-suave: rgba(255, 255, 255, 0.88);
     --texto-tenue: rgba(255, 255, 255, 0.62);
 
-    /* Cristal */
-    --cristal: rgba(255, 255, 255, 0.38);
-    --cristal-fuerte: rgba(255, 255, 255, 0.52);
-    --cristal-hover: rgba(255, 255, 255, 0.46);
+    /* Cristal ahumado: vidrio oscuro translúcido — el aura se nota
+       por debajo y las letras blancas se leen en cualquier fase */
+    --cristal: rgba(15, 23, 42, 0.58);
+    --cristal-fuerte: rgba(15, 23, 42, 0.72);
+    --cristal-hover: rgba(15, 23, 42, 0.66);
     --cristal-borde: rgba(255, 255, 255, 0.45);
     --sombra: 0 10px 32px rgba(0, 0, 0, 0.18);
     --sombra-alta: 0 16px 44px rgba(0, 0, 0, 0.28);
@@ -224,7 +225,7 @@ body {
     gap: 0.35rem;
     padding: 0.55rem;
     margin-bottom: 0.65rem;
-    background: rgba(255, 255, 255, 0.3);
+    background: var(--cristal-fuerte);
     border: 1px solid var(--cristal-borde);
     border-radius: 14px;
     box-shadow: var(--sombra-alta);
@@ -745,7 +746,7 @@ textarea.entrada { min-height: 92px; resize: vertical; font-family: Consolas, mo
 .buscador-overlay.oculto { display: none; }
 .buscador-caja {
     width: min(560px, 92vw);
-    background: rgba(255, 255, 255, 0.22);
+    background: var(--cristal-fuerte);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid var(--cristal-borde);
@@ -766,7 +767,7 @@ textarea.entrada { min-height: 92px; resize: vertical; font-family: Consolas, mo
 /* ---------- Avisos (toasts) ---------- */
 #toasts { position: fixed; right: 1.2rem; bottom: 1.2rem; z-index: 60; display: flex; flex-direction: column; gap: 0.5rem; }
 .toast {
-    background: rgba(255, 255, 255, 0.22);
+    background: var(--cristal-fuerte);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
     border: 1px solid var(--cristal-borde);
