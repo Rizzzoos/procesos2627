@@ -619,14 +619,7 @@ async function fichaDiario(cont) {
         const etiqueta = caritas.length ? palabras[Math.round(media)] : 'sin datos aún';
         const emojiPeriodo = caritas.length ? emociones[Math.round(media) - 1] : '·';
 
-        const dias = [...porDia.keys()].sort().reverse();
-        const listaDias = dias.length
-            ? `<div class="dia-lista">${dias.map((k) => {
-                const rd = porDia.get(k).datos || {};
-                const texto = rd.resumen || rd.mejor || '';
-                return `<button type="button" class="dia-chip${k === diaSel ? ' activo' : ''}" data-dia="${k}">${fechaCorta(k)}${texto ? ` · ${esc(String(texto).slice(0, 42))}` : ''}</button>`;
-            }).join('')}</div>`
-            : '<p class="pista">Todavía no has escrito ningún día. ¡El de hoy puede ser el primero! ✨</p>';
+        const totalEscritos = porDia.size;
 
         const fotoActual = fotoPendiente !== null ? fotoPendiente : (d.foto || '');
         const fotoHtml = fotoActual
@@ -659,7 +652,7 @@ async function fichaDiario(cont) {
                 <h3>📝 Resume tu día</h3>
                 <textarea class="entrada" id="dia-resumen" rows="4" placeholder="Lo mejor, lo peor, lo que quieras contar…">${esc(d.resumen)}</textarea>
                 <div class="dia-foto">${fotoHtml}</div>
-                <h3 style="margin-top:1.2rem">💬 Unas preguntitas (opcional)</h3>
+                <h3 style="margin-top:1.2rem">💬 Unas preguntitas</h3>
                 <label class="etiqueta">¿Cómo te ha ido el día?</label>
                 <div class="humor" id="dia-humor">
                     ${emociones.map((e, i) => `<button type="button" data-valor="${i + 1}" title="${['muy mal', 'mal', 'normal', 'bien', 'genial'][i]}"${Number(d.humor) === i + 1 ? ' class="activo"' : ''}>${e}</button>`).join('')}
@@ -670,11 +663,11 @@ async function fichaDiario(cont) {
                 </div>
                 <label class="etiqueta" style="margin-top:0.9rem">¿Qué ha sido lo mejor del día?</label>
                 <input class="entrada" id="dia-mejor" placeholder="Ej: la quedada de tarde" value="${esc(d.mejor)}">
-                <label class="etiqueta" style="margin-top:0.9rem">🙏 ¿Algo o alguien agradecer hoy?</label>
+                <label class="etiqueta" style="margin-top:0.9rem">🙏 Algo por lo que agradecer</label>
                 <input class="entrada" id="dia-gratitud" placeholder="Ej: mi familia, un café rico, el parque…" value="${esc(d.gratitud)}">
-                <label class="etiqueta" style="margin-top:0.9rem">💡 ¿Algo nuevo aprendido hoy?</label>
+                <label class="etiqueta" style="margin-top:0.9rem">💡 ¿Qué has aprendido nuevo?</label>
                 <input class="entrada" id="dia-aprender" placeholder="Ej: a montar una estantería 😅" value="${esc(d.aprender)}">
-                <label class="etiqueta" style="margin-top:0.9rem">¿Algo que mejorar mañana?</label>
+                <label class="etiqueta" style="margin-top:0.9rem">💭 Mejoras para mañana</label>
                 <input class="entrada" id="dia-mejorar" placeholder="Ej: dormir antes" value="${esc(d.mejorar)}">
                 <div class="fila-botones">
                     <button class="boton-primario" id="dia-guardar">💾 Guardar el día</button>
@@ -682,9 +675,8 @@ async function fichaDiario(cont) {
                     <button class="boton-suave" id="dia-recordatorio">${recordatorioActivo ? '🔔 Recordatorio de las 22:00 activo' : '🔕 Activar recordatorio de las 22:00'}</button>
                 </div>
             </div>
-            <div class="tarjeta">
-                <h3>🗓️ Tus días escritos</h3>
-                ${listaDias}
+            <div class="tarjeta contador-dias">
+                🗓️ Llevas <strong>${totalEscritos}</strong> ${totalEscritos === 1 ? 'día' : 'días'} escribiendo el diario
             </div>`;
 
         const cambiarDia = (nuevaClave) => {
@@ -709,8 +701,7 @@ async function fichaDiario(cont) {
                 envoltorio.querySelectorAll('#' + b.parentElement.id + ' button').forEach((x) => x.classList.remove('activo'));
                 b.classList.add('activo');
             }));
-        envoltorio.querySelectorAll('[data-dia]').forEach((b) =>
-            b.addEventListener('click', () => cambiarDia(b.dataset.dia)));
+        // (la lista de días ya no existe: abajo solo queda un contador)
         envoltorio.querySelectorAll('#per-semana, #per-mes').forEach((b) =>
             b.addEventListener('click', () => {
                 periodo = b.id === 'per-mes' ? 'mes' : 'semana';

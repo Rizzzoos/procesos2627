@@ -351,6 +351,7 @@ body {
 .periodo-dato strong { font-size: 0.82rem; }
 .periodo-dato small { color: var(--texto-tenue); font-size: 0.68rem; }
 .dia-foto { margin-top: 0.9rem; }
+.contador-dias { text-align: center; color: var(--texto-suave); font-size: 0.95rem; }
 .foto-slot {
     display: inline-flex;
     align-items: center;
