@@ -515,6 +515,32 @@ function esc(valor) {
     ));
 }
 
+// --- Recap del diario: visor de todos los días escritos ---
+function mostrarRecap(htmlDias, total) {
+    let capa = document.getElementById('recap-overlay');
+    if (!capa) {
+        capa = document.createElement('div');
+        capa.id = 'recap-overlay';
+        capa.className = 'recap-overlay oculto';
+        capa.innerHTML = `
+            <div class="recap-caja tarjeta">
+                <div class="recap-cabecera">
+                    <h3>📚 Recap del diario</h3>
+                    <button class="boton-suave" id="recap-cerrar">✕ Cerrar</button>
+                </div>
+                <p class="recap-total" id="recap-total"></p>
+                <div class="recap-lista" id="recap-lista"></div>
+            </div>`;
+        document.body.appendChild(capa);
+        capa.querySelector('#recap-cerrar').addEventListener('click', () => capa.classList.add('oculto'));
+        capa.addEventListener('click', (e) => { if (e.target === capa) capa.classList.add('oculto'); });
+    }
+    capa.querySelector('#recap-total').textContent =
+        `Llevas ${total} ${total === 1 ? 'día' : 'días'} escribiendo el diario ✨`;
+    capa.querySelector('#recap-lista').innerHTML = htmlDias;
+    capa.classList.remove('oculto');
+}
+
 // --- Recordatorio de las 22:00 para escribir el diario ---
 let temporizadorRecordatorio = null;
 
@@ -647,6 +673,7 @@ async function fichaDiario(cont) {
                     </div>
                 </div>
                 <button class="cal-pick pick-flecha" id="dia-mas" aria-label="Día siguiente" ${esHoy ? 'disabled' : ''}>›</button>
+                <button class="boton-suave" id="dia-recap" ${porDia.size ? '' : 'disabled'}>📚 Recap</button>
             </div>
             <div class="tarjeta">
                 <h3>📝 Resume tu día</h3>
@@ -736,6 +763,37 @@ async function fichaDiario(cont) {
         const btnQuitarFoto = envoltorio.querySelector('#foto-quitar');
         if (btnQuitarFoto) {
             btnQuitarFoto.addEventListener('click', () => { fotoPendiente = ''; render(); });
+        }
+
+        // Recap: visor con todos los días escritos (con su foto y todo)
+        const btnRecap = envoltorio.querySelector('#dia-recap');
+        if (btnRecap) {
+            btnRecap.addEventListener('click', () => {
+                const claves = [...porDia.keys()].sort().reverse();
+                const emocionesRecap = ['😞', '😕', '😐', '🙂', '😄'];
+                const tarjetas = claves.map((k) => {
+                    const rd = porDia.get(k).datos || {};
+                    const carita = rd.humor ? emocionesRecap[Number(rd.humor) - 1] : '';
+                    const foto = rd.foto ? `<img class="recap-foto" src="${rd.foto}" alt="Foto del día">` : '';
+                    const filas = [
+                        rd.resumen ? `<p class="recap-texto">${esc(rd.resumen)}</p>` : '',
+                        rd.mejor ? `<p class="recap-dato"><strong>✨ Lo mejor:</strong> ${esc(rd.mejor)}</p>` : '',
+                        rd.gratitud ? `<p class="recap-dato"><strong>🙏 Agradecimiento:</strong> ${esc(rd.gratitud)}</p>` : '',
+                        rd.aprender ? `<p class="recap-dato"><strong>💡 Aprendido:</strong> ${esc(rd.aprender)}</p>` : '',
+                        rd.mejorar ? `<p class="recap-dato"><strong>💭 Mejoras:</strong> ${esc(rd.mejorar)}</p>` : ''
+                    ].filter(Boolean).join('');
+                    return `
+                        <article class="recap-dia">
+                            <div class="recap-dia-cab">
+                                <strong>${fechaCorta(k)}</strong>
+                                <span>${carita}${rd.tiempo ? ' ' + esc(String(rd.tiempo)) : ''}</span>
+                            </div>
+                            ${foto}
+                            ${filas || '<p class="pista">Día guardado sin detalles.</p>'}
+                        </article>`;
+                }).join('');
+                mostrarRecap(tarjetas, claves.length);
+            });
         }
 
         // Recordatorio de las 22:00
