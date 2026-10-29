@@ -312,7 +312,7 @@ const ORDEN_POR_DEFECTO = Object.keys(CATALOGO);
 
 // Límites de seguridad comunes a todos los módulos
 const MAX_REGISTROS_MODULO = 10000;
-const MAX_BYTES_DATOS = 60 * 1024;   // 60 KB por registro
+const MAX_BYTES_DATOS = 400 * 1024;  // 400 KB por registro (cabe una foto del diario)
 const MAX_CLAVES_MODULOS = 50;
 
 function esEmailValido(email) {
@@ -439,7 +439,7 @@ async function crearRegistroModulo(email, clave, datosNuevo, fecha) {
         return { exito: false, error: 'Demasiados campos en el registro (máximo 50).' };
     }
     if (JSON.stringify(datosNuevo).length > MAX_BYTES_DATOS) {
-        return { exito: false, error: 'El registro es demasiado grande (máximo 60 KB).' };
+        return { exito: false, error: 'El registro es demasiado grande (máximo 400 KB).' };
     }
     if (fecha !== undefined && Number.isNaN(new Date(fecha).getTime())) {
         return { exito: false, error: 'La fecha no es válida.' };
@@ -490,7 +490,7 @@ async function actualizarRegistroModulo(email, clave, id, datosNuevos) {
         return { exito: false, error: 'Demasiados campos en el registro (máximo 50).' };
     }
     if (JSON.stringify(datosNuevos).length > MAX_BYTES_DATOS) {
-        return { exito: false, error: 'El registro es demasiado grande (máximo 60 KB).' };
+        return { exito: false, error: 'El registro es demasiado grande (máximo 400 KB).' };
     }
 
     try {

@@ -95,17 +95,19 @@ let registrosCal = null;       // registros de todos los módulos (cargados una 
 
 async function cargarRegistrosCal() {
     if (registrosCal) return registrosCal;
+    // El diario es privado: no aparece en el calendario del panel
+    const visibles = modulos.filter((m) => m.clave !== 'diario');
     const listas = await Promise.all(
-        modulos.map((m) => rest.listarRegistros(m.clave).catch(() => ({ exito: false })))
+        visibles.map((m) => rest.listarRegistros(m.clave).catch(() => ({ exito: false })))
     );
     registrosCal = [];
     listas.forEach((r, i) => {
         if (r && r.exito && Array.isArray(r.datos)) {
             r.datos.forEach((reg) => registrosCal.push({
                 ...reg,
-                clave: modulos[i].clave,
-                icono: modulos[i].icono,
-                nombre: modulos[i].nombre
+                clave: visibles[i].clave,
+                icono: visibles[i].icono,
+                nombre: visibles[i].nombre
             }));
         }
     });
@@ -513,12 +515,57 @@ function esc(valor) {
     ));
 }
 
+// --- Recordatorio de las 22:00 para escribir el diario ---
+let temporizadorRecordatorio = null;
+
+async function enviarNotificacion(titulo, cuerpo) {
+    try {
+        if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+            const sw = await navigator.serviceWorker.ready;
+            await sw.showNotification(titulo, { body: cuerpo });
+        } else {
+            new Notification(titulo, { body: cuerpo });
+        }
+    } catch (e) {
+        try { new Notification(titulo, { body: cuerpo }); } catch (_) { /* sin permiso */ }
+    }
+}
+
+function programarRecordatorioDiario() {
+    if (temporizadorRecordatorio) clearTimeout(temporizadorRecordatorio);
+    temporizadorRecordatorio = null;
+    let activo = false;
+    try { activo = localStorage.getItem('dasna-recordatorio') === 'si'; } catch (e) { /* opcional */ }
+    if (!activo || !('Notification' in window) || Notification.permission !== 'granted') return;
+
+    const ahora = new Date();
+    const objetivo = new Date(ahora);
+    objetivo.setHours(22, 0, 0, 0);
+    if (ahora >= objetivo) objetivo.setDate(objetivo.getDate() + 1);
+    const ms = Math.min(objetivo - ahora, 2147483647);
+
+    temporizadorRecordatorio = setTimeout(async () => {
+        try {
+            const r = await rest.listarRegistros('diario');
+            const escritoHoy = r && r.exito && r.datos.some((x) =>
+                claveDia(x.fecha) === claveDia(new Date()) &&
+                ((x.datos && x.datos.resumen) || (x.datos && x.datos.humor)));
+            if (!escritoHoy) {
+                await enviarNotificacion('🌙 Dasna · Diario', '¿Ya has escrito tu día? Cinco minutitos y listo ✍️');
+            }
+        } catch (e) { /* silencioso */ }
+        programarRecordatorioDiario();
+    }, ms);
+}
+
 // ============================================================
 // Ficha del Diario: un día seleccionado, su resumen y sus preguntas
 // (sin fechas escritas a mano: el día lo eliges con ‹ ›)
 // ============================================================
 async function fichaDiario(cont) {
     let diaSel = claveDia(new Date());
+    let periodo = 'semana';          // resumen de la semana o del mes
+    let fotoPendiente = null;        // base64 recién elegida; null = sin cambios
     cont.innerHTML = '';
     const envoltorio = document.createElement('div');
     envoltorio.className = 'ficha-propia';
@@ -528,6 +575,10 @@ async function fichaDiario(cont) {
         const [a, m, d] = k.split('-').map(Number);
         return new Date(a, m - 1, d);
     };
+    const TIEMPOS = [
+        ['☀️', 'soleado'], ['⛅', 'nublado'], ['🌧️', 'lluvia'], ['⛈️', 'tormenta'],
+        ['❄️', 'frío'], ['🌫️', 'niebla'], ['💨', 'viento'], ['🌈', 'arcoíris']
+    ];
 
     const render = async () => {
         envoltorio.innerHTML = '<div class="skeleton"></div>';
@@ -545,6 +596,29 @@ async function fichaDiario(cont) {
             .replace(/^./, (c) => c.toUpperCase());
         const emociones = ['😞', '😕', '😐', '🙂', '😄'];
 
+        // Días de la semana (lunes-domingo) o del mes que contiene el día elegido
+        let clavesPeriodo = [];
+        if (periodo === 'semana') {
+            const lunes = new Date(fecha);
+            lunes.setDate(fecha.getDate() - ((fecha.getDay() + 6) % 7));
+            for (let i = 0; i < 7; i++) {
+                const df = new Date(lunes);
+                df.setDate(lunes.getDate() + i);
+                clavesPeriodo.push(claveDia(df));
+            }
+        } else {
+            const diasMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0).getDate();
+            for (let i = 1; i <= diasMes; i++) clavesPeriodo.push(claveDia(new Date(fecha.getFullYear(), fecha.getMonth(), i)));
+        }
+        const caritas = clavesPeriodo
+            .map((k) => porDia.get(k))
+            .filter((rg) => rg && rg.datos && rg.datos.humor)
+            .map((rg) => Number(rg.datos.humor));
+        const media = caritas.length ? caritas.reduce((s, v) => s + v, 0) / caritas.length : 0;
+        const palabras = [null, 'día flojito', 'día bajón', 'día normal', 'bien', 'genial'];
+        const etiqueta = caritas.length ? palabras[Math.round(media)] : 'sin datos aún';
+        const emojiPeriodo = caritas.length ? emociones[Math.round(media) - 1] : '·';
+
         const dias = [...porDia.keys()].sort().reverse();
         const listaDias = dias.length
             ? `<div class="dia-lista">${dias.map((k) => {
@@ -554,6 +628,14 @@ async function fichaDiario(cont) {
             }).join('')}</div>`
             : '<p class="pista">Todavía no has escrito ningún día. ¡El de hoy puede ser el primero! ✨</p>';
 
+        const fotoActual = fotoPendiente !== null ? fotoPendiente : (d.foto || '');
+        const fotoHtml = fotoActual
+            ? `<div class="foto-caja"><img src="${fotoActual}" alt="Foto del día"><button class="boton-peligro" id="foto-quitar">✕ Quitar foto</button></div>`
+            : '<label class="foto-slot">📷 Añadir una foto del día<input type="file" id="dia-foto-input" accept="image/*" hidden></label>';
+
+        let recordatorioActivo = false;
+        try { recordatorioActivo = localStorage.getItem('dasna-recordatorio') === 'si'; } catch (e) { /* opcional */ }
+
         envoltorio.innerHTML = `
             <div class="tarjeta dia-cab">
                 <button class="cal-pick pick-flecha" id="dia-menos" aria-label="Día anterior">‹</button>
@@ -561,25 +643,43 @@ async function fichaDiario(cont) {
                     <h3 style="margin:0">${esc(titulo)}${esHoy ? ' · hoy' : ''}</h3>
                     <p class="pista" style="margin:0.25rem 0 0">${reg ? 'Día escrito ✅' : 'Este día todavía no está escrito'}</p>
                 </div>
+                <div class="periodo">
+                    <div class="periodo-toggle">
+                        <button type="button" id="per-semana" class="${periodo === 'semana' ? 'activo' : ''}">Semana</button>
+                        <button type="button" id="per-mes" class="${periodo === 'mes' ? 'activo' : ''}">Mes</button>
+                    </div>
+                    <div class="periodo-dato">
+                        <span class="periodo-emoji">${emojiPeriodo}</span>
+                        <span><strong>${etiqueta}</strong><br><small>${caritas.length}/${clavesPeriodo.length} días con carita</small></span>
+                    </div>
+                </div>
                 <button class="cal-pick pick-flecha" id="dia-mas" aria-label="Día siguiente" ${esHoy ? 'disabled' : ''}>›</button>
             </div>
             <div class="tarjeta">
                 <h3>📝 Resume tu día</h3>
                 <textarea class="entrada" id="dia-resumen" rows="4" placeholder="Lo mejor, lo peor, lo que quieras contar…">${esc(d.resumen)}</textarea>
+                <div class="dia-foto">${fotoHtml}</div>
                 <h3 style="margin-top:1.2rem">💬 Unas preguntitas (opcional)</h3>
                 <label class="etiqueta">¿Cómo te ha ido el día?</label>
                 <div class="humor" id="dia-humor">
-                    ${emociones.map((e, i) => `<button type="button" data-valor="${i + 1}"${Number(d.humor) === i + 1 ? ' class="activo"' : ''}>${e}</button>`).join('')}
+                    ${emociones.map((e, i) => `<button type="button" data-valor="${i + 1}" title="${['muy mal', 'mal', 'normal', 'bien', 'genial'][i]}"${Number(d.humor) === i + 1 ? ' class="activo"' : ''}>${e}</button>`).join('')}
                 </div>
                 <label class="etiqueta" style="margin-top:0.9rem">¿Qué tiempo hacía?</label>
-                <input class="entrada" id="dia-tiempo" placeholder="Ej: fresquito y soleado" value="${esc(d.tiempo)}">
+                <div class="humor" id="dia-tiempo">
+                    ${TIEMPOS.map(([e, nombre]) => `<button type="button" data-valor="${e}" title="${nombre}"${d.tiempo === e ? ' class="activo"' : ''}>${e}</button>`).join('')}
+                </div>
                 <label class="etiqueta" style="margin-top:0.9rem">¿Qué ha sido lo mejor del día?</label>
                 <input class="entrada" id="dia-mejor" placeholder="Ej: la quedada de tarde" value="${esc(d.mejor)}">
+                <label class="etiqueta" style="margin-top:0.9rem">🙏 ¿Algo o alguien agradecer hoy?</label>
+                <input class="entrada" id="dia-gratitud" placeholder="Ej: mi familia, un café rico, el parque…" value="${esc(d.gratitud)}">
+                <label class="etiqueta" style="margin-top:0.9rem">💡 ¿Algo nuevo aprendido hoy?</label>
+                <input class="entrada" id="dia-aprender" placeholder="Ej: a montar una estantería 😅" value="${esc(d.aprender)}">
                 <label class="etiqueta" style="margin-top:0.9rem">¿Algo que mejorar mañana?</label>
                 <input class="entrada" id="dia-mejorar" placeholder="Ej: dormir antes" value="${esc(d.mejorar)}">
                 <div class="fila-botones">
-                    <button class="boton-primario" id="dia-guardar">Guardar el día</button>
+                    <button class="boton-primario" id="dia-guardar">💾 Guardar el día</button>
                     ${reg ? '<button class="boton-peligro" id="dia-borrar">Borrar este día</button>' : ''}
+                    <button class="boton-suave" id="dia-recordatorio">${recordatorioActivo ? '🔔 Recordatorio de las 22:00 activo' : '🔕 Activar recordatorio de las 22:00'}</button>
                 </div>
             </div>
             <div class="tarjeta">
@@ -587,44 +687,100 @@ async function fichaDiario(cont) {
                 ${listaDias}
             </div>`;
 
+        const cambiarDia = (nuevaClave) => {
+            diaSel = nuevaClave;
+            fotoPendiente = null;
+            render();
+        };
         envoltorio.querySelector('#dia-menos').addEventListener('click', () => {
             const f = desdeClave(diaSel);
             f.setDate(f.getDate() - 1);
-            diaSel = claveDia(f);
-            render();
+            cambiarDia(claveDia(f));
         });
         if (!esHoy) {
             envoltorio.querySelector('#dia-mas').addEventListener('click', () => {
                 const f = desdeClave(diaSel);
                 f.setDate(f.getDate() + 1);
-                diaSel = claveDia(f);
-                render();
+                cambiarDia(claveDia(f));
             });
         }
-        envoltorio.querySelectorAll('#dia-humor button').forEach((b) =>
+        envoltorio.querySelectorAll('#dia-humor button, #dia-tiempo button').forEach((b) =>
             b.addEventListener('click', () => {
-                envoltorio.querySelectorAll('#dia-humor button').forEach((x) => x.classList.remove('activo'));
+                envoltorio.querySelectorAll('#' + b.parentElement.id + ' button').forEach((x) => x.classList.remove('activo'));
                 b.classList.add('activo');
             }));
         envoltorio.querySelectorAll('[data-dia]').forEach((b) =>
-            b.addEventListener('click', () => { diaSel = b.dataset.dia; render(); }));
+            b.addEventListener('click', () => cambiarDia(b.dataset.dia)));
+        envoltorio.querySelectorAll('#per-semana, #per-mes').forEach((b) =>
+            b.addEventListener('click', () => {
+                periodo = b.id === 'per-mes' ? 'mes' : 'semana';
+                render();
+            }));
+
+        // Foto del día (se reduce en el navegador antes de guardarla)
+        const inputFoto = envoltorio.querySelector('#dia-foto-input');
+        if (inputFoto) {
+            inputFoto.addEventListener('change', () => {
+                const archivo = inputFoto.files && inputFoto.files[0];
+                if (!archivo) return;
+                const lector = new FileReader();
+                lector.onload = () => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const maxLado = 720;
+                        const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
+                        const lienzo = document.createElement('canvas');
+                        lienzo.width = Math.round(img.width * escala);
+                        lienzo.height = Math.round(img.height * escala);
+                        lienzo.getContext('2d').drawImage(img, 0, 0, lienzo.width, lienzo.height);
+                        fotoPendiente = lienzo.toDataURL('image/jpeg', 0.7);
+                        render();
+                    };
+                    img.onerror = () => aviso('No se pudo leer esa imagen.', 'error');
+                    img.src = lector.result;
+                };
+                lector.readAsDataURL(archivo);
+            });
+        }
+        const btnQuitarFoto = envoltorio.querySelector('#foto-quitar');
+        if (btnQuitarFoto) {
+            btnQuitarFoto.addEventListener('click', () => { fotoPendiente = ''; render(); });
+        }
+
+        // Recordatorio de las 22:00
+        envoltorio.querySelector('#dia-recordatorio').addEventListener('click', async () => {
+            if (!('Notification' in window)) return aviso('Este navegador no soporta notificaciones.', 'error');
+            let permiso = Notification.permission;
+            if (permiso === 'default') permiso = await Notification.requestPermission();
+            if (permiso !== 'granted') return aviso('Sin permiso de notificaciones.', 'error');
+            const activado = localStorage.getItem('dasna-recordatorio') === 'si';
+            try { localStorage.setItem('dasna-recordatorio', activado ? 'no' : 'si'); } catch (e) { /* opcional */ }
+            aviso(activado ? 'Recordatorio apagado' : 'Te avisaré a las 22:00 si falta tu día 🔔');
+            programarRecordatorioDiario();
+            render();
+        });
 
         envoltorio.querySelector('#dia-guardar').addEventListener('click', async () => {
             const marcada = envoltorio.querySelector('#dia-humor button.activo');
+            const conTiempo = envoltorio.querySelector('#dia-tiempo button.activo');
             const datos = {
                 resumen: envoltorio.querySelector('#dia-resumen').value.trim(),
                 humor: marcada ? Number(marcada.dataset.valor) : null,
-                tiempo: envoltorio.querySelector('#dia-tiempo').value.trim(),
+                tiempo: conTiempo ? conTiempo.dataset.valor : null,
                 mejor: envoltorio.querySelector('#dia-mejor').value.trim(),
-                mejorar: envoltorio.querySelector('#dia-mejorar').value.trim()
+                gratitud: envoltorio.querySelector('#dia-gratitud').value.trim(),
+                aprender: envoltorio.querySelector('#dia-aprender').value.trim(),
+                mejorar: envoltorio.querySelector('#dia-mejorar').value.trim(),
+                foto: fotoPendiente !== null ? fotoPendiente : (d.foto || '')
             };
-            if (!datos.resumen && !datos.tiempo && !datos.mejor && !datos.mejorar && !datos.humor) {
-                return aviso('Escribe algo antes de guardar.', 'error');
-            }
+            const vacio = !datos.resumen && !datos.tiempo && !datos.mejor && !datos.gratitud
+                && !datos.aprender && !datos.mejorar && !datos.humor && !datos.foto;
+            if (vacio) return aviso('Escribe algo antes de guardar.', 'error');
             const res = reg
                 ? await rest.actualizarRegistro('diario', reg.id, datos)
                 : await rest.crearRegistro('diario', datos, diaSel);
             if (!res.exito) return aviso(res.error || 'No se pudo guardar.', 'error');
+            fotoPendiente = null;
             aviso(`Día guardado ✅ (${fechaCorta(diaSel)})`);
             render();
         });
@@ -951,6 +1107,19 @@ async function iniciar() {
 
     window.addEventListener('hashchange', enrutar);
     enrutar();
+
+    // El día pasa solo cuando cambia la fecha del dispositivo
+    let diaEnPantalla = claveDia(new Date());
+    setInterval(() => {
+        const hoy = claveDia(new Date());
+        if (hoy === diaEnPantalla) return;
+        diaEnPantalla = hoy;
+        registrosCal = null;   // el calendario del panel se refresca también
+        if (location.hash.indexOf('/diario') !== -1) enrutar();
+    }, 60000);
+
+    // Recordatorio de las 22:00 para escribir el diario (si está activado)
+    programarRecordatorioDiario();
 
     // --- Tema claro/oscuro ---
     const btnTema = document.getElementById('btn-tema');

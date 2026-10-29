@@ -159,6 +159,7 @@ body {
 /* ---------- Contenido principal ---------- */
 .contenido {
     flex: 1;
+    min-height: 0;
     padding: 1.7rem 2.4rem 2.4rem;
     overflow-y: auto;
 }
@@ -318,6 +319,57 @@ body {
 @media (max-width: 880px) {
     .dos-flex { grid-template-columns: 1fr; }
     .ahorro-alta { grid-template-columns: 1fr 1fr; }
+}
+
+/* Diario: resumen de semana/mes, foto y avisos */
+.periodo { display: flex; align-items: center; gap: 0.6rem; }
+.periodo-toggle { display: flex; gap: 0.25rem; }
+.periodo-toggle button {
+    border: 1px solid var(--cristal-borde);
+    background: var(--cristal);
+    color: var(--texto-suave);
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background var(--velocidad) ease;
+}
+.periodo-toggle button.activo { background: var(--acento); color: #06322c; border-color: var(--acento); }
+.periodo-dato {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--cristal);
+    border: 1px solid var(--cristal-borde);
+    border-radius: 14px;
+    padding: 0.4rem 0.7rem;
+}
+.periodo-emoji { font-size: 1.5rem; line-height: 1; }
+.periodo-dato strong { font-size: 0.82rem; }
+.periodo-dato small { color: var(--texto-tenue); font-size: 0.68rem; }
+.dia-foto { margin-top: 0.9rem; }
+.foto-slot {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 0.9rem;
+    border: 1px dashed var(--cristal-borde);
+    border-radius: 13px;
+    background: var(--cristal);
+    color: var(--texto-suave);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--velocidad) ease;
+}
+.foto-slot:hover { background: var(--cristal-hover); }
+.foto-caja { display: flex; align-items: flex-start; gap: 0.6rem; }
+.foto-caja img { max-width: 220px; max-height: 220px; border-radius: 14px; border: 1px solid var(--cristal-borde); }
+@media (max-width: 720px) {
+    .dia-cab { flex-wrap: wrap; }
+    .periodo { order: 3; width: 100%; justify-content: center; flex-wrap: wrap; }
 }
 .cal-rejilla { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .cal-nom { font-size: 0.62rem; text-align: center; color: var(--texto-tenue); font-weight: 800; padding: 0.2rem 0; letter-spacing: 1px; }
