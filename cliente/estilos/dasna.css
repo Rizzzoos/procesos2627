@@ -19,9 +19,9 @@
     --texto-tenue: rgba(255, 255, 255, 0.62);
 
     /* Cristal */
-    --cristal: rgba(255, 255, 255, 0.30);
-    --cristal-fuerte: rgba(255, 255, 255, 0.44);
-    --cristal-hover: rgba(255, 255, 255, 0.38);
+    --cristal: rgba(255, 255, 255, 0.38);
+    --cristal-fuerte: rgba(255, 255, 255, 0.52);
+    --cristal-hover: rgba(255, 255, 255, 0.46);
     --cristal-borde: rgba(255, 255, 255, 0.45);
     --sombra: 0 10px 32px rgba(0, 0, 0, 0.18);
     --sombra-alta: 0 16px 44px rgba(0, 0, 0, 0.28);
@@ -50,9 +50,9 @@
     --texto-suave: #c3cede;
     --texto-tenue: #8fa1b8;
 
-    --cristal: rgba(18, 30, 52, 0.72);
-    --cristal-fuerte: rgba(22, 36, 60, 0.86);
-    --cristal-hover: rgba(30, 46, 76, 0.78);
+    --cristal: rgba(18, 30, 52, 0.79);
+    --cristal-fuerte: rgba(22, 36, 60, 0.91);
+    --cristal-hover: rgba(30, 46, 76, 0.84);
     --cristal-borde: rgba(255, 255, 255, 0.20);
     --sombra: 0 10px 32px rgba(0, 0, 0, 0.35);
     --sombra-alta: 0 16px 44px rgba(0, 0, 0, 0.45);
@@ -474,6 +474,21 @@ body {
     gap: 0.45rem;
 }
 .com-generador.oculto { display: none; }
+.com-editar, .com-x {
+    border: 1px solid var(--cristal-borde);
+    background: var(--cristal);
+    color: var(--texto-suave);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    padding: 0.3rem 0.5rem;
+    transition: background var(--velocidad) ease;
+}
+.com-editar:hover { background: var(--cristal-hover); }
+.com-x:hover { background: var(--cristal-hover); color: #e0526b; }
+.com-editando { margin: 0 0 0.7rem; font-size: 0.85rem; color: var(--acento); font-weight: 700; }
+.com-fila-acciones { display: inline-flex; align-items: center; gap: 0.4rem; }
+.com-fila.editando, .com-fila-card.editando { border-color: var(--acento); box-shadow: 0 0 0 1px var(--acento) inset; }
 @media (max-width: 720px) {
     .com-ing-fila { grid-template-columns: 1fr 70px 70px 30px; }
     .com-item { grid-template-columns: auto 1fr; }
