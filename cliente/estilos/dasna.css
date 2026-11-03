@@ -8,25 +8,23 @@
 
 :root {
     /* Aura clásica de Dasna */
-    --aura-1: #be5f42;
-    --aura-2: #b93065;
-    --aura-3: #1c85ab;
-    --aura-4: #1c8a89;
+    --aura-1: #ee7752;
+    --aura-2: #e73c7e;
+    --aura-3: #23a6d5;
+    --aura-4: #23d5ab;
 
     /* Todo el texto sobre el degradado va en blanco */
     --texto: #ffffff;
     --texto-suave: rgba(255, 255, 255, 0.88);
     --texto-tenue: rgba(255, 255, 255, 0.62);
 
-    /* Cristal teñido: vidrio azul marino translúcido — oscuro de verdad
-       (letras blancas con un rato) pero en azul, no en gris, para que
-       hable con el degradado del fondo */
-    --cristal: rgba(11, 26, 56, 0.64);
-    --cristal-fuerte: rgba(8, 20, 46, 0.78);
-    --cristal-hover: rgba(17, 38, 78, 0.72);
+    /* Cristal azul eléctrico: recuadros vivos sobre el aura clarito */
+    --cristal: rgba(0, 70, 220, 0.72);
+    --cristal-fuerte: rgba(0, 56, 190, 0.85);
+    --cristal-hover: rgba(20, 95, 255, 0.8);
     --cristal-borde: rgba(255, 255, 255, 0.45);
-    --sombra: 0 10px 32px rgba(0, 0, 0, 0.18);
-    --sombra-alta: 0 16px 44px rgba(0, 0, 0, 0.28);
+    --sombra: 0 10px 32px rgba(0, 80, 255, 0.25);
+    --sombra-alta: 0 16px 44px rgba(0, 70, 255, 0.35);
 
     /* Acentos */
     --acento: #2dd4bf;      /* turquesa */
@@ -397,7 +395,8 @@ body {
 .recap-dato { margin: 0.3rem 0; font-size: 0.88rem; color: var(--texto-suave); }
 /* ---------- Módulo Comidas ---------- */
 .com-layout { display: grid; grid-template-columns: 200px 1fr; gap: 1.2rem; align-items: start; }
-.com-menu { display: flex; flex-direction: column; gap: 0.5rem; position: sticky; top: 0.4rem; }
+.com-izq { position: sticky; top: 0.4rem; display: flex; flex-direction: column; gap: 1.1rem; }
+.com-menu { display: flex; flex-direction: column; gap: 0.5rem; }
 .com-menu button {
     border: 1px solid var(--cristal-borde);
     background: var(--cristal);
@@ -415,8 +414,10 @@ body {
 .com-menu button.activo { background: var(--acento); color: #06322c; border-color: var(--acento); }
 @media (max-width: 760px) {
     .com-layout { grid-template-columns: 1fr; }
-    .com-menu { flex-direction: row; flex-wrap: wrap; position: static; }
+    .com-izq { position: static; }
+    .com-menu { flex-direction: row; flex-wrap: wrap; }
     .com-menu button { text-align: center; }
+    .nevera { max-width: 260px; margin: 0 auto; }
 }
 .com-ing-fila { display: grid; grid-template-columns: 1fr 90px 90px 34px; gap: 0.5rem; margin-bottom: 0.5rem; }
 .com-ing-quitar, .com-item-x {
@@ -489,8 +490,9 @@ body {
     color: var(--texto-suave);
     border-radius: 10px;
     cursor: pointer;
-    font-size: 0.88rem;
-    padding: 0.3rem 0.5rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+    padding: 0.3rem 0.55rem;
     transition: background var(--velocidad) ease;
 }
 .com-editar:hover { background: var(--cristal-hover); }
@@ -498,6 +500,123 @@ body {
 .com-editando { margin: 0 0 0.7rem; font-size: 0.85rem; color: var(--acento); font-weight: 700; }
 .com-fila-acciones { display: inline-flex; align-items: center; gap: 0.4rem; }
 .com-fila.editando, .com-fila-card.editando { border-color: var(--acento); box-shadow: 0 0 0 1px var(--acento) inset; }
+/* Puntos de valoración (en vez de emoticonos) */
+.com-val { display: inline-block; width: 0.62rem; height: 0.62rem; border-radius: 50%; vertical-align: -2px; }
+.com-val-ok { background: #4ade80; box-shadow: 0 0 6px rgba(74, 222, 128, 0.8); }
+.com-val-med { background: #fbbf24; box-shadow: 0 0 6px rgba(251, 191, 36, 0.8); }
+.com-val-no { background: #fb7185; box-shadow: 0 0 6px rgba(251, 113, 133, 0.8); }
+
+/* Nevera dibujada: puerta abierta a la izquierda e interior con baldas */
+.nevera-titulo { margin: 0 0 0.45rem; font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--texto-tenue); }
+.nevera-aparato { position: relative; height: 330px; perspective: 700px; }
+.nevera-cuerpo {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 70%;
+    height: 100%;
+    background: linear-gradient(180deg, #0c1c3a, #081430);
+    border: 3px solid #9fb0c6;
+    border-radius: 14px;
+    box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.55), 0 10px 24px rgba(0, 40, 120, 0.35);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    z-index: 1;
+}
+.nevera-cuerpo::after {
+    content: '';
+    position: absolute;
+    right: -9px;
+    top: 22px;
+    bottom: 22px;
+    width: 7px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #f3f6fa, #93a1b5);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+.nevera-cong {
+    background: linear-gradient(180deg, #e0f2fe, #bae6fd);
+    border-radius: 8px;
+    padding: 4px 5px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    align-content: flex-start;
+    min-height: 44px;
+    overflow: hidden;
+}
+.nevera-balda {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    align-content: flex-start;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.28);
+    padding-bottom: 4px;
+    overflow: hidden;
+    min-height: 0;
+}
+.nevera-item {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.56rem;
+    font-weight: 700;
+    line-height: 1.1;
+    padding: 0.16rem 0.35rem;
+    border-radius: 5px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #0b1a33;
+    background: #93c5fd;
+    transition: transform var(--velocidad) ease;
+}
+.nevera-item:hover { transform: scale(1.07); }
+.nevera-item:nth-child(5n+2) { background: #f9a8d4; }
+.nevera-item:nth-child(5n+3) { background: #fde047; }
+.nevera-item:nth-child(5n+4) { background: #86efac; }
+.nevera-item:nth-child(5n+5) { background: #c4b5fd; }
+.nevera-cong .nevera-item { background: #dbeafe; }
+.nevera-mas { font-size: 0.6rem; color: var(--texto-tenue); padding-left: 2px; }
+.nevera-vacia { font-size: 0.62rem; color: rgba(255, 255, 255, 0.65); margin: 4px 2px; width: 100%; }
+.nevera-cong .nevera-vacia { color: #0c2d5a; margin: 2px; }
+.nevera-puerta {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 34%;
+    height: 100%;
+    transform-origin: right center;
+    transform: rotateY(52deg);
+    background: linear-gradient(100deg, #eef2f8, #c7d0de 55%, #a6b2c5);
+    border: 3px solid #8e9bb0;
+    border-radius: 12px;
+    box-shadow: 6px 8px 22px rgba(0, 30, 90, 0.35);
+    padding: 8px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    justify-content: center;
+    z-index: 2;
+}
+.nevera-puerta::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 24px;
+    bottom: 24px;
+    width: 6px;
+    border-radius: 5px;
+    background: linear-gradient(90deg, #7f8ca3, #dbe2ec);
+}
+.nevera-jarra { display: block; border-radius: 6px 6px 5px 5px; border: 1px solid rgba(0, 0, 0, 0.18); margin-left: 12px; }
+.nevera-jarra.j1 { height: 30%; background: linear-gradient(180deg, #60a5fa, #1d4ed8); }
+.nevera-jarra.j2 { height: 24%; background: linear-gradient(180deg, #fbbf24, #d97706); }
+.nevera-jarra.j3 { height: 20%; background: linear-gradient(180deg, #f472b6, #be185d); }
 @media (max-width: 720px) {
     .com-ing-fila { grid-template-columns: 1fr 70px 70px 30px; }
     .com-item { grid-template-columns: auto 1fr; }
@@ -645,7 +764,7 @@ body {
     font-weight: 800;
     padding: 0.1rem 0.42rem;
     border-radius: 999px;
-    background: rgba(6, 16, 38, 0.55);
+    background: rgba(0, 30, 95, 0.6);
     border: 1px solid var(--cristal-borde);
     color: var(--texto-suave);
     letter-spacing: 0.3px;
@@ -696,11 +815,11 @@ body {
 
 .etiqueta { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--texto-tenue); margin-bottom: 0.35rem; }
 
-/* Entradas: leche azul marino con texto blanco (legible sobre el aura) */
+/* Entradas: leche azul eléctrico con texto blanco (legible sobre el aura) */
 .entrada, textarea.entrada, select.entrada {
     width: 100%;
     padding: 0.7rem 0.85rem;
-    background: rgba(6, 16, 38, 0.42);
+    background: rgba(0, 34, 105, 0.5);
     border: 1px solid var(--cristal-borde);
     border-radius: 14px;
     font-size: 0.95rem;
@@ -732,7 +851,7 @@ textarea.entrada { min-height: 92px; resize: vertical; font-family: Consolas, mo
 .tabla tbody tr:hover { background: var(--cristal-hover); }
 
 /* ---------- Registros del motor ---------- */
-.registro-datos { margin: 0.5rem 0 0; padding: 0.6rem 0.8rem; background: rgba(6, 16, 38, 0.42); border-radius: 12px; font-family: Consolas, monospace; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; color: var(--texto-suave); }
+.registro-datos { margin: 0.5rem 0 0; padding: 0.6rem 0.8rem; background: rgba(0, 34, 105, 0.5); border-radius: 12px; font-family: Consolas, monospace; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; color: var(--texto-suave); }
 [data-tema='oscuro'] .registro-datos { background: rgba(15, 23, 42, 0.6); }
 
 /* ---------- Buscador universal ---------- */
