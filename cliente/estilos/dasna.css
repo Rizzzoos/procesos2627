@@ -8,22 +8,22 @@
 
 :root {
     /* Aura clásica de Dasna */
-    --aura-1: #ee7752;
-    --aura-2: #e73c7e;
-    --aura-3: #23a6d5;
-    --aura-4: #23d5ab;
+    --aura-1: #be5f42;
+    --aura-2: #b93065;
+    --aura-3: #1c85ab;
+    --aura-4: #1c8a89;
 
     /* Todo el texto sobre el degradado va en blanco */
     --texto: #ffffff;
     --texto-suave: rgba(255, 255, 255, 0.88);
     --texto-tenue: rgba(255, 255, 255, 0.62);
 
-    /* Cristal teñido: vidrio índigo translúcido sacado de la propia paleta
-       del aura — el degradado se nota por debajo, las letras blancas se
-       leen en cualquier fase y las cajas ya no son placas grises encima */
-    --cristal: rgba(38, 26, 84, 0.58);
-    --cristal-fuerte: rgba(31, 21, 72, 0.72);
-    --cristal-hover: rgba(50, 35, 104, 0.66);
+    /* Cristal teñido: vidrio azul marino translúcido — oscuro de verdad
+       (letras blancas con un rato) pero en azul, no en gris, para que
+       hable con el degradado del fondo */
+    --cristal: rgba(11, 26, 56, 0.64);
+    --cristal-fuerte: rgba(8, 20, 46, 0.78);
+    --cristal-hover: rgba(17, 38, 78, 0.72);
     --cristal-borde: rgba(255, 255, 255, 0.45);
     --sombra: 0 10px 32px rgba(0, 0, 0, 0.18);
     --sombra-alta: 0 16px 44px rgba(0, 0, 0, 0.28);
@@ -645,7 +645,7 @@ body {
     font-weight: 800;
     padding: 0.1rem 0.42rem;
     border-radius: 999px;
-    background: rgba(20, 12, 50, 0.4);
+    background: rgba(6, 16, 38, 0.55);
     border: 1px solid var(--cristal-borde);
     color: var(--texto-suave);
     letter-spacing: 0.3px;
@@ -696,11 +696,11 @@ body {
 
 .etiqueta { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--texto-tenue); margin-bottom: 0.35rem; }
 
-/* Entradas: leche índigo con texto blanco (legible sobre el aura) */
+/* Entradas: leche azul marino con texto blanco (legible sobre el aura) */
 .entrada, textarea.entrada, select.entrada {
     width: 100%;
     padding: 0.7rem 0.85rem;
-    background: rgba(20, 12, 50, 0.3);
+    background: rgba(6, 16, 38, 0.42);
     border: 1px solid var(--cristal-borde);
     border-radius: 14px;
     font-size: 0.95rem;
@@ -732,7 +732,7 @@ textarea.entrada { min-height: 92px; resize: vertical; font-family: Consolas, mo
 .tabla tbody tr:hover { background: var(--cristal-hover); }
 
 /* ---------- Registros del motor ---------- */
-.registro-datos { margin: 0.5rem 0 0; padding: 0.6rem 0.8rem; background: rgba(20, 12, 50, 0.3); border-radius: 12px; font-family: Consolas, monospace; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; color: var(--texto-suave); }
+.registro-datos { margin: 0.5rem 0 0; padding: 0.6rem 0.8rem; background: rgba(6, 16, 38, 0.42); border-radius: 12px; font-family: Consolas, monospace; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; color: var(--texto-suave); }
 [data-tema='oscuro'] .registro-datos { background: rgba(15, 23, 42, 0.6); }
 
 /* ---------- Buscador universal ---------- */
