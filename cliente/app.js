@@ -945,6 +945,9 @@ async function fichaComidas(cont) {
     envoltorio.className = 'ficha-propia';
     cont.appendChild(envoltorio);
 
+    // Aviso de uso: solo la primera vez que se entra en Cocina (se repite desde Ayuda)
+    tutorialPrimeraVez('dasna-tutorial-comidas', PASOS_COMIDAS);
+
     let pestana = 'ideas';      // ideas | comidas | despensa | compra (empieza en Ideas)
     let ideaBusq = '';
     let ideaTiempo = 'todas';   // todas | rapido | medio | largo
@@ -1148,7 +1151,7 @@ async function fichaComidas(cont) {
                             <option value="regular" ${ea && ea.datos.valoracion === 'regular' ? 'selected' : ''}>Regular</option>
                             <option value="malo" ${ea && ea.datos.valoracion === 'malo' ? 'selected' : ''}>Malo</option>
                         </select>
-                        <label class="com-check"><input type="checkbox" id="a-casa" ${ea && ea.datos.enCasa ? 'checked' : ''}> Lo tengo en casa ahora</label>
+                        <label class="com-check"><input type="checkbox" id="a-casa" ${ea ? (ea.datos.enCasa ? 'checked' : '') : 'checked'}> Lo tengo en casa ahora</label>
                         <button class="boton-primario" id="a-guardar">${ea ? 'Guardar cambios' : 'Añadir alimento'}</button>
                         ${ea ? '<button class="boton-suave" id="a-cancelar">Cancelar</button>' : ''}
                     </div>
@@ -1657,10 +1660,14 @@ function vistaAyuda() {
             Los recuadros con etiqueta de fase son las ideas planeadas que faltan por construir.</p></div>
             <div class="tarjeta"><h3>🗺️ Fases</h3><p>Fase 1: diseño y navegación ✅. Fase 2: calendario ✅, Estudio ✅ (eventos pendiente).
             Fase 3: comidas ✅, viajes y agua. Fase 4: outfits. Además quedan archivos y el panel de métricas.</p></div>
-            <div class="tarjeta"><h3>✨ Tutorial</h3><p>Si quieres volver a ver la explicación de cómo funciona Dasna:</p>
-            <button class="boton-suave" id="btn-tutorial">Ver el tutorial</button></div>
+            <div class="tarjeta"><h3>✨ Tutorial</h3><p>Si quieres volver a ver las explicaciones:</p>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.6rem">
+                <button class="boton-suave" id="btn-tutorial">Ver el tutorial</button>
+                <button class="boton-suave" id="btn-tutorial-comidas">Ver cómo se usa Comidas</button>
+            </div></div>
         </div>`;
-    document.getElementById('btn-tutorial').addEventListener('click', abrirTutorial);
+    document.getElementById('btn-tutorial').addEventListener('click', () => abrirTutorial(PASOS_TUTORIAL, 'dasna-tutorial'));
+    document.getElementById('btn-tutorial-comidas').addEventListener('click', () => abrirTutorial(PASOS_COMIDAS, 'dasna-tutorial-comidas'));
 }
 
 function vistaProximo() {
@@ -1768,28 +1775,29 @@ function cerrarBuscador() {
 }
 
 // ============================================================
-// Tutorial (solo la primera vez; se puede repetir desde Ayuda)
+// Tutoriales (solo la primera vez; se repiten desde Ayuda)
 // ============================================================
 const PASOS_TUTORIAL = [
-    ['Tu panel', 'Esta es tu casa: cada recuadro es un módulo (Diario, Ahorros, Comidas…). Púlsalo y entrarás en él.'],
-    ['Volver', 'Desde cualquier módulo, el botón «← Panel» arriba a la izquierda te devuelve al inicio.'],
-    ['Buscar', 'Pulsa Ctrl + K (⌘ + K en Mac) o el botón «Buscar» de arriba: escribe lo que necesites y salta directo a ello.'],
-    ['Claro y oscuro', 'El botón de la luna, arriba a la derecha, cambia entre tema claro y tema oscuro.'],
-    ['Comidas', 'Dentro de Comidas tienes el menú a la izquierda y, debajo, tu nevera: toca un ingrediente y saltas a la despensa.'],
-    ['Diario', 'Escribe tu día en el Diario cuando quieras: puedes editar tus entradas las veces que quieras y hay un Recap para recordar.']
+    ['Tu panel', 'Esta es tu casa: cada recuadro es un módulo (Diario, Ahorros, Comidas…). Púlsalo y entrarás en él.']
 ];
 
-function abrirTutorial() {
+const PASOS_COMIDAS = [
+    ['Tu menú', 'Ideas te enseña lo que ya tienes y recetas rápidas; Comidas guarda tus platos; Despensa es tu alacena; Compra es la lista con super y precio.'],
+    ['Tu nevera', 'Debajo del menú está tu nevera: todo lo que guardas con «Lo tengo en casa ahora» sale dibujado ahí. Toca un dibujo y saltas a la despensa. Se repinta sola: si añades o borras comida, cambia al momento.'],
+    ['Añadir y corregir', 'Cada sección tiene su formulario arriba: escribe y guarda. En cada fila encuentras Editar y Borrar.']
+];
+
+function abrirTutorial(pasos, claveFlag) {
     let paso = 0;
     const capa = document.createElement('div');
     capa.className = 'tut-overlay';
     const pintar = () => {
-        const ultimo = paso === PASOS_TUTORIAL.length - 1;
+        const ultimo = paso === pasos.length - 1;
         capa.innerHTML = `
             <div class="tut-caja" role="dialog" aria-label="Tutorial">
-                <p class="tut-paso">Paso ${paso + 1} de ${PASOS_TUTORIAL.length}</p>
-                <h3>${PASOS_TUTORIAL[paso][0]}</h3>
-                <p class="tut-texto">${PASOS_TUTORIAL[paso][1]}</p>
+                <p class="tut-paso">Paso ${paso + 1} de ${pasos.length}</p>
+                <h3>${pasos[paso][0]}</h3>
+                <p class="tut-texto">${pasos[paso][1]}</p>
                 <div class="tut-botones">
                     <button class="boton-suave" data-tut="salir">Salir</button>
                     ${paso > 0 ? '<button class="boton-suave" data-tut="antes">Antes</button>' : ''}
@@ -1799,25 +1807,25 @@ function abrirTutorial() {
     };
     const cerrar = () => {
         capa.remove();
-        try { localStorage.setItem('dasna-tutorial', 'visto'); } catch (e) { /* opcional */ }
+        try { localStorage.setItem(claveFlag, 'visto'); } catch (e) { /* opcional */ }
     };
     capa.addEventListener('click', (ev) => {
         const b = ev.target.closest('[data-tut]');
         if (!b) return;
         if (b.dataset.tut === 'salir') return cerrar();
         if (b.dataset.tut === 'antes') { paso -= 1; pintar(); return; }
-        if (paso === PASOS_TUTORIAL.length - 1) return cerrar();
+        if (paso === pasos.length - 1) return cerrar();
         paso += 1; pintar();
     });
     pintar();
     document.body.appendChild(capa);
 }
 
-function tutorialPrimeraVez() {
+function tutorialPrimeraVez(clave, pasos) {
     let visto = null;
-    try { visto = localStorage.getItem('dasna-tutorial'); } catch (e) { visto = 'visto'; }
+    try { visto = localStorage.getItem(clave); } catch (e) { visto = 'visto'; }
     if (visto) return;
-    setTimeout(abrirTutorial, 700);
+    setTimeout(() => abrirTutorial(pasos, clave), 700);
 }
 
 // ============================================================
@@ -1839,7 +1847,7 @@ async function iniciar() {
     enrutar();
 
     // Tutorial: solo la primera vez que se entra (se repite desde Ayuda)
-    tutorialPrimeraVez();
+    tutorialPrimeraVez('dasna-tutorial', PASOS_TUTORIAL);
 
     // El día pasa solo cuando cambia la fecha del dispositivo
     let diaEnPantalla = claveDia(new Date());
