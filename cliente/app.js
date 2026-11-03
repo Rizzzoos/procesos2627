@@ -951,6 +951,18 @@ const ICONO_MENU = {
     compra: svgLinea('<path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.6a2 2 0 0 0 2-1.6L23 6H6"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/>')
 };
 
+// Reduce la foto del ticket en el navegador antes de subirla:
+// una foto de móvil son varios MB y así viaja en cientos de KB.
+async function comprimirImagen(archivo, maxLado = 1400) {
+    const imagen = await createImageBitmap(archivo);
+    const escala = Math.min(1, maxLado / Math.max(imagen.width, imagen.height));
+    const lienzo = document.createElement('canvas');
+    lienzo.width = Math.max(1, Math.round(imagen.width * escala));
+    lienzo.height = Math.max(1, Math.round(imagen.height * escala));
+    lienzo.getContext('2d').drawImage(imagen, 0, 0, lienzo.width, lienzo.height);
+    return { data: lienzo.toDataURL('image/jpeg', 0.82).split(',')[1], mime: 'image/jpeg' };
+}
+
 async function fichaComidas(cont) {
     cont.innerHTML = '';
     const envoltorio = document.createElement('div');
@@ -966,6 +978,7 @@ async function fichaComidas(cont) {
     let ideaTengo = false;
     let filtroSuper = 'todos';
     let editando = null;        // { tipo, id } mientras se corrige algo
+    let ticket = null;          // foto del ticket: null | { estado, lineas, error }
 
     const render = async () => {
         envoltorio.innerHTML = '<div class="skeleton"></div>';
@@ -1250,11 +1263,38 @@ async function fichaComidas(cont) {
                 </div>`;
             };
 
-            return `
+            // Revisión del ticket: solo aparece mientras hay algo que mirar
+            const panelTicket = !ticket ? '' : ticket.estado === 'leyendo'
+                ? `<div class="tarjeta"><h3>Foto al ticket</h3><p class="pista">Leyendo el ticket, un momento…</p><div class="skeleton"></div></div>`
+                : ticket.estado === 'error'
+                    ? `<div class="tarjeta"><h3>Foto al ticket</h3><p class="pista ticket-error">${esc(ticket.error)}</p>
+                        <div class="com-acciones">
+                            <button class="boton-suave" id="ticket-reintentar">Reintentar</button>
+                            <button class="boton-suave" id="ticket-cerrar">Cerrar</button>
+                        </div></div>`
+                    : `<div class="tarjeta">
+                        <h3>He leído esto del ticket</h3>
+                        <p class="pista">Quita lo que esté mal: lo que quede entra a la despensa con «Lo tengo en casa ahora» marcado.</p>
+                        <div class="ticket-lineas">${ticket.lineas.map((l, i) => `
+                            <div class="ticket-linea">
+                                <span class="ticket-nombre">${esc(l.nombre)}</span>
+                                <span class="ticket-precio">${l.precio != null ? eur(l.precio) : '—'}</span>
+                                <button type="button" class="ticket-borrar" data-ticket-borrar="${i}">Borrar</button>
+                            </div>`).join('')}
+                        </div>
+                        <div class="com-acciones">
+                            <button class="boton-primario" id="ticket-ok">Añadir a la despensa</button>
+                            <button class="boton-suave" id="ticket-cerrar">Cancelar</button>
+                        </div>
+                    </div>`;
+
+            return `${panelTicket}
                 <div class="tarjeta">
                     <h3>Lista de la compra ${pendientes.length ? `<span class="chip">${pendientes.length} pendientes</span>` : ''}</h3>
                     <div class="com-acciones">
                         <button class="boton-suave" id="com-generar">Generar desde mis comidas</button>
+                        <button class="boton-suave" id="com-ticket">Foto al ticket</button>
+                        <input type="file" id="ticket-foto" accept="image/*" capture="environment" class="oculto">
                         ${hechos.length ? '<button class="boton-suave" id="com-limpiar">Quitar comprados</button>' : ''}
                         ${compra.length ? '<button class="boton-peligro" id="com-vaciar">Vaciar lista</button>' : ''}
                         ${supers.length ? `<select class="entrada com-mini" id="com-super" style="max-width:200px">
@@ -1560,6 +1600,83 @@ async function fichaComidas(cont) {
             });
             if (!res.exito) return aviso(res.error || 'No se pudo añadir.', 'error');
             aviso(`${nombre} en la lista`);
+            render();
+        });
+
+        // --- Foto al ticket: elegir foto, leer y revisar ---
+        const inpTicket = q('#ticket-foto');
+        const abrirFoto = () => { if (inpTicket) inpTicket.click(); };
+        const btnTicket = q('#com-ticket');
+        if (btnTicket) btnTicket.addEventListener('click', abrirFoto);
+        const btnReintentar = q('#ticket-reintentar');
+        if (btnReintentar) btnReintentar.addEventListener('click', abrirFoto);
+        if (inpTicket) inpTicket.addEventListener('change', async () => {
+            const archivo = inpTicket.files && inpTicket.files[0];
+            inpTicket.value = ''; // así se puede repetir la misma foto
+            if (!archivo) return;
+            ticket = { estado: 'leyendo' };
+            render();
+            try {
+                const foto = await comprimirImagen(archivo);
+                const res = await fetch('/api/ticket', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imagen: foto.data, mime: foto.mime })
+                });
+                const r = await res.json().catch(() => ({}));
+                if (res.ok && Array.isArray(r.productos)) {
+                    ticket = r.productos.length
+                        ? { estado: 'revision', lineas: r.productos }
+                        : { estado: 'error', error: 'No he leído ningún producto: prueba con más luz y la foto bien recta.' };
+                } else {
+                    ticket = { estado: 'error', error: (r && r.error) || 'No se pudo leer el ticket.' };
+                }
+            } catch (e) {
+                ticket = { estado: 'error', error: 'No se pudo leer el ticket.' };
+            }
+            render();
+        });
+        envoltorio.querySelectorAll('[data-ticket-borrar]').forEach((b) =>
+            b.addEventListener('click', () => {
+                if (!ticket || !ticket.lineas) return;
+                ticket.lineas.splice(Number(b.dataset.ticketBorrar), 1);
+                if (!ticket.lineas.length) { ticket = null; aviso('No queda ningún producto del ticket.'); }
+                render();
+            }));
+        const ticketCerrar = q('#ticket-cerrar');
+        if (ticketCerrar) ticketCerrar.addEventListener('click', () => { ticket = null; render(); });
+        const ticketOk = q('#ticket-ok');
+        if (ticketOk) ticketOk.addEventListener('click', async () => {
+            const lineas = (ticket && ticket.lineas) || [];
+            if (!lineas.length) return aviso('No queda ningún producto.', 'error');
+            let anadidos = 0, yaEnCasa = 0;
+            for (const l of lineas) {
+                const ex = alimentos.find((a) => normal(a.datos.nombre) === normal(l.nombre));
+                if (ex) {
+                    if (ex.datos.enCasa) { yaEnCasa++; continue; }
+                    const res = await rest.actualizarRegistro('comidas', ex.id, { ...ex.datos, enCasa: true });
+                    if (res.exito) anadidos++;
+                } else {
+                    const res = await rest.crearRegistro('comidas', {
+                        tipo: 'alimento', nombre: l.nombre, unidad: 'ud', valoracion: null, enCasa: true
+                    });
+                    if (res.exito) anadidos++;
+                }
+            }
+            // Lo leído que coincida con la lista se tacha solo
+            // (coincidencia por nombre completo o contenida; nada de 2-3 letras sueltas)
+            const coincide = (a, b) => a === b || (a.length >= 4 && b.includes(a)) || (b.length >= 4 && a.includes(b));
+            let tachados = 0;
+            for (const p of compra) {
+                if (p.datos.comprado) continue;
+                const np = normal(p.datos.nombre);
+                if (lineas.some((l) => coincide(np, normal(l.nombre)))) {
+                    const res = await rest.actualizarRegistro('comidas', p.id, { ...p.datos, comprado: true });
+                    if (res.exito) tachados++;
+                }
+            }
+            ticket = null;
+            aviso(`${anadidos} a la despensa${yaEnCasa ? ` (${yaEnCasa} ya estaban)` : ''}${tachados ? ` y ${tachados} tachados de la lista` : ''}`);
             render();
         });
     };

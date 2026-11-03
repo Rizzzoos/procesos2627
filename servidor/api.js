@@ -8,6 +8,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const logica = require('./logica.js');
 const oauth = require('./oauth.js'); // Hito 4: inicio de sesión con Google
+const ticket = require('./ticket.js'); // Foto al ticket: lectura con IA (Gemini)
 
 // Middleware "Guardaespaldas". Comprueba la cookie antes de dejar pasar.
 function protegerRuta(req, res, next) {
@@ -213,6 +214,17 @@ function crearRouter() {
         const resultado = await logica.actualizarRegistroModulo(req.usuario.email, req.params.clave, req.params.id, datos);
         if (resultado.exito) res.status(200).json(resultado);
         else res.status(400).json({ error: resultado.error });
+    });
+
+    // ========================================================
+    // FOTO AL TICKET - leemos un ticket con IA y devolvemos
+    // los productos. La clave de la IA NUNCA sale de aquí.
+    // ========================================================
+    router.post('/ticket', protegerRuta, async (req, res) => {
+        const { imagen, mime } = req.body || {};
+        const resultado = await ticket.leerImagen(imagen, mime);
+        if (resultado.productos) res.status(200).json(resultado);
+        else res.status(resultado.status || 400).json({ error: resultado.error });
     });
 
     return router;
