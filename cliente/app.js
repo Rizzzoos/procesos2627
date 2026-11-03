@@ -1065,14 +1065,13 @@ async function fichaComidas(cont) {
         // --- Nevera dibujada: lo que tienes en casa, debajo del menú ---
         const enCasa = alimentos.filter((a) => a.datos.enCasa);
         const nevera = (() => {
-            const visibles = enCasa.slice(0, 12);
-            const resto = enCasa.length - visibles.length;
-            const porBalda = Math.max(1, Math.ceil(visibles.length / 4));
+            // Sin límite ni "+N más": lo que no cabe de un vistazo se ve con scroll
+            const porBalda = Math.max(1, Math.ceil(enCasa.length / 4));
             const baldas = [];
-            for (let i = 0; i < visibles.length; i += porBalda) baldas.push(visibles.slice(i, i + porBalda));
+            for (let i = 0; i < enCasa.length; i += porBalda) baldas.push(enCasa.slice(i, i + porBalda));
             while (baldas.length < 4) baldas.push([]);
             const item = (a) => `<button type="button" class="nevera-item" data-pestana="despensa" title="${esc(a.datos.nombre)}">${dibujoDe(a.datos.nombre)}</button>`;
-            const congs = preparados.slice(0, 3);
+            const congs = preparados;
             const dibujoCong = (p) => `<button type="button" class="nevera-item" data-pestana="despensa" title="${esc(p.datos.nombre)}">${dibujoDe(p.datos.nombre)}</button>`;
             return `
             <div class="nevera" aria-label="Tu nevera">
@@ -1084,8 +1083,9 @@ async function fichaComidas(cont) {
                     </div>
                     <div class="nevera-cuerpo">
                         <div class="nevera-cong">${congs.length ? congs.map(dibujoCong).join('') : '<span class="nevera-vacia">Congelador vacío</span>'}</div>
-                        ${baldas.map((b) => `<div class="nevera-balda">${b.map(item).join('')}</div>`).join('')}
-                        ${resto > 0 ? `<div class="nevera-mas">+${resto} más…</div>` : ''}
+                        <div class="nevera-baldas">
+                            ${baldas.map((b) => `<div class="nevera-balda">${b.map(item).join('')}</div>`).join('')}
+                        </div>
                         ${!enCasa.length ? '<p class="nevera-vacia">La nevera está vacía: apunta alimentos en Despensa.</p>' : ''}
                     </div>
                 </div>
