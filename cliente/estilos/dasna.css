@@ -169,6 +169,7 @@ body {
 .cabecera { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
 .cabecera h1 { margin: 0; font-size: 1.85rem; color: var(--texto); text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.15); }
 .cabecera p { margin: 0.25rem 0 0; color: var(--texto-suave); font-size: 0.95rem; }
+.cabecera p:empty { display: none; }
 
 /* Enlace de vuelta (dentro de las vistas que no son el panel) */
 .volver {
@@ -409,15 +410,19 @@ body {
     border-radius: 14px;
     cursor: pointer;
     text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
     transition: background var(--velocidad) ease, transform var(--velocidad) ease;
 }
+.com-menu button svg { width: 1.1em; height: 1.1em; flex: none; }
 .com-menu button:hover { transform: translateX(3px); background: var(--cristal-hover); }
 .com-menu button.activo { background: var(--acento); color: #06322c; border-color: var(--acento); }
 @media (max-width: 760px) {
     .com-layout { grid-template-columns: 1fr; }
     .com-izq { position: static; }
     .com-menu { flex-direction: row; flex-wrap: wrap; }
-    .com-menu button { text-align: center; }
+    .com-menu button { justify-content: center; }
 }
 .com-ing-fila { display: grid; grid-template-columns: 1fr 90px 90px 34px; gap: 0.5rem; margin-bottom: 0.5rem; }
 .com-ing-quitar, .com-item-x {
@@ -501,7 +506,6 @@ body {
 .com-fila-acciones { display: inline-flex; align-items: center; gap: 0.4rem; }
 .com-fila.editando, .com-fila-card.editando { border-color: var(--acento); box-shadow: 0 0 0 1px var(--acento) inset; }
 /* Nevera dibujada: puerta abierta a la izquierda e interior con baldas */
-.nevera-titulo { margin: 0 0 0.45rem; font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--texto-tenue); }
 .nevera-aparato { position: relative; height: 245px; max-width: 180px; perspective: 700px; }
 @media (max-width: 760px) { .nevera-aparato { max-width: 220px; margin: 0 auto; } }
 .nevera-cuerpo {
@@ -566,6 +570,14 @@ body {
     transition: transform var(--velocidad) ease;
 }
 .nevera-item:hover { transform: scale(1.14); }
+/* Cada baldosa y el congelador reparten en 3 huecos fijos: así una fila
+   SIEMPRE cabe entera y ninguna comida se queda cortada por abajo */
+.nevera-balda .nevera-item, .nevera-cong .nevera-item {
+    width: calc((100% - 6px) / 3);
+    text-align: center;
+    padding-left: 0.1rem;
+    padding-right: 0.1rem;
+}
 .nevera-cong .nevera-item { background: rgba(240, 249, 255, 0.95); }
 .nevera-mas { font-size: 0.6rem; color: var(--texto-tenue); padding-left: 2px; }
 .nevera-vacia { font-size: 0.62rem; color: rgba(255, 255, 255, 0.65); margin: 4px 2px; width: 100%; }

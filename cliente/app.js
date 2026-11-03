@@ -430,7 +430,9 @@ async function vistaModulo(clave) {
     const meta = modulos.find((m) => m.clave === clave);
     if (!meta) return vistaPanel();
 
-    cabecera(`${meta.icono} ${meta.nombre}`, meta.descripcion);
+    // Comidas va sin emoji ni descripción en la cabecera (lo pidió Sandra)
+    const esComidas = clave === 'comidas';
+    cabecera(esComidas ? 'Comidas' : `${meta.icono} ${meta.nombre}`, esComidas ? '' : meta.descripcion);
     const cont = document.getElementById('vista');
     cont.innerHTML = '<div class="skeleton"></div>';
 
@@ -939,6 +941,16 @@ const UNIDADES = ['g', 'kg', 'l', 'ml', 'ud', 'docena', 'paquete', 'bolsa', 'lat
 // de la compra. Cada cosa es un registro con `tipo`:
 //   alimento | comida | preparado | compra
 // ============================================================
+// Iconos de línea (SVG monocromo) para el menú de Comidas:
+// dibujos a trazo, no emoticonos de colores
+const svgLinea = (cuerpo) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${cuerpo}</svg>`;
+const ICONO_MENU = {
+    ideas: svgLinea('<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.8.8 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>'),
+    comidas: svgLinea('<circle cx="9.5" cy="12.5" r="5.5"/><path d="M14.9 12.5H21"/>'),
+    despensa: svgLinea('<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z"/><path d="M2 21c0-3 1.9-5.4 5.1-6C9.5 14.5 12 13 13 12"/>'),
+    compra: svgLinea('<path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.6a2 2 0 0 0 2-1.6L23 6H6"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/>')
+};
+
 async function fichaComidas(cont) {
     cont.innerHTML = '';
     const envoltorio = document.createElement('div');
@@ -1064,7 +1076,6 @@ async function fichaComidas(cont) {
             const dibujoCong = (p) => `<button type="button" class="nevera-item" data-pestana="despensa" title="${esc(p.datos.nombre)}">${dibujoDe(p.datos.nombre)}</button>`;
             return `
             <div class="nevera" aria-label="Tu nevera">
-                <p class="nevera-titulo">Tu nevera</p>
                 <div class="nevera-aparato">
                     <div class="nevera-puerta">
                         <span class="nevera-jarra j1"></span>
@@ -1085,9 +1096,9 @@ async function fichaComidas(cont) {
         const menuLateral = `
             <div class="com-izq">
                 <nav class="com-menu">
-                    ${[['ideas', '💡 Ideas'], ['comidas', '🍳 Comidas'], ['despensa', '🥬 Despensa'],
-                        ['compra', `🛒 Compra${pendientes.length ? ` (${pendientes.length})` : ''}`]]
-                        .map(([k, t]) => `<button type="button" data-pestana="${k}" class="${pestana === k ? 'activo' : ''}">${t}</button>`).join('')}
+                    ${[['ideas', 'Ideas'], ['comidas', 'Comidas'], ['despensa', 'Despensa'],
+                        ['compra', `Compra${pendientes.length ? ` (${pendientes.length})` : ''}`]]
+                        .map(([k, t]) => `<button type="button" data-pestana="${k}" class="${pestana === k ? 'activo' : ''}">${ICONO_MENU[k]}<span>${t}</span></button>`).join('')}
                 </nav>
                 ${nevera}
             </div>`;
