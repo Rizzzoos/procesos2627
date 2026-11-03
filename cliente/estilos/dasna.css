@@ -500,12 +500,6 @@ body {
 .com-editando { margin: 0 0 0.7rem; font-size: 0.85rem; color: var(--acento); font-weight: 700; }
 .com-fila-acciones { display: inline-flex; align-items: center; gap: 0.4rem; }
 .com-fila.editando, .com-fila-card.editando { border-color: var(--acento); box-shadow: 0 0 0 1px var(--acento) inset; }
-/* Puntos de valoración (en vez de emoticonos) */
-.com-val { display: inline-block; width: 0.62rem; height: 0.62rem; border-radius: 50%; vertical-align: -2px; }
-.com-val-ok { background: #4ade80; box-shadow: 0 0 6px rgba(74, 222, 128, 0.8); }
-.com-val-med { background: #fbbf24; box-shadow: 0 0 6px rgba(251, 191, 36, 0.8); }
-.com-val-no { background: #fb7185; box-shadow: 0 0 6px rgba(251, 113, 133, 0.8); }
-
 /* Nevera dibujada: puerta abierta a la izquierda e interior con baldas */
 .nevera-titulo { margin: 0 0 0.45rem; font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--texto-tenue); }
 .nevera-aparato { position: relative; height: 245px; max-width: 180px; perspective: 700px; }
@@ -563,9 +557,9 @@ body {
     border: none;
     cursor: pointer;
     font-family: inherit;
-    font-size: 0.98rem;
+    font-size: 1.3rem;
     line-height: 1.15;
-    padding: 0.08rem 0.26rem;
+    padding: 0.12rem 0.3rem;
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.92);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
@@ -833,6 +827,7 @@ textarea.entrada { min-height: 92px; resize: vertical; font-family: Consolas, mo
     background: var(--cristal-fuerte); border: 1px solid var(--cristal-borde); color: var(--texto-suave);
 }
 .chip-ok { color: var(--ok); border-color: rgba(74, 222, 128, 0.45); }
+.chip-med { color: #fbbf24; border-color: rgba(251, 191, 36, 0.45); }
 .chip-peligro { color: var(--peligro); border-color: rgba(251, 113, 133, 0.45); }
 
 /* ---------- Tabla ---------- */
@@ -875,6 +870,30 @@ textarea.entrada { min-height: 92px; resize: vertical; font-family: Consolas, mo
 .buscador-opcion .grupo-de { margin-left: auto; font-size: 0.68rem; color: var(--texto-tenue); }
 .buscador-opcion.activo, .buscador-opcion:hover { background: var(--cristal-hover); color: var(--texto); }
 .buscador-opcion.proximo { opacity: 0.5; }
+
+/* ---------- Tutorial (primera visita) ---------- */
+.tut-overlay {
+    position: fixed; inset: 0; z-index: 70;
+    background: rgba(4, 10, 26, 0.72);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+    animation: aparecer 180ms ease;
+}
+.tut-caja {
+    width: min(440px, 94vw);
+    background: var(--cristal-fuerte);
+    border: 1px solid var(--cristal-borde);
+    border-radius: var(--radio-grande);
+    box-shadow: var(--sombra-alta);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    padding: 1.5rem 1.6rem;
+    animation: aparecer 180ms ease;
+}
+.tut-paso { margin: 0 0 0.45rem; font-size: 0.7rem; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: var(--acento); }
+.tut-caja h3 { margin: 0 0 0.5rem; }
+.tut-texto { margin: 0 0 1.2rem; color: var(--texto-suave); line-height: 1.6; }
+.tut-botones { display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap; }
 
 /* ---------- Avisos (toasts) ---------- */
 #toasts { position: fixed; right: 1.2rem; bottom: 1.2rem; z-index: 60; display: flex; flex-direction: column; gap: 0.5rem; }

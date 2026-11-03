@@ -969,11 +969,10 @@ async function fichaComidas(cont) {
         const normal = (s) => String(s == null ? '' : s)
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .trim().toLowerCase();
-        // Valoración como punto de color (sin emoticonos): verde / ámbar / rojo
-        const valorPunto = (v) => v
-            ? `<span class="com-val com-val-${v === 'me gusta' ? 'ok' : v === 'malo' ? 'no' : 'med'}" title="${esc(v)}"></span>`
+        // Valoración escrita con color (sin puntos crípticos): Me gusta / Regular / Malo
+        const valorTxt = (v) => v
+            ? `<span class="chip ${v === 'me gusta' ? 'chip-ok' : v === 'malo' ? 'chip-peligro' : 'chip-med'}">${v === 'me gusta' ? 'Me gusta' : v === 'malo' ? 'Malo' : 'Regular'}</span>`
             : '';
-        const valoraDe = (nombre) => alimentos.find((x) => normal(x.datos.nombre) === normal(nombre));
         // Lo que "tienes en casa": alimentos marcados + tapers/congelados
         const tengo = new Set([
             ...alimentos.filter((a) => a.datos.enCasa).map((a) => normal(a.datos.nombre)),
@@ -1051,7 +1050,7 @@ async function fichaComidas(cont) {
         // --- Nevera dibujada: lo que tienes en casa, debajo del menú ---
         const enCasa = alimentos.filter((a) => a.datos.enCasa);
         const nevera = (() => {
-            const visibles = enCasa.slice(0, 16);
+            const visibles = enCasa.slice(0, 12);
             const resto = enCasa.length - visibles.length;
             const porBalda = Math.max(1, Math.ceil(visibles.length / 4));
             const baldas = [];
@@ -1139,7 +1138,6 @@ async function fichaComidas(cont) {
             <div class="dos-flex">
                 <div class="tarjeta">
                     <h3>${ea ? 'Editar alimento' : 'Alimentos'}</h3>
-                    <p class="pista">Lo que sueles comprar. Valóralo y se te avisará en la lista de la compra.</p>
                     ${ea ? `<p class="com-editando">Modificando «${esc(ea.datos.nombre)}»</p>` : ''}
                     <div class="com-alta">
                         <input class="entrada" id="a-nombre" placeholder="Ej: Tomate frito" value="${esc(ea ? ea.datos.nombre : '')}" autocomplete="off">
@@ -1157,14 +1155,13 @@ async function fichaComidas(cont) {
                     ${alimentos.length ? `<div class="com-lista">${alimentos.map((x) => `
                         <div class="com-fila${ea && ea.id === x.id ? ' editando' : ''}">
                             <span>${esc(x.datos.nombre)}${x.datos.unidad ? ` <span class="pista">(${esc(x.datos.unidad)})</span>` : ''}</span>
-                            <span class="com-fila-acciones">${valorPunto(x.datos.valoracion)}${x.datos.enCasa ? ' <span class="chip">en casa</span>' : ''}
+                            <span class="com-fila-acciones">${valorTxt(x.datos.valoracion)}${x.datos.enCasa ? ' <span class="chip">en casa</span>' : ''}
                                 <button class="com-editar" data-editar-alimento="${x.id}" title="Editar">Editar</button>
                                 <button class="com-x" data-borrar-alimento="${x.id}" title="Borrar">Borrar</button></span>
                         </div>`).join('')}</div>` : '<p class="pista">Sin alimentos todavía.</p>'}
                 </div>
                 <div class="tarjeta">
                     <h3>${ep ? 'Editar preparado' : 'Tapers y congelados'}</h3>
-                    <p class="pista">Cosas hechas para un día con prisa. Ve bajando las raciones según las vayas usando.</p>
                     ${ep ? `<p class="com-editando">Modificando «${esc(ep.datos.nombre)}»</p>` : ''}
                     <div class="com-alta">
                         <input class="entrada" id="p-nombre" placeholder="Ej: Albóndigas en salsa" value="${esc(ep ? ep.datos.nombre : '')}" autocomplete="off">
@@ -1180,7 +1177,7 @@ async function fichaComidas(cont) {
                     ${preparados.length ? `<div class="com-lista">${preparados.map((x) => `
                         <div class="com-fila${ep && ep.id === x.id ? ' editando' : ''}">
                             <span>${esc(x.datos.nombre)} ${categoriaPrep(x.datos.categoria)}
-                                <span class="chip">×${Number(x.datos.raciones) || 1}</span>${(Number(x.datos.raciones) || 1) <= 1 ? ' <span class="com-aviso">se acaba</span>' : ''}</span>
+                                <span class="chip">×${Number(x.datos.raciones) || 1}</span></span>
                             <span class="com-fila-acciones">
                                 <button class="boton-suave" data-usar="${x.id}">Usada</button>
                                 <button class="com-editar" data-editar-preparado="${x.id}" title="Editar">Editar</button>
@@ -1230,12 +1227,9 @@ async function fichaComidas(cont) {
 
             const filaItem = (x) => {
                 const d = x.datos;
-                const val = valoraDe(d.nombre);
-                const v = val && val.datos.valoracion;
                 return `<div class="com-item ${d.comprado ? 'hecho' : ''}">
                     <label class="com-check"><input type="checkbox" data-tachar="${x.id}" ${d.comprado ? 'checked' : ''}></label>
-                    <span class="com-item-nombre">${esc(d.nombre)}${d.cantidad ? ` <span class="pista">· ${esc(d.cantidad)}${d.unidad ? ' ' + esc(d.unidad) : ''}</span>` : ''}
-                        ${valorPunto(v)}</span>
+                    <span class="com-item-nombre">${esc(d.nombre)}${d.cantidad ? ` <span class="pista">· ${esc(d.cantidad)}${d.unidad ? ' ' + esc(d.unidad) : ''}</span>` : ''}</span>
                     <input class="entrada com-mini" data-super="${x.id}" placeholder="Super" value="${esc(d.super || '')}" autocomplete="off">
                     <input class="entrada com-mini" data-precio="${x.id}" type="number" min="0" step="0.01" placeholder="€" value="${d.precio != null && d.precio !== '' ? Number(d.precio) : ''}">
                     <button type="button" class="com-item-x" data-borrar-compra="${x.id}" title="Quitar de la lista">✕</button>
@@ -1663,7 +1657,10 @@ function vistaAyuda() {
             Los recuadros con etiqueta de fase son las ideas planeadas que faltan por construir.</p></div>
             <div class="tarjeta"><h3>🗺️ Fases</h3><p>Fase 1: diseño y navegación ✅. Fase 2: calendario ✅, Estudio ✅ (eventos pendiente).
             Fase 3: comidas ✅, viajes y agua. Fase 4: outfits. Además quedan archivos y el panel de métricas.</p></div>
+            <div class="tarjeta"><h3>✨ Tutorial</h3><p>Si quieres volver a ver la explicación de cómo funciona Dasna:</p>
+            <button class="boton-suave" id="btn-tutorial">Ver el tutorial</button></div>
         </div>`;
+    document.getElementById('btn-tutorial').addEventListener('click', abrirTutorial);
 }
 
 function vistaProximo() {
@@ -1771,6 +1768,59 @@ function cerrarBuscador() {
 }
 
 // ============================================================
+// Tutorial (solo la primera vez; se puede repetir desde Ayuda)
+// ============================================================
+const PASOS_TUTORIAL = [
+    ['Tu panel', 'Esta es tu casa: cada recuadro es un módulo (Diario, Ahorros, Comidas…). Púlsalo y entrarás en él.'],
+    ['Volver', 'Desde cualquier módulo, el botón «← Panel» arriba a la izquierda te devuelve al inicio.'],
+    ['Buscar', 'Pulsa Ctrl + K (⌘ + K en Mac) o el botón «Buscar» de arriba: escribe lo que necesites y salta directo a ello.'],
+    ['Claro y oscuro', 'El botón de la luna, arriba a la derecha, cambia entre tema claro y tema oscuro.'],
+    ['Comidas', 'Dentro de Comidas tienes el menú a la izquierda y, debajo, tu nevera: toca un ingrediente y saltas a la despensa.'],
+    ['Diario', 'Escribe tu día en el Diario cuando quieras: puedes editar tus entradas las veces que quieras y hay un Recap para recordar.']
+];
+
+function abrirTutorial() {
+    let paso = 0;
+    const capa = document.createElement('div');
+    capa.className = 'tut-overlay';
+    const pintar = () => {
+        const ultimo = paso === PASOS_TUTORIAL.length - 1;
+        capa.innerHTML = `
+            <div class="tut-caja" role="dialog" aria-label="Tutorial">
+                <p class="tut-paso">Paso ${paso + 1} de ${PASOS_TUTORIAL.length}</p>
+                <h3>${PASOS_TUTORIAL[paso][0]}</h3>
+                <p class="tut-texto">${PASOS_TUTORIAL[paso][1]}</p>
+                <div class="tut-botones">
+                    <button class="boton-suave" data-tut="salir">Salir</button>
+                    ${paso > 0 ? '<button class="boton-suave" data-tut="antes">Antes</button>' : ''}
+                    <button class="boton-primario" data-tut="sigue">${ultimo ? '¡Listo!' : 'Siguiente'}</button>
+                </div>
+            </div>`;
+    };
+    const cerrar = () => {
+        capa.remove();
+        try { localStorage.setItem('dasna-tutorial', 'visto'); } catch (e) { /* opcional */ }
+    };
+    capa.addEventListener('click', (ev) => {
+        const b = ev.target.closest('[data-tut]');
+        if (!b) return;
+        if (b.dataset.tut === 'salir') return cerrar();
+        if (b.dataset.tut === 'antes') { paso -= 1; pintar(); return; }
+        if (paso === PASOS_TUTORIAL.length - 1) return cerrar();
+        paso += 1; pintar();
+    });
+    pintar();
+    document.body.appendChild(capa);
+}
+
+function tutorialPrimeraVez() {
+    let visto = null;
+    try { visto = localStorage.getItem('dasna-tutorial'); } catch (e) { visto = 'visto'; }
+    if (visto) return;
+    setTimeout(abrirTutorial, 700);
+}
+
+// ============================================================
 // Arranque
 // ============================================================
 
@@ -1787,6 +1837,9 @@ async function iniciar() {
 
     window.addEventListener('hashchange', enrutar);
     enrutar();
+
+    // Tutorial: solo la primera vez que se entra (se repite desde Ayuda)
+    tutorialPrimeraVez();
 
     // El día pasa solo cuando cambia la fecha del dispositivo
     let diaEnPantalla = claveDia(new Date());
