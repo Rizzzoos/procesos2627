@@ -994,13 +994,13 @@ async function fichaComidas(cont) {
             ['cafe', '☕'], ['zumo', '🥤'], ['refresco', '🥤'], ['cerveza', '🍺'], ['vino', '🍷'], ['agua', '💧'],
             ['aceite', '🫗'], ['vinagre', '🫙'], ['miel', '🍯'], ['azucar', '🍬'], ['salsa', '🥫'], ['sal', '🧂'], ['pimienta', '🌶️'], ['chile', '🌶️'], ['especia', '🌶️'], ['sopa', '🍲'], ['conserva', '🥫'],
             ['chocolate', '🍫'], ['galleta', '🍪'], ['bizcocho', '🧁'], ['pastel', '🧁'], ['tarta', '🧁'], ['helado', '🍨'], ['pizza', '🍕'], ['taco', '🌮'], ['sushi', '🍣'],
+            ['albondiga', '🍝'], ['tortilla', '🍳'], ['estofado', '🍲'], ['guiso', '🍲'], ['croqueta', '🥟'], ['empanadilla', '🥟'], ['bolon', '🥟'],
         ];
         const dibujoDe = (nombre) => {
             const n = normal(nombre);
             const hallado = DIBUJOS.find(([clave]) => n.includes(clave));
             return hallado ? hallado[1] : '🍽️';
         };
-        const dibujoPrep = (c) => (c === 'congelado' ? '🧊' : c === 'taper' ? '🫙' : '🥡');
 
         const filaIng = (i, ing) => `
             <div class="com-ing-fila">
@@ -1059,7 +1059,7 @@ async function fichaComidas(cont) {
             while (baldas.length < 4) baldas.push([]);
             const item = (a) => `<button type="button" class="nevera-item" data-pestana="despensa" title="${esc(a.datos.nombre)}">${dibujoDe(a.datos.nombre)}</button>`;
             const congs = preparados.slice(0, 3);
-            const dibujoCong = (p) => `<button type="button" class="nevera-item" data-pestana="despensa" title="${esc(p.datos.nombre)}">${dibujoPrep(p.datos.categoria)}</button>`;
+            const dibujoCong = (p) => `<button type="button" class="nevera-item" data-pestana="despensa" title="${esc(p.datos.nombre)}">${dibujoDe(p.datos.nombre)}</button>`;
             return `
             <div class="nevera" aria-label="Tu nevera">
                 <p class="nevera-titulo">Tu nevera</p>

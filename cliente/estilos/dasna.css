@@ -418,7 +418,6 @@ body {
     .com-izq { position: static; }
     .com-menu { flex-direction: row; flex-wrap: wrap; }
     .com-menu button { text-align: center; }
-    .nevera-aparato { max-width: 250px; }
 }
 .com-ing-fila { display: grid; grid-template-columns: 1fr 90px 90px 34px; gap: 0.5rem; margin-bottom: 0.5rem; }
 .com-ing-quitar, .com-item-x {
@@ -510,6 +509,7 @@ body {
 /* Nevera dibujada: puerta abierta a la izquierda e interior con baldas */
 .nevera-titulo { margin: 0 0 0.45rem; font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--texto-tenue); }
 .nevera-aparato { position: relative; height: 245px; max-width: 180px; perspective: 700px; }
+@media (max-width: 760px) { .nevera-aparato { max-width: 220px; margin: 0 auto; } }
 .nevera-cuerpo {
     position: absolute;
     right: 0;
