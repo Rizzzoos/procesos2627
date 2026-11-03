@@ -18,13 +18,14 @@
     --texto-suave: rgba(255, 255, 255, 0.88);
     --texto-tenue: rgba(255, 255, 255, 0.62);
 
-    /* Cristal azul eléctrico: recuadros vivos sobre el aura clarito */
-    --cristal: rgba(0, 70, 220, 0.72);
-    --cristal-fuerte: rgba(0, 56, 190, 0.85);
-    --cristal-hover: rgba(20, 95, 255, 0.8);
+    /* Cristal ahumado: vidrio azul marino translúcido — oscuro para
+       leer, pero menos cargado que al principio */
+    --cristal: rgba(11, 26, 56, 0.5);
+    --cristal-fuerte: rgba(8, 20, 46, 0.64);
+    --cristal-hover: rgba(17, 38, 78, 0.58);
     --cristal-borde: rgba(255, 255, 255, 0.45);
-    --sombra: 0 10px 32px rgba(0, 80, 255, 0.25);
-    --sombra-alta: 0 16px 44px rgba(0, 70, 255, 0.35);
+    --sombra: 0 10px 32px rgba(0, 0, 0, 0.18);
+    --sombra-alta: 0 16px 44px rgba(0, 0, 0, 0.28);
 
     /* Acentos */
     --acento: #2dd4bf;      /* turquesa */
@@ -417,7 +418,7 @@ body {
     .com-izq { position: static; }
     .com-menu { flex-direction: row; flex-wrap: wrap; }
     .com-menu button { text-align: center; }
-    .nevera { max-width: 260px; margin: 0 auto; }
+    .nevera-aparato { max-width: 250px; }
 }
 .com-ing-fila { display: grid; grid-template-columns: 1fr 90px 90px 34px; gap: 0.5rem; margin-bottom: 0.5rem; }
 .com-ing-quitar, .com-item-x {
@@ -508,7 +509,7 @@ body {
 
 /* Nevera dibujada: puerta abierta a la izquierda e interior con baldas */
 .nevera-titulo { margin: 0 0 0.45rem; font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--texto-tenue); }
-.nevera-aparato { position: relative; height: 330px; perspective: 700px; }
+.nevera-aparato { position: relative; height: 245px; max-width: 180px; perspective: 700px; }
 .nevera-cuerpo {
     position: absolute;
     right: 0;
@@ -562,25 +563,16 @@ body {
     border: none;
     cursor: pointer;
     font-family: inherit;
-    font-size: 0.56rem;
-    font-weight: 700;
-    line-height: 1.1;
-    padding: 0.16rem 0.35rem;
-    border-radius: 5px;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: #0b1a33;
-    background: #93c5fd;
+    font-size: 0.98rem;
+    line-height: 1.15;
+    padding: 0.08rem 0.26rem;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
     transition: transform var(--velocidad) ease;
 }
-.nevera-item:hover { transform: scale(1.07); }
-.nevera-item:nth-child(5n+2) { background: #f9a8d4; }
-.nevera-item:nth-child(5n+3) { background: #fde047; }
-.nevera-item:nth-child(5n+4) { background: #86efac; }
-.nevera-item:nth-child(5n+5) { background: #c4b5fd; }
-.nevera-cong .nevera-item { background: #dbeafe; }
+.nevera-item:hover { transform: scale(1.14); }
+.nevera-cong .nevera-item { background: rgba(240, 249, 255, 0.95); }
 .nevera-mas { font-size: 0.6rem; color: var(--texto-tenue); padding-left: 2px; }
 .nevera-vacia { font-size: 0.62rem; color: rgba(255, 255, 255, 0.65); margin: 4px 2px; width: 100%; }
 .nevera-cong .nevera-vacia { color: #0c2d5a; margin: 2px; }
@@ -764,7 +756,7 @@ body {
     font-weight: 800;
     padding: 0.1rem 0.42rem;
     border-radius: 999px;
-    background: rgba(0, 30, 95, 0.6);
+    background: rgba(6, 16, 38, 0.55);
     border: 1px solid var(--cristal-borde);
     color: var(--texto-suave);
     letter-spacing: 0.3px;
@@ -815,11 +807,11 @@ body {
 
 .etiqueta { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--texto-tenue); margin-bottom: 0.35rem; }
 
-/* Entradas: leche azul eléctrico con texto blanco (legible sobre el aura) */
+/* Entradas: leche oscura con texto blanco (legible sobre el aura) */
 .entrada, textarea.entrada, select.entrada {
     width: 100%;
     padding: 0.7rem 0.85rem;
-    background: rgba(0, 34, 105, 0.5);
+    background: rgba(6, 16, 38, 0.42);
     border: 1px solid var(--cristal-borde);
     border-radius: 14px;
     font-size: 0.95rem;
@@ -851,7 +843,7 @@ textarea.entrada { min-height: 92px; resize: vertical; font-family: Consolas, mo
 .tabla tbody tr:hover { background: var(--cristal-hover); }
 
 /* ---------- Registros del motor ---------- */
-.registro-datos { margin: 0.5rem 0 0; padding: 0.6rem 0.8rem; background: rgba(0, 34, 105, 0.5); border-radius: 12px; font-family: Consolas, monospace; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; color: var(--texto-suave); }
+.registro-datos { margin: 0.5rem 0 0; padding: 0.6rem 0.8rem; background: rgba(6, 16, 38, 0.42); border-radius: 12px; font-family: Consolas, monospace; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; color: var(--texto-suave); }
 [data-tema='oscuro'] .registro-datos { background: rgba(15, 23, 42, 0.6); }
 
 /* ---------- Buscador universal ---------- */

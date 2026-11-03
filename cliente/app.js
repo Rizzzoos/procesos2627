@@ -980,6 +980,27 @@ async function fichaComidas(cont) {
             ...preparados.map((p) => normal(p.datos.nombre))
         ]);
         const categoriaPrep = (c) => (c ? `<span class="pista">(${esc(c)})</span>` : '');
+        // Dibujo de comida para la nevera: se busca por palabras del nombre
+        const DIBUJOS = [
+            ['pollo', '🍗'], ['pechuga', '🍗'], ['pavo', '🍗'],
+            ['ternera', '🥩'], ['carne', '🥩'], ['lomo', '🥩'], ['chuleta', '🥩'], ['hamburguesa', '🥩'], ['picada', '🥩'], ['cerdo', '🥩'], ['costilla', '🍖'], ['cordero', '🍖'], ['conejo', '🍖'],
+            ['jamon', '🥓'], ['chorizo', '🥓'], ['salchichon', '🥓'], ['bacon', '🥓'], ['beicon', '🥓'],
+            ['bacalao', '🐟'], ['merluza', '🐟'], ['pescado', '🐟'], ['atun', '🐟'], ['salmon', '🍤'], ['gamba', '🍤'], ['marisco', '🍤'], ['mejillon', '🦪'],
+            ['huevo', '🥚'],
+            ['queso', '🧀'], ['mantequilla', '🧈'], ['leche', '🥛'], ['yogur', '🍶'], ['nata', '🥛'],
+            ['tomate', '🍅'], ['patata', '🥔'], ['papa', '🥔'], ['cebolla', '🧅'], ['ajo', '🧄'], ['zanahoria', '🥕'], ['lechuga', '🥬'], ['espinaca', '🥬'], ['brocoli', '🥦'], ['calabacin', '🥒'], ['pepino', '🥒'], ['pimiento', '🫑'], ['maiz', '🌽'], ['champinon', '🍄'], ['seta', '🍄'], ['apio', '🥬'], ['remolacha', '🥗'],
+            ['garbanzo', '🫘'], ['lenteja', '🫘'], ['alubia', '🫘'], ['judia', '🫘'], ['arroz', '🍚'], ['pasta', '🍝'], ['espagueti', '🍝'], ['macarron', '🍝'], ['fideo', '🍜'], ['pan', '🍞'], ['harina', '🌾'], ['avena', '🌾'], ['cereal', '🥣'],
+            ['platano', '🍌'], ['manzana', '🍎'], ['pera', '🍐'], ['naranja', '🍊'], ['limon', '🍋'], ['fresa', '🍓'], ['frambuesa', '🍇'], ['uva', '🍇'], ['melocoton', '🍑'], ['sandia', '🍉'], ['melon', '🍉'], ['pina', '🍍'], ['mango', '🥭'], ['cereza', '🍒'], ['coco', '🥥'], ['kiwi', '🥝'], ['aguacate', '🥑'],
+            ['cafe', '☕'], ['zumo', '🥤'], ['refresco', '🥤'], ['cerveza', '🍺'], ['vino', '🍷'], ['agua', '💧'],
+            ['aceite', '🫗'], ['vinagre', '🫙'], ['miel', '🍯'], ['azucar', '🍬'], ['salsa', '🥫'], ['sal', '🧂'], ['pimienta', '🌶️'], ['chile', '🌶️'], ['especia', '🌶️'], ['sopa', '🍲'], ['conserva', '🥫'],
+            ['chocolate', '🍫'], ['galleta', '🍪'], ['bizcocho', '🧁'], ['pastel', '🧁'], ['tarta', '🧁'], ['helado', '🍨'], ['pizza', '🍕'], ['taco', '🌮'], ['sushi', '🍣'],
+        ];
+        const dibujoDe = (nombre) => {
+            const n = normal(nombre);
+            const hallado = DIBUJOS.find(([clave]) => n.includes(clave));
+            return hallado ? hallado[1] : '🍽️';
+        };
+        const dibujoPrep = (c) => (c === 'congelado' ? '🧊' : c === 'taper' ? '🫙' : '🥡');
 
         const filaIng = (i, ing) => `
             <div class="com-ing-fila">
@@ -1030,14 +1051,15 @@ async function fichaComidas(cont) {
         // --- Nevera dibujada: lo que tienes en casa, debajo del menú ---
         const enCasa = alimentos.filter((a) => a.datos.enCasa);
         const nevera = (() => {
-            const visibles = enCasa.slice(0, 12);
+            const visibles = enCasa.slice(0, 16);
             const resto = enCasa.length - visibles.length;
             const porBalda = Math.max(1, Math.ceil(visibles.length / 4));
             const baldas = [];
             for (let i = 0; i < visibles.length; i += porBalda) baldas.push(visibles.slice(i, i + porBalda));
             while (baldas.length < 4) baldas.push([]);
-            const item = (a) => `<button type="button" class="nevera-item" data-pestana="despensa" title="${esc(a.datos.nombre)}">${esc(a.datos.nombre)}</button>`;
+            const item = (a) => `<button type="button" class="nevera-item" data-pestana="despensa" title="${esc(a.datos.nombre)}">${dibujoDe(a.datos.nombre)}</button>`;
             const congs = preparados.slice(0, 3);
+            const dibujoCong = (p) => `<button type="button" class="nevera-item" data-pestana="despensa" title="${esc(p.datos.nombre)}">${dibujoPrep(p.datos.categoria)}</button>`;
             return `
             <div class="nevera" aria-label="Tu nevera">
                 <p class="nevera-titulo">Tu nevera</p>
@@ -1048,7 +1070,7 @@ async function fichaComidas(cont) {
                         <span class="nevera-jarra j3"></span>
                     </div>
                     <div class="nevera-cuerpo">
-                        <div class="nevera-cong">${congs.length ? congs.map(item).join('') : '<span class="nevera-vacia">Congelador vacío</span>'}</div>
+                        <div class="nevera-cong">${congs.length ? congs.map(dibujoCong).join('') : '<span class="nevera-vacia">Congelador vacío</span>'}</div>
                         ${baldas.map((b) => `<div class="nevera-balda">${b.map(item).join('')}</div>`).join('')}
                         ${resto > 0 ? `<div class="nevera-mas">+${resto} más…</div>` : ''}
                         ${!enCasa.length ? '<p class="nevera-vacia">La nevera está vacía: apunta alimentos en Despensa.</p>' : ''}
