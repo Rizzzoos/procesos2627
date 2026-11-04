@@ -884,7 +884,7 @@ async function fichaAhorros(cont) {
                 </div>
                 ${lista.length ? `<div class="ahorro-lista">${lista.map((x) => `
                     <div class="ahorro-fila">
-                        <span class="chip">📅 ${fechaCorta(x.fecha)}</span>
+                        <span class="ahorro-fecha">${fechaCorta(x.fecha)}</span>
                         <span class="ahorro-concepto">${esc((x.datos && x.datos.concepto) || '(sin concepto)')}</span>
                         <span class="ahorro-cantidad-ver ${tipo}">${tipo === 'gasto' ? '−' : '+'}${eur(Number(x.datos && x.datos.cantidad) || 0)}</span>
                         <button class="boton-peligro" data-borrar="${x.id}">Borrar</button>
@@ -903,8 +903,8 @@ async function fichaAhorros(cont) {
                 <div><p class="pista" style="margin:0">Saldo del mes</p><strong class="${saldo >= 0 ? 'verde' : 'rojo'}">${eur(saldo)}</strong></div>
             </div>
             <div class="dos-flex">
-                ${pintarSeccion('gasto', '💸 Gastos', gastos)}
-                ${pintarSeccion('ingreso', '💰 Ingresos', ingresos)}
+                ${pintarSeccion('gasto', 'Gastos', gastos)}
+                ${pintarSeccion('ingreso', 'Ingresos', ingresos)}
             </div>`;
 
         for (const tipo of ['gasto', 'ingreso']) {
@@ -950,6 +950,8 @@ const ICONO_MENU = {
     despensa: svgLinea('<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z"/><path d="M2 21c0-3 1.9-5.4 5.1-6C9.5 14.5 12 13 13 12"/>'),
     compra: svgLinea('<path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.6a2 2 0 0 0 2-1.6L23 6H6"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/>')
 };
+// Papelera de línea para borrar en Despensa: icono sobre recuadro rojo
+const SVG_PAPELERA = svgLinea('<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>');
 
 // Reduce la foto del ticket en el navegador antes de subirla:
 // una foto de móvil son varios MB y así viaja en cientos de KB.
@@ -997,9 +999,10 @@ async function fichaComidas(cont) {
         const normal = (s) => String(s == null ? '' : s)
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .trim().toLowerCase();
-        // Valoración escrita con color (sin puntos crípticos): Me gusta / Regular / Malo
-        const valorTxt = (v) => v
-            ? `<span class="chip ${v === 'me gusta' ? 'chip-ok' : v === 'malo' ? 'chip-peligro' : 'chip-med'}">${v === 'me gusta' ? 'Me gusta' : v === 'malo' ? 'Malo' : 'Regular'}</span>`
+        // Valoración en la fila: punto de color. El formulario enseña cada
+        // punto junto a su palabra, así que el punto solo se entiende solo
+        const valorPunto = (v) => v
+            ? `<span class="punto ${v === 'me gusta' ? 'p-ok' : v === 'malo' ? 'p-malo' : 'p-med'}" title="${v === 'me gusta' ? 'Me gusta' : v === 'malo' ? 'Malo' : 'Regular'}"></span>`
             : '';
         // Lo que "tienes en casa": alimentos marcados + tapers/congelados
         const tengo = new Set([
@@ -1169,22 +1172,24 @@ async function fichaComidas(cont) {
                     <div class="com-alta">
                         <input class="entrada" id="a-nombre" placeholder="Ej: Tomate frito" value="${esc(ea ? ea.datos.nombre : '')}" autocomplete="off">
                         <input class="entrada" id="a-unidad" list="unidades-dl" placeholder="Unidad (ud, kg…)" value="${esc(ea ? (ea.datos.unidad || '') : '')}" autocomplete="off">
-                        <select class="entrada" id="a-valor">
-                            <option value="" ${ea && !ea.datos.valoracion ? 'selected' : ''}>Sin valorar</option>
-                            <option value="me gusta" ${ea && ea.datos.valoracion === 'me gusta' ? 'selected' : ''}>Me gusta</option>
-                            <option value="regular" ${ea && ea.datos.valoracion === 'regular' ? 'selected' : ''}>Regular</option>
-                            <option value="malo" ${ea && ea.datos.valoracion === 'malo' ? 'selected' : ''}>Malo</option>
-                        </select>
-                        <label class="com-check"><input type="checkbox" id="a-casa" ${ea ? (ea.datos.enCasa ? 'checked' : '') : 'checked'}> Lo tengo en casa ahora</label>
+                        <div class="valor-radios" id="a-valor" role="radiogroup" aria-label="Valoración">
+                            ${[['', 'p-nada'], ['me gusta', 'p-ok'], ['regular', 'p-med'], ['malo', 'p-malo']]
+                                .map(([v, p]) => {
+                                    const t = v === '' ? 'Sin valorar' : v === 'me gusta' ? 'Me gusta' : v === 'malo' ? 'Malo' : 'Regular';
+                                    const sel = (ea && ea.datos.valoracion ? ea.datos.valoracion : '') === v;
+                                    return `<label class="vr"><input type="radio" name="a-valor" value="${v}" ${sel ? 'checked' : ''}><span class="punto ${p}"></span>${t}</label>`;
+                                }).join('')}
+                        </div>
+                        <label class="com-check"><input type="checkbox" id="a-casa" ${ea ? (ea.datos.enCasa ? 'checked' : '') : 'checked'}> En casa</label>
                         <button class="boton-primario" id="a-guardar">${ea ? 'Guardar cambios' : 'Añadir alimento'}</button>
                         ${ea ? '<button class="boton-suave" id="a-cancelar">Cancelar</button>' : ''}
                     </div>
                     ${alimentos.length ? `<div class="com-lista">${alimentos.map((x) => `
                         <div class="com-fila${ea && ea.id === x.id ? ' editando' : ''}">
                             <span>${esc(x.datos.nombre)}${x.datos.unidad ? ` <span class="pista">(${esc(x.datos.unidad)})</span>` : ''}</span>
-                            <span class="com-fila-acciones">${valorTxt(x.datos.valoracion)}${x.datos.enCasa ? ' <span class="chip">en casa</span>' : ''}
+                            <span class="com-fila-acciones">${valorPunto(x.datos.valoracion)}${x.datos.enCasa ? ' <span class="chip">en casa</span>' : ''}
                                 <button class="com-editar" data-editar-alimento="${x.id}" title="Editar">Editar</button>
-                                <button class="com-x" data-borrar-alimento="${x.id}" title="Borrar">Borrar</button></span>
+                                <button class="com-papelera" data-borrar-alimento="${x.id}" title="Borrar">${SVG_PAPELERA}</button></span>
                         </div>`).join('')}</div>` : '<p class="pista">Sin alimentos todavía.</p>'}
                 </div>
                 <div class="tarjeta">
@@ -1208,7 +1213,7 @@ async function fichaComidas(cont) {
                             <span class="com-fila-acciones">
                                 <button class="boton-suave" data-usar="${x.id}">Usada</button>
                                 <button class="com-editar" data-editar-preparado="${x.id}" title="Editar">Editar</button>
-                                <button class="com-x" data-borrar-preparado="${x.id}" title="Borrar">Borrar</button>
+                                <button class="com-papelera" data-borrar-preparado="${x.id}" title="Borrar">${SVG_PAPELERA}</button>
                             </span>
                         </div>`).join('')}</div>` : '<p class="pista">No tienes nada preparado.</p>'}
                 </div>
@@ -1217,14 +1222,23 @@ async function fichaComidas(cont) {
 
         // --- Pestaña Ideas ---
         const pintarIdeas = () => {
-            const rapidos = preparados.map((p) => `
-                <div class="com-fila-card">
-                    <div class="com-fila-cab"><strong>${esc(p.datos.nombre)}</strong>
-                        <span class="chip">×${Number(p.datos.raciones) || 1} raciones</span></div>
-                    <p class="pista" style="margin:0.4rem 0 0">Ya lo tienes en casa: opción rápida de hoy.</p>
-                </div>`).join('');
+            // Rápidas con lo que ya tienes: recetas de ≤15 min cuyos
+            // ingredientes están todos en casa (no solo lo del congelador)
+            const rapidas = comidas.filter((x) => {
+                const ings = (x.datos && x.datos.ingredientes) || [];
+                return (Number(x.datos.minutos) || 0) <= 15
+                    && ings.length
+                    && ings.every((i) => tengo.has(normal(i.nombre)));
+            });
+            const rapidoHtml = rapidas.map((x) => {
+                const d = x.datos;
+                return `<div class="com-fila-card">
+                    <div class="com-fila-cab"><strong>${esc(d.nombre)}</strong><span class="chip">${Number(d.minutos) || '?'} min</span></div>
+                    <div class="com-ings">${(d.ingredientes || []).map((i) => `<span class="chip chip-ok">${esc(i.nombre)}</span>`).join(' ')}</div>
+                </div>`;
+            }).join('');
             return `
-                ${preparados.length ? `<div class="tarjeta"><h3>Rápido: ya lo tienes</h3>${rapidos}</div>` : ''}
+                ${rapidas.length ? `<div class="tarjeta"><h3>Recetas rápidas con ingredientes que tengas</h3>${rapidoHtml}</div>` : ''}
                 <div class="tarjeta">
                     <h3>Ideas para cocinar</h3>
                     <div class="com-filtros">
@@ -1274,7 +1288,7 @@ async function fichaComidas(cont) {
                         </div></div>`
                     : `<div class="tarjeta">
                         <h3>He leído esto del ticket</h3>
-                        <p class="pista">Quita lo que esté mal: lo que quede entra a la despensa con «Lo tengo en casa ahora» marcado.</p>
+                        <p class="pista">Quita lo que esté mal: lo que quede entra a la despensa con «En casa» marcado.</p>
                         <div class="ticket-lineas">${ticket.lineas.map((l, i) => `
                             <div class="ticket-linea">
                                 <span class="ticket-nombre">${esc(l.nombre)}</span>
@@ -1426,10 +1440,11 @@ async function fichaComidas(cont) {
                 // Mismo alimento aunque cambien mayúsculas o tildes = el mismo
                 const repetido = alimentos.find((a) => a.id !== (ea && ea.id) && normal(a.datos.nombre) === normal(nombre));
                 if (repetido) return aviso(`Ya tienes «${repetido.datos.nombre}» — edítalo en vez de repetirlo.`, 'error');
+                const vSel = q('#a-valor input:checked');
                 const datos = {
                     tipo: 'alimento', nombre,
                     unidad: q('#a-unidad').value.trim(),
-                    valoracion: q('#a-valor').value || null,
+                    valoracion: vSel && vSel.value ? vSel.value : null,
                     enCasa: q('#a-casa').checked
                 };
                 const res = ea
@@ -1911,7 +1926,7 @@ const PASOS_TUTORIAL = [
 
 const PASOS_COMIDAS = [
     ['Tu menú', 'Ideas te enseña lo que ya tienes y recetas rápidas; Comidas guarda tus platos; Despensa es tu alacena; Compra es la lista con super y precio.'],
-    ['Tu nevera', 'Debajo del menú está tu nevera: todo lo que guardas con «Lo tengo en casa ahora» sale dibujado ahí. Toca un dibujo y saltas a la despensa. Se repinta sola: si añades o borras comida, cambia al momento.'],
+    ['Tu nevera', 'Debajo del menú está tu nevera: todo lo que guardas con «En casa» sale dibujado ahí. Toca un dibujo y saltas a la despensa. Se repinta sola: si añades o borras comida, cambia al momento.'],
     ['Añadir y corregir', 'Cada sección tiene su formulario arriba: escribe y guarda. En cada fila encuentras Editar y Borrar.']
 ];
 
