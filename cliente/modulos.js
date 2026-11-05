@@ -42,7 +42,9 @@ function abrirModal(titulo, html) {
             <div class="modal-cuerpo">${html}</div>
         </div>`;
     document.body.appendChild(capa);
-    const cerrar = () => capa.remove();
+    const cerrar = () => { capa.remove(); window.removeEventListener('hashchange', cerrar); };
+    // Si cambias de apartado (barra inferior, buscador, atrás), la ventana se cierra
+    window.addEventListener('hashchange', cerrar);
     capa.querySelector('[data-cerrar]').addEventListener('click', cerrar);
     capa.addEventListener('click', (e) => { if (e.target === capa) cerrar(); });
     return { caja: capa.querySelector('.modal-cuerpo'), cerrar };
