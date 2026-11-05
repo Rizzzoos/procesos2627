@@ -1896,8 +1896,40 @@ const VISTAS = {
     ayuda: vistaAyuda
 };
 
+// ============================================================
+// Barra inferior (solo móvil): 4 accesos + «Más» (abre el buscador)
+// ============================================================
+const ACCESOS_MOVIL = [
+    { id: 'panel', nombre: 'Panel' },
+    { id: 'm/estudio', nombre: 'Estudio' },
+    { id: 'm/eventos', nombre: 'Eventos' },
+    { id: 'm/comidas', nombre: 'Comidas' }
+];
+const TRAZO_MAS = '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>';
+
+function pintarBarraInferior() {
+    if (document.getElementById('barra-inferior')) return;
+    const claves = new Set(modulos.map((m) => m.clave));
+    const nav = document.createElement('nav');
+    nav.id = 'barra-inferior';
+    nav.className = 'barra-inferior';
+    nav.setAttribute('aria-label', 'Navegación principal');
+    nav.innerHTML = ACCESOS_MOVIL
+        .filter((a) => !a.id.startsWith('m/') || claves.has(a.id.slice(2)))
+        .map((a) => `<a href="#/${a.id}" data-ruta="${a.id}">${iconoDe(a.id)}<span>${a.nombre}</span></a>`).join('')
+        + `<button type="button" id="barra-mas"><span class="icono-linea"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TRAZO_MAS}</svg></span><span>Más</span></button>`;
+    document.body.appendChild(nav);
+    nav.querySelector('#barra-mas').addEventListener('click', abrirBuscador);
+}
+
+function marcarBarraInferior(ruta) {
+    document.querySelectorAll('#barra-inferior [data-ruta]').forEach((a) =>
+        a.classList.toggle('activo', a.dataset.ruta === ruta));
+}
+
 function enrutar() {
     const limpio = location.hash.replace(/^#\/?/, '') || 'panel';
+    marcarBarraInferior(limpio);
     document.getElementById('volver').classList.toggle('oculto', limpio === 'panel');
     if (['ayuda', 'archivo', 'usuarios'].includes(limpio) && !esAdmin()) {
         location.hash = '#/panel';
@@ -1975,7 +2007,8 @@ function abrirBuscador() {
     const input = document.getElementById('buscador-input');
     input.value = '';
     pintarBuscador();
-    input.focus();
+    // En pantallas táctiles no se enfoca (si no, salta el teclado al abrir «Más»)
+    if (!window.matchMedia("(pointer: coarse)").matches) input.focus();
 }
 
 function cerrarBuscador() {
@@ -2051,6 +2084,7 @@ async function iniciar() {
     const r = await rest.obtenerModulos();
     modulos = (r && r.exito && r.modulos) || [];
 
+    pintarBarraInferior();
     window.addEventListener('hashchange', enrutar);
     enrutar();
 

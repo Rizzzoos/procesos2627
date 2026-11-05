@@ -1197,3 +1197,45 @@ body { animation-duration: 120s; letter-spacing: -0.005em; }
 
 /* Dictado por voz: solo en el móvil (pantallas táctiles) */
 @media (hover: hover) and (pointer: fine) { .boton-voz { display: none; } }
+
+/* ---------- Barra inferior (solo móvil) ---------- */
+.barra-inferior { display: none; }
+@media (max-width: 720px) {
+    .barra-inferior {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        justify-content: space-around;
+        gap: 0.2rem;
+        padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom));
+        background: var(--cristal-fuerte);
+        backdrop-filter: blur(var(--blur));
+        -webkit-backdrop-filter: blur(var(--blur));
+        border-top: 1px solid var(--cristal-borde);
+    }
+    .barra-inferior a, .barra-inferior button {
+        flex: 1 1 0;
+        min-height: 48px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.2rem;
+        background: none;
+        border: none;
+        border-radius: 12px;
+        color: var(--texto-tenue);
+        font-family: inherit;
+        font-size: 0.66rem;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .barra-inferior .icono-linea svg { width: 1.35rem; height: 1.35rem; }
+    .barra-inferior .activo { color: var(--acento); }
+    .barra-inferior a:active, .barra-inferior button:active { background: var(--cristal); }
+    /* Con la barra abajo, el «← Panel» de arriba sobra */
+    .volver { display: none; }
+    #toasts { bottom: calc(5rem + env(safe-area-inset-bottom)); }
+}
