@@ -69,7 +69,7 @@ body {
     margin: 0;
     height: 100vh;
     height: 100dvh;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: var(--texto);
     background: linear-gradient(-45deg, var(--aura-1), var(--aura-2), var(--aura-3), var(--aura-4));
     background-size: 400% 400%;
@@ -1175,3 +1175,22 @@ textarea.entrada { min-height: 92px; resize: vertical; }
 .ev-fila .chip { flex: 0 0 auto; }
 @media (prefers-reduced-motion: reduce) { .boton-voz.escuchando { animation: none; } }
 .preview-fecha:empty { display: none; }
+
+/* ---------- Aspecto profesional ---------- */
+/* Mismo aura, más apagada y casi quieta (tema claro); el oscuro ya es sobrio */
+:root:not([data-tema='oscuro']) body {
+    background: linear-gradient(-45deg,
+        color-mix(in oklab, var(--aura-1) 58%, #3b4a63),
+        color-mix(in oklab, var(--aura-2) 58%, #3b4a63),
+        color-mix(in oklab, var(--aura-3) 58%, #3b4a63),
+        color-mix(in oklab, var(--aura-4) 58%, #3b4a63));
+    background-size: 220% 220%;
+}
+body { animation-duration: 120s; letter-spacing: -0.005em; }
+#fondo-estelas { opacity: 0.3; }
+/* Iconos de línea de los módulos */
+.icono-linea { display: inline-flex; }
+.icono-linea svg { width: 1em; height: 1em; }
+.caja-icono .icono-linea svg { width: 1.7rem; height: 1.7rem; stroke-width: 1.6; }
+.buscador-opcion .icono .icono-linea svg { width: 1.15rem; height: 1.15rem; vertical-align: middle; }
+.cal-item .icono-linea svg { width: 1.1rem; height: 1.1rem; }

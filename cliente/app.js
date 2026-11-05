@@ -42,6 +42,35 @@ const GRUPOS = [
     }
 ];
 
+
+// --- Iconos de línea (a trazo, un solo estilo) para cada apartado ---
+const TRAZOS_ICONO = {
+    panel: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    estudio: '<path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/>',
+    comidas: '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/>',
+    viajes: '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
+    eventos: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="m12 13 1.1 2.2 2.4.3-1.7 1.7.4 2.4-2.2-1.2-2.2 1.2.4-2.4-1.7-1.7 2.4-.3z"/>',
+    agua: '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
+    sueno: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+    gimnasio: '<path d="M6 5v14"/><path d="M18 5v14"/><path d="M3 8v8"/><path d="M21 8v8"/><path d="M6 12h12"/>',
+    diario: '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 7h7"/>',
+    outfits: '<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>',
+    visionboard: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+    ahorros: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+    pelislibros: '<rect x="2" y="2" width="20" height="20" rx="2.2"/><path d="M7 2v20"/><path d="M17 2v20"/><path d="M2 12h20"/><path d="M2 7h5"/><path d="M2 17h5"/><path d="M17 17h5"/><path d="M17 7h5"/>',
+    archivo: '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+    ayuda: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+    usuarios: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
+};
+TRAZOS_ICONO.registros = TRAZOS_ICONO.pelislibros;
+
+// Icono de línea de un apartado (id 'm/clave', 'clave' o 'archivo'…); si no hay, el de siempre
+function iconoDe(id, deRespaldo = '') {
+    const trazo = TRAZOS_ICONO[String(id || '').replace('m/', '')];
+    if (!trazo) return deRespaldo;
+    return `<span class="icono-linea"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${trazo}</svg></span>`;
+}
+
 let sesion = null;   // { email, rol } de /api/auth/me
 let modulos = [];    // módulos activos del usuario (del servidor)
 
@@ -345,7 +374,7 @@ function pintarDetalle() {
     }
     det.innerHTML = delDia.map((r) => `
         <a class="cal-item" href="#/m/${r.clave}">
-            <span>${r.icono}</span>
+            <span>${iconoDe(r.clave, r.icono)}</span>
             <span class="de-modulo">${r.nombre}</span>
             <span class="dato">${resumenDe(r.datos)}</span>
         </a>`).join('');
@@ -402,7 +431,7 @@ function vistaPanel() {
         a.className = 'caja' + (esProximo ? ' proxima' : '');
         a.href = esProximo ? 'javascript:void(0)' : '#/' + meta.id;
         a.title = meta.nombre + (esProximo ? ` — llega en la ${meta.proximo}` : '');
-        a.innerHTML = `<span class="caja-icono">${meta.icono}</span>
+        a.innerHTML = `<span class="caja-icono">${iconoDe(meta.id, meta.icono)}</span>
             <span class="caja-nombre">${meta.nombre}</span>` +
             (esProximo ? `<span class="caja-nota">${meta.proximo}</span>` : '');
 
@@ -1916,7 +1945,7 @@ function pintarBuscador(filtro = '') {
 
     lista.innerHTML = buscadorOpciones.map((o, i) => `
         <li class="buscador-opcion${i === 0 ? ' activo' : ''}${o.proximo ? ' proximo' : ''}" data-i="${i}">
-            <span class="icono">${o.icono}</span><span>${o.nombre}</span>
+            <span class="icono">${iconoDe(o.id, o.icono)}</span><span>${o.nombre}</span>
             <span class="grupo-de">${o.proximo || o.grupo}</span>
         </li>`).join('') || '<li class="buscador-opcion">Sin resultados</li>';
 
