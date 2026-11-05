@@ -47,11 +47,11 @@ async function enviarDatos(ruta) {
         } else {
             // Si hay error, lo mostramos
             mensajeDiv.textContent = resultado.error;
-            mensajeDiv.style.color = 'red';
+            mensajeDiv.style.color = '#fb7185';
         }
     } catch (error) {
         mensajeDiv.textContent = 'Error de conexión con el servidor.';
-        mensajeDiv.style.color = 'red';
+        mensajeDiv.style.color = '#fb7185';
     }
 }
 
@@ -69,12 +69,12 @@ async function crearCuenta() {
     // Validaciones en el cliente (el servidor también valida)
     if (password.length < 8) {
         mensajeDiv.textContent = 'La contraseña debe tener mínimo 8 caracteres.';
-        mensajeDiv.style.color = 'red';
+        mensajeDiv.style.color = '#fb7185';
         return;
     }
     if (password !== password2) {
         mensajeDiv.textContent = 'Las contraseñas no coinciden.';
-        mensajeDiv.style.color = 'red';
+        mensajeDiv.style.color = '#fb7185';
         return;
     }
 
@@ -96,11 +96,11 @@ async function crearCuenta() {
             mensajeDiv.style.color = '#4ade80'; // verde para éxito
         } else {
             mensajeDiv.textContent = resultado.error;
-            mensajeDiv.style.color = 'red';
+            mensajeDiv.style.color = '#fb7185';
         }
     } catch (error) {
         mensajeDiv.textContent = 'Error de conexión con el servidor.';
-        mensajeDiv.style.color = 'red';
+        mensajeDiv.style.color = '#fb7185';
     }
 }
 
@@ -118,14 +118,14 @@ function mostrarResultadoUrl() {
     if (!resultado) return;
 
     const mensajes = {
-        'confirmada': ['✅ Cuenta confirmada. Ya puedes iniciar sesión.', '#4ade80'],
-        'error': ['El enlace de confirmación no es válido o ha caducado. Regístrate de nuevo.', 'orange'],
-        'google_denegado': ['Has cancelado el inicio de sesión con Google.', 'orange'],
-        'oauth_no_configurado': ['El inicio de sesión con Google no está configurado en el servidor.', 'orange'],
-        'oauth_fallo': ['No se pudo completar el inicio de sesión con Google. Inténtalo de nuevo.', 'orange'],
-        'codigo_ausente': ['Google no devolvió el código de autorización. Inténtalo de nuevo.', 'orange']
+        'confirmada': ['Cuenta confirmada. Ya puedes iniciar sesión.', '#4ade80'],
+        'error': ['El enlace de confirmación no es válido o ha caducado. Regístrate de nuevo.', '#fbbf24'],
+        'google_denegado': ['Has cancelado el inicio de sesión con Google.', '#fbbf24'],
+        'oauth_no_configurado': ['El inicio de sesión con Google no está configurado en el servidor.', '#fbbf24'],
+        'oauth_fallo': ['No se pudo completar el inicio de sesión con Google. Inténtalo de nuevo.', '#fbbf24'],
+        'codigo_ausente': ['Google no devolvió el código de autorización. Inténtalo de nuevo.', '#fbbf24']
     };
-    const [texto, color] = mensajes[resultado] || ['Se ha producido un error. Inténtalo de nuevo.', 'red'];
+    const [texto, color] = mensajes[resultado] || ['Se ha producido un error. Inténtalo de nuevo.', '#fb7185'];
 
     mostrarLogin();
     const div = document.getElementById('mensaje');

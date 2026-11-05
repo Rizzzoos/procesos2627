@@ -369,7 +369,7 @@ async function fichaEstudio(cont) {
         env.innerHTML = `
             <div class="tarjeta">
                 <div class="ev-alta">
-                    <input class="entrada" id="est-dictar" placeholder="Escríbelo o díctalo: «tengo examen de Procesos el 12 de diciembre»" autocomplete="off">
+                    <input class="entrada" id="est-dictar" placeholder="Ej: tengo examen de Procesos el 12 de diciembre" autocomplete="off">
                     <button class="boton-suave boton-voz" id="est-voz" title="Dictar" aria-label="Dictar">${SVG_MICRO}</button>
                     <button class="boton-primario" id="est-dictar-ok">Seguir</button>
                 </div>

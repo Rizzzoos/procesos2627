@@ -1194,3 +1194,6 @@ body { animation-duration: 120s; letter-spacing: -0.005em; }
 .caja-icono .icono-linea svg { width: 1.7rem; height: 1.7rem; stroke-width: 1.6; }
 .buscador-opcion .icono .icono-linea svg { width: 1.15rem; height: 1.15rem; vertical-align: middle; }
 .cal-item .icono-linea svg { width: 1.1rem; height: 1.1rem; }
+
+/* Dictado por voz: solo en el móvil (pantallas táctiles) */
+@media (hover: hover) and (pointer: fine) { .boton-voz { display: none; } }

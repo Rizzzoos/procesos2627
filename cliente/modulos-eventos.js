@@ -192,7 +192,7 @@ async function fichaEventos(cont) {
         env.innerHTML = `
             <div class="tarjeta">
                 <h3>Añadir</h3>
-                <p class="pista" style="margin-top:0">Escríbelo o díctalo: «mañana comida con los amigos», «el 24 de diciembre ceno en casa de la abuela», «los últimos tres días de febrero viaje a Roma».</p>
+                <p class="pista" style="margin-top:0">Escríbelo con tus palabras (en el móvil, también por voz): «mañana comida con los amigos», «el 24 de diciembre ceno en casa de la abuela», «los últimos tres días de febrero viaje a Roma».</p>
                 <div class="ev-alta">
                     <input class="entrada" id="ev-texto" placeholder="¿Qué tienes y cuándo?" autocomplete="off">
                     <button class="boton-suave boton-voz" id="ev-voz" title="Dictar" aria-label="Dictar">${SVG_MICRO}</button>

@@ -1824,7 +1824,7 @@ function vistaAyuda() {
     document.getElementById('vista').innerHTML = `
         <div class="rejilla">
             <div class="tarjeta"><h3>⌨️ Atajos</h3><p><strong>Ctrl / ⌘ + K</strong>: buscador universal.<br>
-El tema claro/oscuro lo cambias con 🌙 arriba a la derecha.</p></div>
+El tema claro/oscuro lo cambias con la luna de arriba a la derecha.</p></div>
             <div class="tarjeta"><h3>🧱 Módulos</h3><p>Cada módulo guarda <em>registros</em> (JSON con fecha) en tu cuenta.
             Los recuadros con etiqueta de fase son las ideas planeadas que faltan por construir.</p></div>
             <div class="tarjeta"><h3>✨ Tutorial</h3><p>Si quieres volver a ver las explicaciones:</p>
@@ -2073,12 +2073,14 @@ async function iniciar() {
     programarAvisosViajes();
     programarAvisosAgua();
 
-    // --- Tema claro/oscuro ---
+    // --- Tema claro/oscuro (icono de línea: sol o luna) ---
+    const SVG_SOL = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
+    const SVG_LUNA = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
     const btnTema = document.getElementById('btn-tema');
     const meta = document.getElementById('meta-tema');
     function aplicarTema(tema) {
         document.documentElement.dataset.tema = tema;
-        btnTema.textContent = tema === 'oscuro' ? '☀️' : '🌙';
+        btnTema.innerHTML = tema === 'oscuro' ? SVG_SOL : SVG_LUNA;
         meta.setAttribute('content', tema === 'oscuro' ? '#0b1a33' : '#23a6d5');
         try { localStorage.setItem('dasna-tema', tema); } catch (e) { /* opcional */ }
     }

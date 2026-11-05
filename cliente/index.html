@@ -10,21 +10,38 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
     <!-- PWA: instalable en el móvil como una aplicación -->
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#8b5cf6">
+    <meta name="theme-color" content="#23a6d5">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
+        /* Login con la misma estética que la app: aura apagada, cristal
+           azul marino, letra Inter, texto blanco y acento turquesa */
         :root {
-            --text-main: #2d3748;
-            --text-muted: #4a5568;
-            --glass-bg: rgba(255, 255, 255, 0.25);
-            --glass-border: rgba(255, 255, 255, 0.5);
-            --input-bg: rgba(255, 255, 255, 0.5);
+            --aura-1: #ee7752; --aura-2: #e73c7e; --aura-3: #23a6d5; --aura-4: #23d5ab;
+            --mezcla: #3b4a63;
+            --texto: #ffffff;
+            --texto-suave: rgba(255, 255, 255, 0.88);
+            --texto-tenue: rgba(255, 255, 255, 0.62);
+            --cristal: rgba(11, 26, 56, 0.5);
+            --cristal-fuerte: rgba(8, 20, 46, 0.64);
+            --cristal-borde: rgba(255, 255, 255, 0.45);
+            --acento: #2dd4bf;
+            --entrada: rgba(6, 16, 38, 0.42);
         }
-
-        /* FONDO ANIMADO: Efecto Aura en movimiento */
+        [data-tema='oscuro'] {
+            --aura-1: #0b1a33; --aura-2: #0d2b2b; --aura-3: #0b2530; --aura-4: #1a1440;
+            --mezcla: #0b1a33;
+            --texto: #e9eef8;
+            --texto-suave: #c3cede;
+            --texto-tenue: #8fa1b8;
+            --cristal: rgba(18, 30, 52, 0.79);
+            --cristal-fuerte: rgba(22, 36, 60, 0.91);
+            --cristal-borde: rgba(255, 255, 255, 0.20);
+            --entrada: rgba(15, 23, 42, 0.6);
+        }
+        * { box-sizing: border-box; }
         body {
             margin: 0;
             padding: 1.2rem 1rem;
@@ -33,232 +50,143 @@
             justify-content: center;
             align-items: center;
             font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            
-            /* Colores del aura: Lavanda, melocotón, rosado y azul suave */
-            background: linear-gradient(-45deg, #e0c3fc, #8ec5fc, #ffecd2, #fcb69f);
-            background-size: 400% 400%;
-            animation: auraMovement 12s ease infinite;
-            color: var(--text-main);
+            letter-spacing: -0.005em;
+            color: var(--texto);
+            background: linear-gradient(-45deg,
+                color-mix(in oklab, var(--aura-1) 58%, var(--mezcla)),
+                color-mix(in oklab, var(--aura-2) 58%, var(--mezcla)),
+                color-mix(in oklab, var(--aura-3) 58%, var(--mezcla)),
+                color-mix(in oklab, var(--aura-4) 58%, var(--mezcla)));
+            background-size: 220% 220%;
+            animation: respirar 120s ease-in-out infinite;
         }
-
-        /* Animación fluida del aura */
-        @keyframes auraMovement {
+        @keyframes respirar {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
-
-        /* RECUADRO ESTÉTICO (Glassmorphism avanzado) */
+        @media (prefers-reduced-motion: reduce) { body { animation: none; } }
+        #fondo-estelas { opacity: 0.3; }
         .card {
-            background: rgba(255, 255, 255, 0.52);
+            position: relative;
+            z-index: 1;
+            background: var(--cristal);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
-            padding: 1.8rem 1.6rem;
-            border-radius: 24px;
-            /* Sombra teñida: se ve dónde acaba el recuadro y dónde empieza el fondo */
-            box-shadow: 0 20px 48px rgba(56, 33, 92, 0.32), 0 0 0 1px rgba(94, 63, 150, 0.16);
-            border: 2px solid rgba(255, 255, 255, 0.92);
+            padding: 1.9rem 1.7rem;
+            border-radius: 26px;
+            border: 1px solid var(--cristal-borde);
+            box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
             width: 100%;
-            max-width: 360px;
-            box-sizing: border-box;
+            max-width: 380px;
             text-align: center;
         }
-
-        h1 {
-            font-size: 1.8rem;
-            margin: 0 0 0.3rem 0;
-            font-weight: 300;
-            letter-spacing: 2px;
-        }
-
-        p.subtitle {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-bottom: 1.1rem;
-            font-weight: 400;
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-            text-align: left;
-        }
-
+        h1 { font-size: 1.5rem; margin: 0 0 0.3rem; font-weight: 700; letter-spacing: 0.3em; }
+        p.subtitle { color: var(--texto-suave); font-size: 0.88rem; margin: 0 0 1.3rem; }
+        .form-group { margin-bottom: 0.95rem; text-align: left; }
         label {
             display: block;
-            font-size: 0.8rem;
-            font-weight: 600;
-            margin-bottom: 0.4rem;
-            color: var(--text-muted);
+            font-size: 0.72rem;
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+            color: var(--texto-tenue);
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-
         input {
             width: 100%;
-            padding: 0.75rem;
-            background: var(--input-bg);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            border-radius: 15px;
-            font-size: 1rem;
-            box-sizing: border-box;
-            color: var(--text-main);
-            transition: all 0.3s ease;
+            padding: 0.72rem 0.85rem;
+            background: var(--entrada);
+            border: 1px solid var(--cristal-borde);
+            border-radius: 14px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            color: #fff;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
-
-        input:focus {
-            outline: none;
-            background: rgba(255, 255, 255, 0.8);
-            border-color: #fff;
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
-        }
-
-        input::placeholder {
-            color: #a0aec0;
-        }
-
-        button {
-            width: 100%;
-            padding: 0.85rem;
-            background: linear-gradient(135deg, #a78bfa, #f687b3);
-            color: white;
-            border: none;
-            border-radius: 15px;
-            font-size: 1rem;
-            font-weight: 600;
-            letter-spacing: 1px;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin-top: 0.9rem;
-            box-shadow: 0 4px 15px rgba(167, 139, 250, 0.4);
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(167, 139, 250, 0.6);
-        }
-
-        #mensaje {
-            margin-top: 1.5rem;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        /* --- Pestañas Iniciar sesión / Crear cuenta --- */
+        input:focus { outline: none; border-color: var(--acento); box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.25); }
+        input::placeholder { color: rgba(255, 255, 255, 0.5); }
+        button { font-family: inherit; }
+        #mensaje { margin-top: 1rem; font-size: 0.88rem; font-weight: 600; }
         .tabs {
             display: flex;
-            margin-bottom: 1.25rem;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.4);
+            gap: 0.25rem;
+            padding: 0.25rem;
+            margin-bottom: 1.3rem;
+            background: var(--cristal-fuerte);
+            border: 1px solid var(--cristal-borde);
+            border-radius: 999px;
         }
-
         .tab {
             flex: 1;
-            padding: 0.7rem 0.5rem;
-            font-size: 0.92rem;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            color: var(--text-muted);
+            padding: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--texto-suave);
             background: none;
             border: none;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -2px;
+            border-radius: 999px;
             cursor: pointer;
-            box-shadow: none;
-            border-radius: 12px 12px 0 0;
+            transition: background 0.2s ease, color 0.2s ease;
         }
-
-        .tab:hover {
-            transform: none;
-            box-shadow: none;
-        }
-
-        .tab.activo {
-            color: var(--text-main);
-            border-bottom-color: #f687b3;
-        }
-
-        /* Botón principal (verde) */
+        .tab.activo { background: var(--acento); color: #06322c; }
         .btn-primario {
             width: 100%;
-            padding: 0.85rem;
-            background: linear-gradient(135deg, #7f9d62, #6b8a52);
-            color: white;
+            padding: 0.8rem;
+            margin-top: 0.6rem;
+            background: linear-gradient(135deg, #a78bfa, #f687b3);
+            color: #fff;
             border: none;
-            border-radius: 15px;
-            font-size: 1rem;
-            font-weight: 600;
-            letter-spacing: 1px;
+            border-radius: 14px;
+            font-size: 0.95rem;
+            font-weight: 700;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin-top: 0.9rem;
-            box-shadow: 0 4px 15px rgba(107, 138, 82, 0.4);
+            box-shadow: 0 6px 18px rgba(167, 139, 250, 0.4);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-
-        .btn-primario:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(107, 138, 82, 0.6);
-        }
-
-        /* Texto pequeño bajo las etiquetas */
-        .hint {
-            display: block;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin: -0.25rem 0 0.5rem 0;
-            text-transform: none;
-            letter-spacing: 0;
-        }
-
-        .oculto {
-            display: none;
-        }
-
-        /* HITO 4: bloque de acceso con Google */
-        .oauth-box {
-            margin-top: 1.1rem;
-        }
-
+        .btn-primario:hover { transform: translateY(-2px); box-shadow: 0 9px 24px rgba(167, 139, 250, 0.55); }
+        .hint { display: block; font-size: 0.75rem; color: var(--texto-tenue); margin: -0.2rem 0 0.5rem; text-transform: none; letter-spacing: 0; }
+        .oculto { display: none; }
+        .oauth-box { margin-top: 1.2rem; }
         .oauth-divisor {
             display: flex;
             align-items: center;
             gap: 12px;
-            color: var(--text-muted);
-            font-size: 0.8rem;
+            color: var(--texto-tenue);
+            font-size: 0.72rem;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 1rem;
         }
-
-        .oauth-divisor::before,
-        .oauth-divisor::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: rgba(255, 255, 255, 0.18);
-        }
-
+        .oauth-divisor::before, .oauth-divisor::after { content: ''; flex: 1; height: 1px; background: var(--cristal-borde); }
         .btn-google {
             width: 100%;
-            padding: 0.78rem 1rem;
-            background: rgba(255, 255, 255, 0.95);
-            color: #3c4043;
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            border-radius: 15px;
-            font-size: 0.95rem;
+            padding: 0.72rem 1rem;
+            background: var(--cristal-fuerte);
+            color: var(--texto);
+            border: 1px solid var(--cristal-borde);
+            border-radius: 14px;
+            font-size: 0.92rem;
             font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease, background 0.2s ease;
         }
-
-        .btn-google:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-        }
+        .btn-google:hover { transform: translateY(-2px); background: rgba(17, 38, 78, 0.58); }
     </style>
+    <script>
+        // Mismo tema (claro/oscuro) que la app
+        (function () {
+            try {
+                var t = localStorage.getItem('dasna-tema') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+                document.documentElement.dataset.tema = t;
+            } catch (e) { /* tema claro */ }
+        })();
+    </script>
 </head>
 <body>
 
