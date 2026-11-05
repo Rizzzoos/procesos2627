@@ -278,22 +278,22 @@ const CATALOGO = {
     visionboard: {
         nombre: 'Vision Board',
         icono: '✨',
-        descripcion: 'Plasma tus metas visualmente y mantén tu enfoque diario intacto.'
+        descripcion: 'Tus sueños y metas del año, con su plan y su collage.'
     },
     gimnasio: {
         nombre: 'Gimnasio',
         icono: '💪',
-        descripcion: 'Registra tus rutinas, levanta más peso y trackea tu progreso físico.'
+        descripcion: 'Tus rutinas, tus pesos y los días que vas.'
     },
     estudio: {
         nombre: 'Estudio',
         icono: '📚',
-        descripcion: 'Mide tus sesiones de concentración profunda con la técnica Pomodoro.'
+        descripcion: 'Exámenes, deberes y prácticas con recordatorios y plan de estudio.'
     },
     sueno: {
         nombre: 'Sueño',
         icono: '🌙',
-        descripcion: 'Monitoriza tus horas de descanso para garantizar una recuperación óptima.'
+        descripcion: 'A qué hora acostarte para no cortar los ciclos de sueño.'
     },
     ahorros: {
         nombre: 'Ahorros',
@@ -309,6 +309,26 @@ const CATALOGO = {
         nombre: 'Comidas',
         icono: '🍽️',
         descripcion: 'Tu cocina al día: alimentos, recetas propias, ideas y lista de la compra.'
+    },
+    pelislibros: {
+        nombre: 'Películas Libros',
+        icono: '🎬',
+        descripcion: 'Tu estantería de libros, películas y series.'
+    },
+    viajes: {
+        nombre: 'Viajes',
+        icono: '✈️',
+        descripcion: 'Tus viajes, los billetes que comprar y lo que quieres ver.'
+    },
+    agua: {
+        nombre: 'Beber agua',
+        icono: '💧',
+        descripcion: 'Tus vasos del día con recordatorios según tu horario.'
+    },
+    outfits: {
+        nombre: 'Outfits',
+        icono: '👗',
+        descripcion: 'Tus conjuntos y qué ponerte según el día.'
     }
 };
 

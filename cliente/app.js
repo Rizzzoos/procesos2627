@@ -11,17 +11,16 @@
 const GRUPOS = [
     {
         nombre: 'Principal', items: [
-            { id: 'panel', icono: '📊', nombre: 'Panel' },
-            { id: 'calendario', icono: '🗓️', nombre: 'Calendario' }
+            { id: 'panel', icono: '📊', nombre: 'Panel' }
         ]
     },
     {
         nombre: 'Vida diaria', items: [
             { modulo: 'estudio' },
             { modulo: 'comidas' },
-            { id: 'viajes', icono: '✈️', nombre: 'Viajes', proximo: 'Fase 3' },
+            { modulo: 'viajes' },
             { id: 'eventos', icono: '🎉', nombre: 'Eventos', proximo: 'Fase 2' },
-            { id: 'agua', icono: '💧', nombre: 'Beber agua', proximo: 'Fase 3' },
+            { modulo: 'agua' },
             { modulo: 'sueno' }
         ]
     },
@@ -29,14 +28,14 @@ const GRUPOS = [
         nombre: 'Estilo', items: [
             { modulo: 'gimnasio' },
             { modulo: 'diario' },
-            { id: 'outfits', icono: '👗', nombre: 'Outfits', proximo: 'Fase 4' },
+            { modulo: 'outfits' },
             { modulo: 'visionboard' }
         ]
     },
     { nombre: 'Finanzas', items: [{ modulo: 'ahorros' }] },
     {
         nombre: 'Utilidades', items: [
-            { id: 'registros', icono: '🗂️', nombre: 'Registros' },
+            { id: 'registros', icono: '🎬', nombre: 'Películas Libros' },
             { id: 'archivos', icono: '📁', nombre: 'Archivos', proximo: 'Fase 2' },
             { id: 'ayuda', icono: '💬', nombre: 'Ayuda' }
         ]
@@ -97,14 +96,14 @@ async function cargarRegistrosCal() {
     if (registrosCal) return registrosCal;
     // El diario y las comidas no salen en el calendario del panel
     // (son cosas privadas del día a día, no eventos con fecha)
-    const visibles = modulos.filter((m) => m.clave !== 'diario' && m.clave !== 'comidas');
+    const visibles = modulos.filter((m) => !['diario', 'comidas', 'pelislibros', 'sueno', 'agua', 'outfits'].includes(m.clave));
     const listas = await Promise.all(
         visibles.map((m) => rest.listarRegistros(m.clave).catch(() => ({ exito: false })))
     );
     registrosCal = [];
     listas.forEach((r, i) => {
         if (r && r.exito && Array.isArray(r.datos)) {
-            r.datos.forEach((reg) => registrosCal.push({
+            r.datos.filter((reg) => !(reg.datos && reg.datos.tipo === 'rutina')).forEach((reg) => registrosCal.push({
                 ...reg,
                 clave: visibles[i].clave,
                 icono: visibles[i].icono,
@@ -430,9 +429,10 @@ async function vistaModulo(clave) {
     const meta = modulos.find((m) => m.clave === clave);
     if (!meta) return vistaPanel();
 
-    // Comidas va sin emoji ni descripción en la cabecera (lo pidió Sandra)
+    // Cabeceras de módulo sin emoji (regla de Sandra: títulos limpios);
+    // Comidas además sin descripción
     const esComidas = clave === 'comidas';
-    cabecera(esComidas ? 'Comidas' : `${meta.icono} ${meta.nombre}`, esComidas ? '' : meta.descripcion);
+    cabecera(meta.nombre, esComidas ? '' : meta.descripcion);
     const cont = document.getElementById('vista');
     cont.innerHTML = '<div class="skeleton"></div>';
 
@@ -440,6 +440,14 @@ async function vistaModulo(clave) {
     if (clave === 'diario') return fichaDiario(cont);
     if (clave === 'ahorros') return fichaAhorros(cont);
     if (clave === 'comidas') return fichaComidas(cont);
+    if (clave === 'pelislibros') return fichaPelisLibros(cont);
+    if (clave === 'estudio') return fichaEstudio(cont);
+    if (clave === 'gimnasio') return fichaGimnasio(cont);
+    if (clave === 'sueno') return fichaSueno(cont);
+    if (clave === 'visionboard') return fichaVisionboard(cont);
+    if (clave === 'viajes') return fichaViajes(cont);
+    if (clave === 'agua') return fichaAgua(cont);
+    if (clave === 'outfits') return fichaOutfits(cont);
 
     const r = await rest.listarRegistros(clave);
     cont.innerHTML = '';
@@ -529,7 +537,7 @@ function mostrarRecap(htmlDias, total) {
         capa.innerHTML = `
             <div class="recap-caja tarjeta">
                 <div class="recap-cabecera">
-                    <h3>📚 Recap del diario</h3>
+                    <h3>Recap del diario</h3>
                     <button class="boton-suave" id="recap-cerrar">✕ Cerrar</button>
                 </div>
                 <p class="recap-total" id="recap-total"></p>
@@ -540,7 +548,7 @@ function mostrarRecap(htmlDias, total) {
         capa.addEventListener('click', (e) => { if (e.target === capa) capa.classList.add('oculto'); });
     }
     capa.querySelector('#recap-total').textContent =
-        `Llevas ${total} ${total === 1 ? 'día' : 'días'} escribiendo el diario ✨`;
+        `Llevas ${total} ${total === 1 ? 'día' : 'días'} escribiendo el diario`;
     capa.querySelector('#recap-lista').innerHTML = htmlDias;
     capa.classList.remove('oculto');
 }
@@ -581,7 +589,7 @@ function programarRecordatorioDiario() {
                 claveDia(x.fecha) === claveDia(new Date()) &&
                 ((x.datos && x.datos.resumen) || (x.datos && x.datos.humor)));
             if (!escritoHoy) {
-                await enviarNotificacion('🌙 Dasna · Diario', '¿Ya has escrito tu día? Cinco minutitos y listo ✍️');
+                await enviarNotificacion('Dasna · Diario', '¿Ya has escrito tu día? Cinco minutitos y listo.');
             }
         } catch (e) { /* silencioso */ }
         programarRecordatorioDiario();
@@ -647,14 +655,14 @@ async function fichaDiario(cont) {
         const media = caritas.length ? caritas.reduce((s, v) => s + v, 0) / caritas.length : 0;
         const palabras = [null, 'día flojito', 'día bajón', 'día normal', 'bien', 'genial'];
         const etiqueta = caritas.length ? palabras[Math.round(media)] : 'sin datos aún';
-        const emojiPeriodo = caritas.length ? emociones[Math.round(media) - 1] : '·';
+        const emojiPeriodo = caritas.length ? emociones[Math.round(media) - 1] : '';
 
         const totalEscritos = porDia.size;
 
         const fotoActual = fotoPendiente !== null ? fotoPendiente : (d.foto || '');
         const fotoHtml = fotoActual
-            ? `<div class="foto-caja"><img src="${fotoActual}" alt="Foto del día"><button class="boton-peligro" id="foto-quitar">✕ Quitar foto</button></div>`
-            : '<label class="foto-slot">📷 Añadir una foto del día<input type="file" id="dia-foto-input" accept="image/*" hidden></label>';
+            ? `<div class="foto-caja"><img src="${fotoActual}" alt="Foto del día"><button class="boton-peligro" id="foto-quitar">Quitar foto</button></div>`
+            : '<label class="foto-slot">Añadir una foto del día<input type="file" id="dia-foto-input" accept="image/*" hidden></label>';
 
         let recordatorioActivo = false;
         try { recordatorioActivo = localStorage.getItem('dasna-recordatorio') === 'si'; } catch (e) { /* opcional */ }
@@ -664,7 +672,7 @@ async function fichaDiario(cont) {
                 <button class="cal-pick pick-flecha" id="dia-menos" aria-label="Día anterior">‹</button>
                 <div class="dia-titulo">
                     <h3 style="margin:0">${esc(titulo)}${esHoy ? ' · hoy' : ''}</h3>
-                    <p class="pista" style="margin:0.25rem 0 0">${reg ? 'Día escrito ✅' : 'Este día todavía no está escrito'}</p>
+                    <p class="pista" style="margin:0.25rem 0 0">${reg ? 'Día escrito' : 'Este día todavía no está escrito'}</p>
                 </div>
                 <div class="periodo">
                     <div class="periodo-toggle">
@@ -677,13 +685,13 @@ async function fichaDiario(cont) {
                     </div>
                 </div>
                 <button class="cal-pick pick-flecha" id="dia-mas" aria-label="Día siguiente" ${esHoy ? 'disabled' : ''}>›</button>
-                <button class="boton-suave" id="dia-recap" ${porDia.size ? '' : 'disabled'}>📚 Recap</button>
+                <button class="boton-suave" id="dia-recap" ${porDia.size ? '' : 'disabled'}>Recap</button>
             </div>
             <div class="tarjeta">
-                <h3>📝 Resume tu día</h3>
+                <h3>Resume tu día</h3>
                 <textarea class="entrada" id="dia-resumen" rows="4" placeholder="Lo mejor, lo peor, lo que quieras contar…">${esc(d.resumen)}</textarea>
                 <div class="dia-foto">${fotoHtml}</div>
-                <h3 style="margin-top:1.2rem">💬 Unas preguntitas</h3>
+                <h3 style="margin-top:1.2rem">Unas preguntitas</h3>
                 <label class="etiqueta">¿Cómo te ha ido el día?</label>
                 <div class="humor" id="dia-humor">
                     ${emociones.map((e, i) => `<button type="button" data-valor="${i + 1}" title="${['muy mal', 'mal', 'normal', 'bien', 'genial'][i]}"${Number(d.humor) === i + 1 ? ' class="activo"' : ''}>${e}</button>`).join('')}
@@ -694,20 +702,20 @@ async function fichaDiario(cont) {
                 </div>
                 <label class="etiqueta" style="margin-top:0.9rem">¿Qué ha sido lo mejor del día?</label>
                 <input class="entrada" id="dia-mejor" placeholder="Ej: la quedada de tarde" value="${esc(d.mejor)}">
-                <label class="etiqueta" style="margin-top:0.9rem">🙏 Algo por lo que agradecer</label>
+                <label class="etiqueta" style="margin-top:0.9rem">Algo por lo que agradecer</label>
                 <input class="entrada" id="dia-gratitud" placeholder="Ej: mi familia, un café rico, el parque…" value="${esc(d.gratitud)}">
-                <label class="etiqueta" style="margin-top:0.9rem">💡 ¿Qué has aprendido nuevo?</label>
-                <input class="entrada" id="dia-aprender" placeholder="Ej: a montar una estantería 😅" value="${esc(d.aprender)}">
-                <label class="etiqueta" style="margin-top:0.9rem">💭 Mejoras para mañana</label>
+                <label class="etiqueta" style="margin-top:0.9rem">¿Qué has aprendido nuevo?</label>
+                <input class="entrada" id="dia-aprender" placeholder="Ej: a montar una estantería" value="${esc(d.aprender)}">
+                <label class="etiqueta" style="margin-top:0.9rem">Mejoras para mañana</label>
                 <input class="entrada" id="dia-mejorar" placeholder="Ej: dormir antes" value="${esc(d.mejorar)}">
                 <div class="fila-botones">
-                    <button class="boton-primario" id="dia-guardar">💾 Guardar el día</button>
+                    <button class="boton-primario" id="dia-guardar">Guardar el día</button>
                     ${reg ? '<button class="boton-peligro" id="dia-borrar">Borrar este día</button>' : ''}
-                    <button class="boton-suave" id="dia-recordatorio">${recordatorioActivo ? '🔔 Recordatorio de las 22:00 activo' : '🔕 Activar recordatorio de las 22:00'}</button>
+                    <button class="boton-suave" id="dia-recordatorio">${recordatorioActivo ? 'Recordatorio de las 22:00 activo' : 'Activar recordatorio de las 22:00'}</button>
                 </div>
             </div>
             <div class="tarjeta contador-dias">
-                🗓️ Llevas <strong>${totalEscritos}</strong> ${totalEscritos === 1 ? 'día' : 'días'} escribiendo el diario
+                Llevas <strong>${totalEscritos}</strong> ${totalEscritos === 1 ? 'día' : 'días'} escribiendo el diario
             </div>`;
 
         const cambiarDia = (nuevaClave) => {
@@ -781,10 +789,10 @@ async function fichaDiario(cont) {
                     const foto = rd.foto ? `<img class="recap-foto" src="${rd.foto}" alt="Foto del día">` : '';
                     const filas = [
                         rd.resumen ? `<p class="recap-texto">${esc(rd.resumen)}</p>` : '',
-                        rd.mejor ? `<p class="recap-dato"><strong>✨ Lo mejor:</strong> ${esc(rd.mejor)}</p>` : '',
-                        rd.gratitud ? `<p class="recap-dato"><strong>🙏 Agradecimiento:</strong> ${esc(rd.gratitud)}</p>` : '',
-                        rd.aprender ? `<p class="recap-dato"><strong>💡 Aprendido:</strong> ${esc(rd.aprender)}</p>` : '',
-                        rd.mejorar ? `<p class="recap-dato"><strong>💭 Mejoras:</strong> ${esc(rd.mejorar)}</p>` : ''
+                        rd.mejor ? `<p class="recap-dato"><strong>Lo mejor:</strong> ${esc(rd.mejor)}</p>` : '',
+                        rd.gratitud ? `<p class="recap-dato"><strong>Agradecimiento:</strong> ${esc(rd.gratitud)}</p>` : '',
+                        rd.aprender ? `<p class="recap-dato"><strong>Aprendido:</strong> ${esc(rd.aprender)}</p>` : '',
+                        rd.mejorar ? `<p class="recap-dato"><strong>Mejoras:</strong> ${esc(rd.mejorar)}</p>` : ''
                     ].filter(Boolean).join('');
                     return `
                         <article class="recap-dia">
@@ -808,7 +816,7 @@ async function fichaDiario(cont) {
             if (permiso !== 'granted') return aviso('Sin permiso de notificaciones.', 'error');
             const activado = localStorage.getItem('dasna-recordatorio') === 'si';
             try { localStorage.setItem('dasna-recordatorio', activado ? 'no' : 'si'); } catch (e) { /* opcional */ }
-            aviso(activado ? 'Recordatorio apagado' : 'Te avisaré a las 22:00 si falta tu día 🔔');
+            aviso(activado ? 'Recordatorio apagado' : 'Te avisaré a las 22:00 si falta tu día');
             programarRecordatorioDiario();
             render();
         });
@@ -834,7 +842,7 @@ async function fichaDiario(cont) {
                 : await rest.crearRegistro('diario', datos, diaSel);
             if (!res.exito) return aviso(res.error || 'No se pudo guardar.', 'error');
             fotoPendiente = null;
-            aviso(`Día guardado ✅ (${fechaCorta(diaSel)})`);
+            aviso(`Día guardado (${fechaCorta(diaSel)})`);
             render();
         });
 
@@ -1700,22 +1708,9 @@ async function fichaComidas(cont) {
 }
 
 function vistaRegistros() {
-    cabecera('🗂️ Registros', 'Explora los datos del motor de módulos.');
+    cabecera('Películas Libros', '');
     const cont = document.getElementById('vista');
-    cont.innerHTML = '';
-
-    const selector = cristal(`
-        <div class="tarjeta" style="margin-bottom:1.2rem">
-            <label class="etiqueta" for="sel-modulo">Módulo</label>
-            <select class="entrada" id="sel-modulo" style="max-width:320px">
-                ${modulos.map((m) => `<option value="${m.clave}">${m.icono} ${m.nombre}</option>`).join('')}
-            </select>
-        </div>`);
-    cont.appendChild(selector);
-    selector.querySelector('#sel-modulo').addEventListener('change', (e) => {
-        location.hash = '#/m/' + e.target.value;
-    });
-    vistaModulo(selector.querySelector('#sel-modulo').value);
+    fichaPelisLibros(cont);
 }
 
 async function vistaUsuarios() {
@@ -1798,7 +1793,7 @@ function vistaAyuda() {
     document.getElementById('vista').innerHTML = `
         <div class="rejilla">
             <div class="tarjeta"><h3>⌨️ Atajos</h3><p><strong>Ctrl / ⌘ + K</strong>: buscador universal.<br>
-            <strong>C</strong>: calendario (cuando esté disponible).<br>El tema claro/oscuro lo cambias con 🌙 arriba a la derecha.</p></div>
+El tema claro/oscuro lo cambias con 🌙 arriba a la derecha.</p></div>
             <div class="tarjeta"><h3>🧱 Módulos</h3><p>Cada módulo guarda <em>registros</em> (JSON con fecha) en tu cuenta.
             Los recuadros con etiqueta de fase son las ideas planeadas que faltan por construir.</p></div>
             <div class="tarjeta"><h3>🗺️ Fases</h3><p>Fase 1: diseño y navegación ✅. Fase 2: calendario ✅, Estudio ✅ (eventos pendiente).
@@ -1829,7 +1824,6 @@ function vistaProximo() {
 
 const VISTAS = {
     panel: vistaPanel,
-    calendario: vistaCalendario,
     registros: vistaRegistros,
     usuarios: vistaUsuarios,
     ayuda: vistaAyuda
@@ -1857,14 +1851,13 @@ let buscadorIndice = 0;
 function opcionesDeBusqueda() {
     const fijas = [
         { id: 'panel', icono: '📊', nombre: 'Panel', grupo: 'Principal' },
-        { id: 'calendario', icono: '🗓️', nombre: 'Calendario', grupo: 'Principal' },
-        { id: 'registros', icono: '🗂️', nombre: 'Registros', grupo: 'Utilidades' },
+        { id: 'registros', icono: '🎬', nombre: 'Películas Libros', grupo: 'Utilidades' },
         { id: 'ayuda', icono: '💬', nombre: 'Ayuda', grupo: 'Utilidades' }
     ];
     if (sesion && sesion.rol === 'admin') {
         fijas.push({ id: 'usuarios', icono: '🛡️', nombre: 'Usuarios', grupo: 'Administración' });
     }
-    const deModulos = modulos.map((m) => ({ id: 'm/' + m.clave, icono: m.icono, nombre: m.nombre, grupo: 'Módulos' }));
+    const deModulos = modulos.filter((m) => m.clave !== 'pelislibros').map((m) => ({ id: 'm/' + m.clave, icono: m.icono, nombre: m.nombre, grupo: 'Módulos' }));
     const planeados = GRUPOS.flatMap((g) => g.items)
         .filter((i) => i.proximo && i.id)
         .map((i) => ({ id: i.id, icono: i.icono, nombre: i.nombre, grupo: 'Planificado', proximo: i.proximo }));
@@ -2004,6 +1997,9 @@ async function iniciar() {
 
     // Recordatorio de las 22:00 para escribir el diario (si está activado)
     programarRecordatorioDiario();
+    programarAvisosEstudio();
+    programarAvisosViajes();
+    programarAvisosAgua();
 
     // --- Tema claro/oscuro ---
     const btnTema = document.getElementById('btn-tema');
@@ -2041,10 +2037,6 @@ async function iniciar() {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
             e.preventDefault();
             abierto ? cerrarBuscador() : abrirBuscador();
-            return;
-        }
-        if (!escribiendo && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'c' && !abierto) {
-            location.hash = '#/calendario';
             return;
         }
         if (!abierto) return;
