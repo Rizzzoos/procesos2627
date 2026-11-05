@@ -367,6 +367,13 @@ async function fichaEstudio(cont) {
         };
 
         env.innerHTML = `
+            <div class="tarjeta">
+                <div class="ev-alta">
+                    <input class="entrada" id="est-dictar" placeholder="Escríbelo o díctalo: «tengo examen de Procesos el 12 de diciembre»" autocomplete="off">
+                    <button class="boton-suave boton-voz" id="est-voz" title="Dictar" aria-label="Dictar">${SVG_MICRO}</button>
+                    <button class="boton-primario" id="est-dictar-ok">Seguir</button>
+                </div>
+            </div>
             <div class="dos-flex">
                 <div class="tarjeta">
                     <h3>Próximos 7 días</h3>
@@ -384,6 +391,15 @@ async function fichaEstudio(cont) {
             ${pasadas.length ? `<div class="tarjeta"><h3>Ya pasados</h3><div class="est-items">${pasadas.map(fila).join('')}</div></div>` : ''}`;
 
         env.querySelector('#est-nuevo').addEventListener('click', () => formulario(null));
+        const dictar = env.querySelector('#est-dictar');
+        const desdeTexto = () => {
+            const t = dictar.value.trim();
+            if (!t) return aviso('Escribe o dicta qué tienes.', 'error');
+            formulario(null, interpretarEstudio(t));
+        };
+        dictar.addEventListener('keydown', (e) => { if (e.key === 'Enter') desdeTexto(); });
+        env.querySelector('#est-dictar-ok').addEventListener('click', desdeTexto);
+        botonVoz(env.querySelector('#est-voz'), dictar, () => desdeTexto());
         env.querySelectorAll('[data-abrir]').forEach((b) => b.addEventListener('click', () => {
             abierto = abierto === b.dataset.abrir ? null : b.dataset.abrir;
             render();
@@ -407,8 +423,8 @@ async function fichaEstudio(cont) {
         });
     };
 
-    const formulario = (reg) => {
-        const d = (reg && reg.datos) || { tipo: 'examen' };
+    const formulario = (reg, pre = null) => {
+        const d = (reg && reg.datos) || (pre ? { tipo: pre.tipo, titulo: pre.titulo, asignatura: pre.asignatura } : { tipo: 'examen' });
         let tipo = d.tipo;
         let recordatorios = (d.recordatorios || []).slice();
         let temas = (d.temas || []).slice();
@@ -421,7 +437,7 @@ async function fichaEstudio(cont) {
             <div class="est-form-dos">
                 <div><label class="etiqueta">Título</label><input class="entrada" id="es-titulo" value="${esc(d.titulo)}" placeholder="Ej: Parcial 1" autocomplete="off"></div>
                 <div><label class="etiqueta">Asignatura</label><input class="entrada" id="es-asig" value="${esc(d.asignatura)}" placeholder="Ej: Procesos" autocomplete="off"></div>
-                <div><label class="etiqueta" id="es-fecha-lbl">Fecha</label><input class="entrada" id="es-fecha" type="date" value="${reg ? claveDia(reg.fecha) : sumarDias(hoyClave(), 7)}"></div>
+                <div><label class="etiqueta" id="es-fecha-lbl">Fecha</label><input class="entrada" id="es-fecha" type="date" value="${reg ? claveDia(reg.fecha) : (pre && pre.fecha > hoyClave() ? pre.fecha : sumarDias(hoyClave(), 7))}"></div>
             </div>
             <label class="etiqueta" style="margin-top:0.9rem">Recordatorios</label>
             <div class="est-rapidos">

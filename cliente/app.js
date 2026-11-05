@@ -19,7 +19,7 @@ const GRUPOS = [
             { modulo: 'estudio' },
             { modulo: 'comidas' },
             { modulo: 'viajes' },
-            { id: 'eventos', icono: '🎉', nombre: 'Eventos', proximo: 'Fase 2' },
+            { modulo: 'eventos' },
             { modulo: 'agua' },
             { modulo: 'sueno' }
         ]
@@ -36,8 +36,8 @@ const GRUPOS = [
     {
         nombre: 'Utilidades', items: [
             { id: 'registros', icono: '🎬', nombre: 'Películas Libros' },
-            { id: 'archivos', icono: '📁', nombre: 'Archivos', proximo: 'Fase 2' },
-            { id: 'ayuda', icono: '💬', nombre: 'Ayuda' }
+            { id: 'archivo', icono: '📁', nombre: 'Archivo', soloAdmin: true },
+            { id: 'ayuda', icono: '💬', nombre: 'Ayuda', soloAdmin: true }
         ]
     }
 ];
@@ -385,6 +385,7 @@ function vistaPanel() {
     for (const grupo of GRUPOS) {
         for (const item of grupo.items) {
             if (item.id === 'panel') continue;           // ya estás en el panel
+            if (item.soloAdmin && !esAdmin()) continue;   // Ayuda y Archivo: solo admin
             const meta = metaDe(item);
             if (!meta) continue;                          // módulo fuera del catálogo
             if (item.modulo && !claves.has(item.modulo)) continue; // desactivado
@@ -448,6 +449,7 @@ async function vistaModulo(clave) {
     if (clave === 'viajes') return fichaViajes(cont);
     if (clave === 'agua') return fichaAgua(cont);
     if (clave === 'outfits') return fichaOutfits(cont);
+    if (clave === 'eventos') return fichaEventos(cont);
 
     const r = await rest.listarRegistros(clave);
     cont.innerHTML = '';
@@ -1796,8 +1798,6 @@ function vistaAyuda() {
 El tema claro/oscuro lo cambias con 🌙 arriba a la derecha.</p></div>
             <div class="tarjeta"><h3>🧱 Módulos</h3><p>Cada módulo guarda <em>registros</em> (JSON con fecha) en tu cuenta.
             Los recuadros con etiqueta de fase son las ideas planeadas que faltan por construir.</p></div>
-            <div class="tarjeta"><h3>🗺️ Fases</h3><p>Fase 1: diseño y navegación ✅. Fase 2: calendario ✅, Estudio ✅ (eventos pendiente).
-            Fase 3: comidas ✅, viajes y agua. Fase 4: outfits. Además quedan archivos y el panel de métricas.</p></div>
             <div class="tarjeta"><h3>✨ Tutorial</h3><p>Si quieres volver a ver las explicaciones:</p>
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.6rem">
                 <button class="boton-suave" id="btn-tutorial">Ver el tutorial</button>
@@ -1806,6 +1806,43 @@ El tema claro/oscuro lo cambias con 🌙 arriba a la derecha.</p></div>
         </div>`;
     document.getElementById('btn-tutorial').addEventListener('click', () => abrirTutorial(PASOS_TUTORIAL, 'dasna-tutorial'));
     document.getElementById('btn-tutorial-comidas').addEventListener('click', () => abrirTutorial(PASOS_COMIDAS, 'dasna-tutorial-comidas'));
+}
+
+function esAdmin() {
+    return !!(sesion && sesion.rol === 'admin');
+}
+
+// Archivo (solo admin): la idea de Dasna y sus fases
+function vistaArchivo() {
+    cabecera('Archivo', 'La idea de Dasna y cómo se ha ido construyendo.');
+    const fases = [
+        ['Fase 0', 'Hito 4: credenciales, pruebas reales, despliegue en Cloud Run y etiqueta.', true],
+        ['Fase 1', 'Sistema de diseño en cristal, tema claro/oscuro, panel sin barra lateral y buscador (Ctrl/⌘ + K).', true],
+        ['Fase 2', 'Estudio con recordatorios y plan de temas, y Eventos escritos o dictados.', true],
+        ['Fase 3', 'Comidas (nevera, despensa, compra y foto al ticket), Viajes y Beber agua.', true],
+        ['Fase 4', 'Outfits, Gimnasio, Diario, Ahorros, Sueño, Visionboard y Películas Libros.', true],
+        ['Fase 5', 'Aspecto profesional, barra inferior en el móvil y adaptación móvil completa.', false]
+    ];
+    document.getElementById('vista').innerHTML = `
+        <div class="ficha-propia">
+            <div class="tarjeta">
+                <h3>La idea</h3>
+                <p>Dasna es un panel personal de vida: un núcleo estable (sesión, usuarios y motor de módulos) sobre el que crecen apartados de uso diario. Cada módulo es una colección de registros con fecha más su propia ficha en el cliente; añadir uno no toca el núcleo. Es una PWA instalable, con tema claro y oscuro.</p>
+            </div>
+            <div class="tarjeta">
+                <h3>Fases</h3>
+                <div class="ahorro-lista">${fases.map(([f, t, hecha]) => `
+                    <div class="ahorro-fila">
+                        <span class="ahorro-fecha"><strong>${f}</strong></span>
+                        <span class="ahorro-concepto">${t}</span>
+                        <span class="chip ${hecha ? 'chip-ok' : 'chip-med'}">${hecha ? 'Hecha' : 'Pendiente'}</span>
+                    </div>`).join('')}</div>
+            </div>
+            <div class="tarjeta">
+                <h3>Reglas de construcción</h3>
+                <p>Cada módulo = 1 colección + 1 ficha + 1 entrada en el catálogo. JavaScript sin frameworks mientras quepa. Lógica nueva con pruebas. Todo por rama → PR → CI verde → despliegue.</p>
+            </div>
+        </div>`;
 }
 
 function vistaProximo() {
@@ -1826,12 +1863,17 @@ const VISTAS = {
     panel: vistaPanel,
     registros: vistaRegistros,
     usuarios: vistaUsuarios,
+    archivo: vistaArchivo,
     ayuda: vistaAyuda
 };
 
 function enrutar() {
     const limpio = location.hash.replace(/^#\/?/, '') || 'panel';
     document.getElementById('volver').classList.toggle('oculto', limpio === 'panel');
+    if (['ayuda', 'archivo', 'usuarios'].includes(limpio) && !esAdmin()) {
+        location.hash = '#/panel';
+        return;
+    }
     if (limpio.startsWith('m/')) {
         vistaModulo(limpio.slice(2));
     } else if (VISTAS[limpio]) {
@@ -1852,9 +1894,10 @@ function opcionesDeBusqueda() {
     const fijas = [
         { id: 'panel', icono: '📊', nombre: 'Panel', grupo: 'Principal' },
         { id: 'registros', icono: '🎬', nombre: 'Películas Libros', grupo: 'Utilidades' },
-        { id: 'ayuda', icono: '💬', nombre: 'Ayuda', grupo: 'Utilidades' }
     ];
-    if (sesion && sesion.rol === 'admin') {
+    if (esAdmin()) {
+        fijas.push({ id: 'ayuda', icono: '💬', nombre: 'Ayuda', grupo: 'Administración' });
+        fijas.push({ id: 'archivo', icono: '📁', nombre: 'Archivo', grupo: 'Administración' });
         fijas.push({ id: 'usuarios', icono: '🛡️', nombre: 'Usuarios', grupo: 'Administración' });
     }
     const deModulos = modulos.filter((m) => m.clave !== 'pelislibros').map((m) => ({ id: 'm/' + m.clave, icono: m.icono, nombre: m.nombre, grupo: 'Módulos' }));

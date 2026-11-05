@@ -1164,3 +1164,14 @@ textarea.entrada { min-height: 92px; resize: vertical; }
 .ou-foto { aspect-ratio: 3 / 4; }
 .ou-prendas small { display: inline; margin-right: 0.3rem; }
 @media (max-width: 640px) { .vi-fila, .gr-fila { grid-template-columns: 1fr 1fr; } }
+/* Eventos y dictado */
+.ev-alta { display: flex; gap: 0.5rem; align-items: center; }
+.ev-alta .entrada { flex: 1 1 auto; }
+.boton-voz { display: inline-flex; align-items: center; justify-content: center; padding: 0.55rem 0.7rem; }
+.boton-voz svg { width: 1.15rem; height: 1.15rem; }
+.boton-voz.escuchando { background: var(--peligro); border-color: var(--peligro); color: #fff; animation: latido 1s ease-in-out infinite; }
+@keyframes latido { 50% { transform: scale(1.08); } }
+.ev-mes { margin: 1rem 0 0.4rem; }
+.ev-fila .chip { flex: 0 0 auto; }
+@media (prefers-reduced-motion: reduce) { .boton-voz.escuchando { animation: none; } }
+.preview-fecha:empty { display: none; }

@@ -329,6 +329,11 @@ const CATALOGO = {
         nombre: 'Outfits',
         icono: '👗',
         descripcion: 'Tus conjuntos y qué ponerte según el día.'
+    },
+    eventos: {
+        nombre: 'Eventos',
+        icono: '🎉',
+        descripcion: 'Comidas, cenas, viajes, conciertos y festivales, escritos o dictados.'
     }
 };
 
