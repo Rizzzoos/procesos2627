@@ -387,7 +387,9 @@ async function obtenerModulos(email) {
             .filter((clave) => CATALOGO[clave])
             .map((clave) => ({ clave, ...CATALOGO[clave] }));
 
-        return { exito: true, modulos, disponibles: listarModulos() };
+        // configurado = ya eligió sus módulos (si no, el cliente le guía la primera vez)
+        const configurado = Boolean(guardado && guardado.claves && guardado.claves.length);
+        return { exito: true, modulos, disponibles: listarModulos(), configurado };
     } catch (error) {
         return { exito: false, error: 'Error al leer tus módulos.' };
     }
@@ -606,6 +608,65 @@ function aplicarRegla(nombre, params) {
     }
 }
 
+// ============================================================
+// SPRINT 2 - IDEAS: resumen semanal, rachas y exportar datos
+// ============================================================
+const MODULOS_RESUMEN = ['agua', 'diario', 'gimnasio', 'estudio', 'eventos'];
+const claveDeFecha = (f) => new Date(f).toISOString().slice(0, 10);
+
+// Resumen de los últimos 7 días + rachas, solo de los módulos que tiene activos
+async function resumenSemanal(email, hoy) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    if (!reglas.esClave(hoy)) return { exito: false, error: 'Falta la fecha de hoy (AAAA-MM-DD).' };
+    try {
+        const { modulos } = await obtenerModulos(email);
+        const activos = MODULOS_RESUMEN.filter((m) => (modulos || []).some((x) => x.clave === m));
+        const desde = reglas.sumarDias(hoy, -120); // historia suficiente para las rachas
+        const hasta = `${reglas.sumarDias(hoy, 7)}T23:59:59.999Z`;
+        const registros = {};
+        for (const m of activos) {
+            const lista = await datos.listarRegistros(email, m, { desde, hasta, limite: 500 });
+            registros[m] = lista.map((r) => ({ fecha: claveDeFecha(r.fecha), datos: r.datos || {} }));
+        }
+        return { exito: true, datos: reglas.resumenSemana(registros, hoy) };
+    } catch (error) {
+        return { exito: false, error: 'No se pudo preparar el resumen.' };
+    }
+}
+
+// CSV: una fila por registro; los datos van como JSON en su columna
+function aCsv(filas) {
+    const celda = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    return ['modulo,fecha,datos', ...filas.map((r) => [r.modulo, r.fecha, JSON.stringify(r.datos)].map(celda).join(','))].join('\r\n');
+}
+
+// Exportar todo lo de una persona (derecho de acceso y portabilidad)
+async function exportarDatos(email, formato = 'json') {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    if (!['json', 'csv'].includes(formato)) return { exito: false, error: 'Formato no válido (json o csv).' };
+    try {
+        const usuario = await datos.buscarPorEmail(email);
+        if (!usuario) return { exito: false, error: 'La cuenta no existe.' };
+        const { modulos } = await obtenerModulos(email);
+        const registros = (await datos.todosLosRegistros(email)).map((r) => ({
+            id: String(r._id), modulo: r.modulo, fecha: claveDeFecha(r.fecha), datos: r.datos
+        }));
+        const dia = new Date().toISOString().slice(0, 10);
+        if (formato === 'csv') {
+            return { exito: true, nombre: `dasna-${dia}.csv`, tipo: 'text/csv; charset=utf-8', contenido: '\uFEFF' + aCsv(registros) };
+        }
+        const todo = {
+            exportado: new Date().toISOString(),
+            cuenta: { email: usuario.email, nombre: usuario.nombre || '', rol: usuario.rol || 'usuario', fechaRegistro: usuario.fechaRegistro },
+            modulos: (modulos || []).map((m) => m.clave),
+            registros
+        };
+        return { exito: true, nombre: `dasna-${dia}.json`, tipo: 'application/json; charset=utf-8', contenido: JSON.stringify(todo, null, 2) };
+    } catch (error) {
+        return { exito: false, error: 'No se pudieron exportar tus datos.' };
+    }
+}
+
 module.exports = {
     registrarUsuario,
     confirmarCuenta,
@@ -627,5 +688,8 @@ module.exports = {
     actualizarRegistroModulo,
     // Reglas de los módulos (Sprint 2)
     listarReglas,
-    aplicarRegla
+    aplicarRegla,
+    // Ideas: resumen, rachas y exportar
+    resumenSemanal,
+    exportarDatos
 };

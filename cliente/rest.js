@@ -222,13 +222,43 @@ async function leerTicket(imagen, mime) {
 // Reglas de los módulos (las calcula el servidor). Añade «hoy» del
 // navegador y devuelve los datos, o { error } si algo falla.
 async function regla(nombre, params = {}) {
-    const f = new Date();
-    const hoy = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+    const hoy = hoyNavegador();
     const r = await peticionJson(`/api/reglas/${encodeURIComponent(nombre)}`, {
         method: 'POST',
         body: JSON.stringify({ hoy, ...params })
     });
     return r && r.exito ? r.datos : { error: (r && r.error) || 'No se pudo calcular.' };
+}
+
+function hoyNavegador() {
+    const f = new Date();
+    return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+}
+
+// Guardar qué módulos ve (primer uso y «Elegir módulos»)
+async function guardarModulos(claves) {
+    return peticionJson('/api/modulos', { method: 'PUT', body: JSON.stringify({ claves }) });
+}
+
+// Resumen de la semana y rachas (lo calcula el servidor)
+async function resumen() {
+    const r = await peticionJson(`/api/resumen?hoy=${hoyNavegador()}`);
+    return r && r.exito ? r.datos : { error: (r && r.error) || 'No se pudo leer el resumen.' };
+}
+
+// Exportar mis datos: devuelve { blob, nombre } o { error }
+async function descargarDatos(formato) {
+    try {
+        const res = await fetch(`/api/exportar?formato=${encodeURIComponent(formato)}`);
+        if (!res.ok) {
+            const r = await res.json().catch(() => ({}));
+            return { error: r.error || 'No se pudieron exportar tus datos.' };
+        }
+        const nombre = (/filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '') || [])[1] || `dasna.${formato}`;
+        return { blob: await res.blob(), nombre };
+    } catch (error) {
+        return { error: 'Error de conexión con el servidor.' };
+    }
 }
 
 // Espacio de nombres para las vistas (app.js usa rest.funcion(...))
@@ -244,5 +274,8 @@ const rest = {
     estadoUsuario,
     eliminarUsuario,
     leerTicket,
-    regla
+    regla,
+    guardarModulos,
+    resumen,
+    descargarDatos
 };

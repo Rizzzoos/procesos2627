@@ -295,6 +295,11 @@ function vistaPanel() {
     cont.innerHTML = '';
     registrosCal = null;   // al volver al panel, se leen los registros frescos
 
+    // Resumen de la semana y rachas (arriba)
+    const resumenZona = document.createElement('div');
+    cont.appendChild(resumenZona);
+    pintarResumen(resumenZona);
+
     const dos = document.createElement('div');
     dos.className = 'panel-dos';
 
@@ -353,6 +358,11 @@ function vistaPanel() {
 
     cont.appendChild(dos);
     pintarCalendario();
+
+    // Tu cuenta: elegir módulos y exportar datos (abajo)
+    const cuentaZona = document.createElement('div');
+    cont.appendChild(cuentaZona);
+    pintarCuenta(cuentaZona);
 
     // Los puntos de los registros llegan después (una petición por módulo)
     cargarRegistrosCal().then(() => {
@@ -2002,8 +2012,13 @@ async function iniciar() {
     window.addEventListener('hashchange', enrutar);
     enrutar();
 
-    // Tutorial: solo la primera vez que se entra (se repite desde Ayuda)
-    tutorialPrimeraVez('dasna-tutorial', PASOS_TUTORIAL);
+    // Primer uso: si nunca eligió sus módulos, se los preguntamos;
+    // el tutorial va después para que no se pisen las dos ventanas
+    if (r && r.exito && r.configurado === false) {
+        abrirPrimerUso(r.disponibles, modulos, () => tutorialPrimeraVez('dasna-tutorial', PASOS_TUTORIAL));
+    } else {
+        tutorialPrimeraVez('dasna-tutorial', PASOS_TUTORIAL);
+    }
 
     // El día pasa solo cuando cambia la fecha del dispositivo
     let diaEnPantalla = claveDia(new Date());

@@ -85,6 +85,11 @@ async function borrarRegistro(email, modulo, id) {
     return Registro.findOneAndDelete({ _id: id, email, modulo });
 }
 
+// Todos los registros de una persona (para exportar sus datos)
+async function todosLosRegistros(email) {
+    return Registro.find({ email }, '-email -__v').sort({ modulo: 1, fecha: 1 }).limit(130000).lean();
+}
+
 async function contarRegistros(email, modulo) {
     return Registro.countDocuments({ email, modulo });
 }
@@ -180,5 +185,6 @@ module.exports = {
     crearRegistro,
     borrarRegistro,
     contarRegistros,
+    todosLosRegistros,
     actualizarRegistro
 };
