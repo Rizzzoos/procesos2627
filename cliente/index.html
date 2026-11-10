@@ -107,6 +107,16 @@
         input:focus { outline: none; border-color: var(--acento); box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.25); }
         input::placeholder { color: rgba(255, 255, 255, 0.5); }
         button { font-family: inherit; }
+        .campo-clave { position: relative; display: block; }
+        .campo-clave input { padding-right: 2.9rem; }
+        .ver-clave {
+            position: absolute; top: 50%; right: 0.35rem; transform: translateY(-50%);
+            width: 2.4rem; height: 2.4rem; display: grid; place-items: center;
+            background: none; border: 0; border-radius: 10px; cursor: pointer;
+            color: var(--texto-tenue);
+        }
+        .ver-clave:hover, .ver-clave:focus-visible { color: #fff; outline: none; background: rgba(255, 255, 255, 0.08); }
+        .ver-clave svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         #mensaje { margin-top: 1rem; font-size: 0.88rem; font-weight: 600; }
         .tabs {
             display: flex;
@@ -263,6 +273,34 @@
     <script src="rest.js"></script>
     <script src="estelas.js"></script>
     <script>
+        // Ojo para ver u ocultar la contraseña
+        (function () {
+            const OJO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+            const OJO_TACHADO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.6 3.5M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7c1.9 0 3.6-.6 5-1.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/></svg>';
+            document.querySelectorAll('input[type="password"]').forEach((input) => {
+                const caja = document.createElement('span');
+                caja.className = 'campo-clave';
+                input.parentNode.insertBefore(caja, input);
+                caja.appendChild(input);
+                const boton = document.createElement('button');
+                boton.type = 'button';
+                boton.className = 'ver-clave';
+                const pintar = () => {
+                    const visible = input.type === 'text';
+                    boton.innerHTML = visible ? OJO_TACHADO : OJO;
+                    boton.setAttribute('aria-label', visible ? 'Ocultar contraseña' : 'Mostrar contraseña');
+                    boton.title = boton.getAttribute('aria-label');
+                };
+                boton.addEventListener('click', () => {
+                    input.type = input.type === 'password' ? 'text' : 'password';
+                    pintar();
+                    input.focus();
+                });
+                pintar();
+                caja.appendChild(boton);
+            });
+        })();
+
         // PWA: registrar el service worker (permite instalar y modo offline)
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
