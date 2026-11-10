@@ -1,6 +1,7 @@
-name: CI - Pruebas del proyecto
+name: CI/CD - Pruebas y despliegue
 
-# Se ejecuta en cada PR y en cada push a main (integración continua)
+# Se ejecuta en cada PR y en cada push a main (integración continua).
+# Si las pruebas pasan en main, se despliega solo en Cloud Run (despliegue continuo, PRO-03).
 on:
   pull_request:
   push:
@@ -28,3 +29,32 @@ jobs:
           # Los secretos se guardan en Settings > Secrets and variables > Actions
           MONGO_URI: ${{ secrets.MONGO_URI }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+  # Despliegue continuo: solo en main, y solo si las pruebas han pasado.
+  # "No se despliega a mano" (spec §7.2): cada cambio integrado llega solo a producción.
+  desplegar:
+    needs: pruebas
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency: despliegue-produccion   # nunca dos despliegues a la vez
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Autenticarse en Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          # Clave de la cuenta de servicio de despliegue (Settings > Secrets > Actions)
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Desplegar en Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: procesos2627
+          region: europe-west1
+          source: ./
+          # Las variables de entorno del servicio (MONGO_URI, JWT_SECRET...) ya están
+          # configuradas en Cloud Run y se conservan: aquí no va ningún secreto.
+
+      - name: Comprobar que la app responde
+        run: curl -fsS -o /dev/null -w "HTTP %{http_code}\n" https://procesos2627-817509698728.europe-west1.run.app/

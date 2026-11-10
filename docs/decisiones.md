@@ -5,7 +5,7 @@ description: Qué se decidió, por qué y en qué estado está cada decisión.
 timestamp: 2026-10-28
 ---
 
-Las decisiones D-01 a D-05 recogen las tecnologías; D-06 y D-07 registran un cambio de enfoque en el proveedor de correo (queda la antigua, sustituida); D-08 a D-13, decisiones del producto y del proceso. Los motivos de D-06, D-08, D-12 y D-13 los aportó la persona responsable del proyecto.
+Las decisiones D-01 a D-05 recogen las tecnologías; D-06 y D-07 registran un cambio de enfoque en el proveedor de correo (queda la antigua, sustituida); D-08 a D-14, decisiones del producto y del proceso (D-14 sustituye a D-13). Los motivos de D-06, D-08, D-12 y D-13 los aportó la persona responsable del proyecto.
 
 ### D-01 — Express + Node.js para la API
 - **Qué se decidió:** montar la API REST con Express sobre Node.js.
@@ -70,4 +70,9 @@ Las decisiones D-01 a D-05 recogen las tecnologías; D-06 y D-07 registran un ca
 ### D-13 — Despliegue manual en Cloud Run
 - **Qué se decidió:** el deploy se lanza a mano con `gcloud` (no hay paso de despliegue en el workflow de CI).
 - **Por qué:** la persona responsable no sabía todavía cómo enganchar GitHub con Cloud Run, así que se quedó manual de momento.
-- **Estado:** vigente hoy, **pero contraria a la spec §7.2** (despliegue continuo, "no se despliega a mano"): al automatizar el paso de despliegue esta decisión queda sustituida — ver PRO-03 en [requisitos.md](requisitos.md).
+- **Estado:** **sustituida por D-14** (Sprint 2). Era contraria a la spec §7.2 (despliegue continuo, "no se despliega a mano").
+
+### D-14 — Despliegue continuo con GitHub Actions
+- **Qué se decidió:** añadir al workflow de CI un trabajo `desplegar` que, en cada push a `main` y solo si pasan las pruebas, despliega en Cloud Run con `google-github-actions/deploy-cloudrun` (desde el código fuente) y comprueba que la URL pública responde.
+- **Por qué:** la spec §7.2 exige que cada cambio integrado se despliegue solo. Se autentica con la clave de una cuenta de servicio guardada como secreto de GitHub (`GCP_SA_KEY`) porque es la opción más sencilla de montar; Workload Identity Federation (sin claves) queda como mejora posible.
+- **Estado:** vigente desde el Sprint 2.

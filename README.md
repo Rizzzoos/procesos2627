@@ -103,6 +103,18 @@ La aplicación está desplegada en Google Cloud Run, que la ejecuta en un conten
 Cloud Run inyecta automáticamente la variable `PORT`; el servidor la lee en `servidor/index.js`.
 Las variables `MONGO_URI`, `JWT_SECRET`, `BREVO_API_KEY`, `EMAIL_FROM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y `URL_PUBLICA` se configuran como variables de entorno del servicio en Cloud Run, nunca en el repositorio.
 
+### Despliegue continuo (GitHub Actions → Cloud Run)
+No se despliega a mano. El workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) tiene dos trabajos:
+
+1. **`pruebas`** — en cada PR y en cada push a `main`: `npm ci` y `npm test`.
+2. **`desplegar`** — solo en push a `main` y solo si `pruebas` ha pasado: se autentica en Google Cloud con una cuenta de servicio, despliega el código en el servicio `procesos2627` (región `europe-west1`) con `deploy-cloudrun --source` y comprueba que la URL pública responde.
+
+Las variables de entorno del servicio ya están en Cloud Run y se conservan en cada despliegue: el workflow no lleva ningún secreto de la app.
+
+**Puesta en marcha (una sola vez, la hace la responsable del proyecto):**
+1. Crear en Google Cloud una cuenta de servicio de despliegue con los roles *Cloud Run Admin*, *Service Account User*, *Cloud Build Editor*, *Artifact Registry Writer*, *Storage Admin* y *Service Usage Consumer*.
+2. Crear una clave JSON de esa cuenta y guardarla en GitHub como secreto de Actions `GCP_SA_KEY` (*Settings → Secrets and variables → Actions*). La clave nunca se sube al repositorio y se borra del ordenador después.
+
 ## Acceso Administrador (Revisión)
 Para evaluar las funciones reservadas al rol de administrador, se ha configurado la siguiente cuenta:
 * **Email:** sandra12@universo.com
