@@ -199,20 +199,17 @@
 
 
     <script src="estelas.js"></script>
+    <script src="rest.js"></script>
     <script>
-        // 1. Al cargar la página, comprobar sesión
-        fetch('/api/auth/me').then(res => {
-            if (!res.ok) {
-                // Si el servidor da error (no hay cookie), te expulsa a la pantalla de login
-                window.location.href = '/index.html';
-            }
+        // 1. Al cargar la página, comprobar sesión (por la capa de comunicación)
+        rest.obtenerSesion().then((s) => {
+            // Sin sesión válida, a la pantalla de login
+            if (!s) window.location.href = '/index.html';
         });
 
-        // 2. Función para el botón de cerrar sesión
+        // 2. Botón de cerrar sesión
         function cerrarSesion() {
-            fetch('/api/logout', { method: 'POST' }).then(() => {
-                window.location.href = '/index.html';
-            });
+            rest.cerrarSesionApp();
         }
 
         // PWA: registrar el service worker (permite instalar y modo offline)

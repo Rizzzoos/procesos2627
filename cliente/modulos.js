@@ -253,36 +253,7 @@ const NOMBRE_TIPO_ESTUDIO = Object.fromEntries(TIPOS_ESTUDIO);
 
 // Reparte los temas en los días que quedan antes del examen.
 // El último día antes del examen se deja para repaso general.
-function planificarTemas(temas, fechaExamen, horasDia) {
-    const inicio = hoyClave();
-    const ultimo = sumarDias(fechaExamen, -1);
-    const dias = [];
-    for (let k = inicio; k < ultimo; k = sumarDias(k, 1)) dias.push(k);
-    const total = temas.reduce((s, t) => s + (Number(t.horas) || 0), 0);
-    const plan = [];
-    if (!dias.length) return { plan: [{ dia: inicio, texto: 'Repaso general' }], falta: total };
-    let iDia = 0;
-    let libre = horasDia;
-    for (const t of temas) {
-        let resto = Number(t.horas) || 0;
-        while (resto > 0.01 && iDia < dias.length) {
-            const toca = Math.min(resto, libre);
-            plan.push({ dia: dias[iDia], texto: `${t.nombre} (${String(Math.round(toca * 10) / 10).replace('.', ',')} h)` });
-            resto -= toca;
-            libre -= toca;
-            if (libre <= 0.01) { iDia++; libre = horasDia; }
-        }
-    }
-    const capacidad = dias.length * horasDia;
-    plan.push({ dia: ultimo, texto: 'Repaso general' });
-    // Juntar las líneas del mismo día
-    const porDia = new Map();
-    for (const p of plan) porDia.set(p.dia, [...(porDia.get(p.dia) || []), p.texto]);
-    return {
-        plan: [...porDia].map(([dia, textos]) => ({ dia, texto: textos.join(' · ') })),
-        falta: Math.max(0, total - capacidad)
-    };
-}
+// El reparto de temas por días lo calcula el servidor: rest.regla('plan-estudio', …)
 
 // Avisos de Estudio: si hay permiso de notificaciones, a las 9:00
 // del día de cada recordatorio (mientras la app esté abierta)
@@ -394,10 +365,12 @@ async function fichaEstudio(cont) {
 
         env.querySelector('#est-nuevo').addEventListener('click', () => formulario(null));
         const dictar = env.querySelector('#est-dictar');
-        const desdeTexto = () => {
+        const desdeTexto = async () => {
             const t = dictar.value.trim();
             if (!t) return aviso('Escribe o dicta qué tienes.', 'error');
-            formulario(null, interpretarEstudio(t));
+            const leido = await rest.regla('estudio', { texto: t });
+            if (leido.error) return aviso(leido.error, 'error');
+            formulario(null, leido);
         };
         dictar.addEventListener('keydown', (e) => { if (e.key === 'Enter') desdeTexto(); });
         env.querySelector('#est-dictar-ok').addEventListener('click', desdeTexto);
@@ -495,11 +468,16 @@ async function fichaEstudio(cont) {
             zona.querySelectorAll('[data-tema-horas]').forEach((inp) => inp.addEventListener('change', () => { temas[Number(inp.dataset.temaHoras)].horas = Number(inp.value) || 0; pintarTemas(); }));
             zona.querySelectorAll('[data-quitar-tema]').forEach((b) => b.addEventListener('click', () => { temas.splice(Number(b.dataset.quitarTema), 1); pintarTemas(); }));
             zona.querySelector('#es-tema-add').addEventListener('click', () => { temas.push({ nombre: `Tema ${temas.length + 1}`, horas: 2 }); pintarTemas(); });
-            zona.querySelector('#es-planificar').addEventListener('click', () => {
+            zona.querySelector('#es-planificar').addEventListener('click', async () => {
                 const horasDia = Number(zona.querySelector('#es-horas-dia').value) || 2;
                 d.horasDia = horasDia;
-                if (!fechaVal() || fechaVal() <= hoyClave()) return aviso('Pon una fecha de examen futura.', 'error');
-                const res = planificarTemas(temas.map((t, i) => ({ nombre: t.nombre || `Tema ${i + 1}`, horas: t.horas })), fechaVal(), horasDia);
+                // El reparto lo calcula el servidor (y valida la fecha y las horas)
+                const res = await rest.regla('plan-estudio', {
+                    temas: temas.map((t, i) => ({ nombre: t.nombre || `Tema ${i + 1}`, horas: t.horas })),
+                    examen: fechaVal(),
+                    horasDia
+                });
+                if (res.error) return aviso(res.error, 'error');
                 plan = res.plan;
                 pintarTemas();
                 if (res.falta > 0) aviso(`No da tiempo: faltan ${String(res.falta).replace('.', ',')} h. Sube las horas al día.`, 'error');
@@ -772,33 +750,33 @@ async function fichaSueno(cont) {
         </div>
         <div class="tarjeta" id="su-resultado"></div>`;
 
-    const calcular = () => {
-        const cena = aMinutos(env.querySelector('#su-cena').value);
-        const levantar = aMinutos(env.querySelector('#su-levantar').value);
-        const tardo = Number(env.querySelector('#su-tardo').value) || 0;
-        // Tiempo desde la cena hasta cada hora de acostarse (en el mismo "día de noche")
-        const desdeCena = (acostar) => ((acostar - cena) % 1440 + 1440) % 1440;
-        const opciones = [6, 5, 4].map((ciclos) => {
-            const acostar = levantar - ciclos * 90 - tardo;
-            const margen = desdeCena(acostar);
-            return { ciclos, horas: ciclos * 1.5, hora: aHora(acostar), pronto: margen < 120 };
+    // Las horas de acostarse las calcula el servidor (ciclos de 90 min)
+    const calcular = async () => {
+        const r = await rest.regla('sueno', {
+            cena: env.querySelector('#su-cena').value,
+            levantar: env.querySelector('#su-levantar').value,
+            tardo: Number(env.querySelector('#su-tardo').value) || 0
         });
-        env.querySelector('#su-resultado').innerHTML = `
+        const zona = env.querySelector('#su-resultado');
+        if (r.error) { zona.innerHTML = `<p class="pista" style="margin:0">${esc(r.error)}</p>`; return null; }
+        zona.innerHTML = `
             <h3>A qué hora acostarte</h3>
             <p class="pista" style="margin-top:0">Cada ciclo de sueño (con su fase REM) dura unos 90 minutos. Si te despiertas al final de uno, te levantas más descansada.</p>
-            <div class="su-opciones">${opciones.map((o) => `
-                <div class="su-opcion ${o.ciclos === 5 ? 'recomendada' : ''}">
+            <div class="su-opciones">${r.opciones.map((o) => `
+                <div class="su-opcion ${o.recomendada ? 'recomendada' : ''}">
                     <strong class="su-hora">${o.hora}</strong>
                     <span>${o.ciclos} ciclos · ${String(o.horas).replace('.', ',')} h de sueño</span>
-                    ${o.ciclos === 5 ? '<span class="chip chip-ok">Recomendada</span>' : ''}
+                    ${o.recomendada ? '<span class="chip chip-ok">Recomendada</span>' : ''}
                     ${o.pronto ? '<span class="chip chip-med">Menos de 2 h después de cenar</span>' : ''}
                 </div>`).join('')}</div>
-            <p class="pista">Te levantas a las ${aHora(levantar)} y cuento ${tardo} min hasta que te duermes. Lo ideal es acostarse 2-3 h después de cenar (cenas a las ${aHora(cena)}).</p>`;
-        return { cena: aHora(cena), levantar: aHora(levantar), tardo };
+            <p class="pista">Te levantas a las ${r.levantar} y cuento ${r.tardo} min hasta que te duermes. Lo ideal es acostarse 2-3 h después de cenar (cenas a las ${r.cena}).</p>`;
+        return { cena: r.cena, levantar: r.levantar, tardo: r.tardo };
     };
 
     env.querySelector('#su-calcular').addEventListener('click', async () => {
-        const datos = { tipo: 'ajustes', ...calcular() };
+        const calculado = await calcular();
+        if (!calculado) return;
+        const datos = { tipo: 'ajustes', ...calculado };
         const res = reg ? await rest.actualizarRegistro('sueno', reg.id, datos) : await rest.crearRegistro('sueno', datos, hoyClave());
         if (!res.exito) aviso(res.error || 'No se pudo guardar.', 'error');
     });
@@ -815,20 +793,7 @@ const FORMATOS_COLLAGE = {
     imprimir: { nombre: 'Imprimir (A4)', w: 2480, h: 3508 }
 };
 
-// Reparte los pasos en los meses que quedan hasta la fecha meta
-function planPorMeses(pasos, fechaMeta) {
-    if (!pasos.length) return [];
-    const ini = new Date();
-    const fin = desdeClaveDia(fechaMeta || `${ini.getFullYear()}-12-31`);
-    const meses = [];
-    const f = new Date(ini.getFullYear(), ini.getMonth(), 1);
-    while (f <= fin && meses.length < 36) { meses.push(new Date(f)); f.setMonth(f.getMonth() + 1); }
-    if (!meses.length) meses.push(new Date(ini.getFullYear(), ini.getMonth(), 1));
-    return pasos.map((p, i) => {
-        const mes = meses[Math.min(meses.length - 1, Math.floor(i * meses.length / pasos.length))];
-        return { ...p, mes: `${MESES_LARGOS[mes.getMonth()]} ${mes.getFullYear()}` };
-    });
-}
+// El reparto de pasos por meses lo calcula el servidor: rest.regla('visionboard', …)
 
 async function fichaVisionboard(cont) {
     cont.innerHTML = '';
@@ -842,6 +807,10 @@ async function fichaVisionboard(cont) {
         if (!lista) return;
         const metas = lista.filter((x) => x.datos && x.datos.titulo)
             .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+        const planes = metas.length
+            ? await rest.regla('visionboard', { metas: metas.map((x) => ({ pasos: x.datos.pasos || [], fecha: claveDia(x.fecha) })) })
+            : [];
+        const planDe = (i) => (Array.isArray(planes) && planes[i]) || [];
 
         env.innerHTML = `
             <div class="tarjeta estante-cab">
@@ -851,9 +820,9 @@ async function fichaVisionboard(cont) {
                     <button class="boton-primario boton-icono" id="vb-nueva">${SVG_MAS} Añadir</button>
                 </div>
             </div>
-            <div class="rejilla vb-rejilla">${metas.map((x) => {
+            <div class="rejilla vb-rejilla">${metas.map((x, iMeta) => {
                 const d = x.datos;
-                const pasos = planPorMeses(d.pasos || [], claveDia(x.fecha));
+                const pasos = planDe(iMeta);
                 const hechos = pasos.filter((p) => p.hecho).length;
                 const pct = pasos.length ? Math.round(hechos * 100 / pasos.length) : 0;
                 return `

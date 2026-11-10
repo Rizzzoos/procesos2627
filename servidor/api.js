@@ -138,7 +138,7 @@ function crearRouter() {
         const emailAComprobar = req.params.email;
         const resultado = await logica.comprobarEstado(emailAComprobar, req.usuario.rol);
 
-        if (resultado.exito) res.status(200).json({ activo: resultado.activo });
+        if (resultado.exito) res.status(200).json({ activo: resultado.activo, estado: resultado.estado });
         else res.status(403).json({ error: resultado.error });
     });
 
@@ -225,6 +225,16 @@ function crearRouter() {
         const resultado = await ticket.leerImagen(imagen, mime);
         if (resultado.productos) res.status(200).json(resultado);
         else res.status(resultado.status || 400).json({ error: resultado.error });
+    });
+
+    // ========================================================
+    // SPRINT 2 (PBI-27) - REGLAS DE LOS MÓDULOS
+    // Una sola ruta: el nombre elige la regla y la lógica valida.
+    // ========================================================
+    router.post('/reglas/:nombre', protegerRuta, (req, res) => {
+        const resultado = logica.aplicarRegla(req.params.nombre, req.body || {});
+        if (resultado.exito) res.status(200).json(resultado);
+        else res.status(400).json({ error: resultado.error });
     });
 
     return router;

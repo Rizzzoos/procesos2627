@@ -37,97 +37,8 @@ function botonVoz(boton, entrada, alTerminar) {
 
 // --- Fechas con rango: «los últimos tres días de febrero»,
 // «del 3 al 5 de marzo», «del 28 de febrero al 2 de marzo» ---
-// Lo que apuntas en Eventos/Estudio es de aquí en adelante: una fecha sin
-// año que ya ha pasado («festival en julio», dicho en noviembre) es del año que viene
-function alFuturo(fecha, texto) {
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    if (fecha >= hoy || /ayer|d{4}|d{1,2}[/.-]d{1,2}[/.-]d{2,4}/i.test(texto)) return fecha;
-    const f = new Date(fecha);
-    f.setFullYear(f.getFullYear() + 1);
-    return f;
-}
-
-function numeroDe(t) {
-    const x = String(t).toLowerCase();
-    return /^\d+$/.test(x) ? Number(x) : NUMEROS_TXT[x];
-}
-
-function interpretarEvento(texto) {
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const anioPara = (mes, dia) => {
-        const f = new Date(hoy.getFullYear(), mes - 1, dia);
-        return f < hoy ? hoy.getFullYear() + 1 : hoy.getFullYear();
-    };
-    const N = `(\\d{1,2}|${RE_NUMS})`;
-    const M = `(${RE_MESES})`;
-    let inicio = null;
-    let fin = null;
-    let frag = '';
-
-    // últimos / primeros N días de <mes>
-    let m = new RegExp(`\\b(?:los\\s+)?(?:(?:[uú]ltimos)|(primeros))\\s+${N}\\s+d[ií]as\\s+(?:de|del)\\s+${M}\\b`, 'i').exec(texto);
-    if (m) {
-        const n = numeroDe(m[2]);
-        const mes = MESES_TXT[m[3].toLowerCase()];
-        const diasMes = new Date(hoy.getFullYear(), mes, 0).getDate();
-        if (n && n <= diasMes) {
-            const a = anioPara(mes, m[1] ? 1 : diasMes);
-            const ultimo = new Date(a, mes, 0).getDate();
-            inicio = new Date(a, mes - 1, m[1] ? 1 : ultimo - n + 1);
-            fin = new Date(a, mes - 1, m[1] ? n : ultimo);
-            frag = m[0];
-        }
-    }
-    // del X (de mes) al Y de mes
-    if (!inicio) {
-        m = new RegExp(`\\b(?:del|desde\\s+el)\\s+${N}(?:\\s+de\\s+${M})?\\s+(?:al|hasta\\s+el)\\s+${N}\\s+de\\s+${M}\\b`, 'i').exec(texto);
-        if (m) {
-            const d1 = numeroDe(m[1]);
-            const d2 = numeroDe(m[3]);
-            const mes2 = MESES_TXT[m[4].toLowerCase()];
-            const mes1 = m[2] ? MESES_TXT[m[2].toLowerCase()] : mes2;
-            const a1 = anioPara(mes1, d1);
-            inicio = new Date(a1, mes1 - 1, d1);
-            fin = new Date(mes2 < mes1 ? a1 + 1 : a1, mes2 - 1, d2);
-            frag = m[0];
-        }
-    }
-
-    let resto = texto;
-    if (inicio) {
-        resto = texto.replace(frag, ' ');
-    } else {
-        const it = interpretarFecha(texto);
-        inicio = alFuturo(it.fecha, texto);
-        resto = it.resto;
-    }
-    // Hora: «a las 21:30», «a las 9», «a las nueve y media»
-    let hora = '';
-    const h = /\ba\s+las?\s+(\d{1,2})(?:[:.](\d{2}))?(\s+y\s+media)?(?:\s+de\s+la\s+(tarde|noche))?\b/i.exec(resto);
-    if (h) {
-        let hh = Number(h[1]);
-        const mm = h[2] ? Number(h[2]) : (h[3] ? 30 : 0);
-        if (h[4] && hh < 12) hh += 12;
-        if (hh <= 23 && mm <= 59) {
-            hora = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-            resto = resto.replace(h[0], ' ');
-        }
-    }
-    resto = resto.replace(/^\s*(?:tengo|hay|voy\s+a|me\s+voy\s+de)\s+/i, '')
-        .replace(/\s+/g, ' ').replace(/^[\s,;:—-]+|[\s,;:—-]+$/g, '')
-        .replace(/^(?:de|del|el|la|los|en|para|a|que)\s+/i, '').replace(/\s+(?:de|del|el|la|los|en|para|a)$/i, '')
-        .trim();
-    resto = resto.charAt(0).toUpperCase() + resto.slice(1);
-    return {
-        inicio: claveDia(inicio),
-        fin: fin && claveDia(fin) !== claveDia(inicio) ? claveDia(fin) : '',
-        hora,
-        titulo: resto,
-        tipo: tipoDeEvento(texto)
-    };
-}
+// La lectura de frases («los últimos tres días de febrero viaje a Roma»)
+// la hace el servidor: rest.regla('evento' | 'estudio', { texto }).
 
 const TIPOS_EVENTO = [
     ['comida', 'Comida', /\b(comida|comer|almuerzo|brunch|desayuno)\b/i],
@@ -141,10 +52,6 @@ const TIPOS_EVENTO = [
 ];
 const NOMBRE_EVENTO = Object.fromEntries(TIPOS_EVENTO.map(([k, n]) => [k, n]));
 
-function tipoDeEvento(texto) {
-    const t = TIPOS_EVENTO.find(([, , re]) => re && re.test(texto));
-    return t ? t[0] : 'otro';
-}
 
 function textoFechasEvento(d, fecha) {
     const ini = fechaCorta(fecha);
@@ -212,16 +119,23 @@ async function fichaEventos(cont) {
 
         const inp = env.querySelector('#ev-texto');
         const prev = env.querySelector('#ev-preview');
+        let esperaPrev = null;
         const pintarPrev = () => {
             const t = inp.value.trim();
+            clearTimeout(esperaPrev);
             if (!t) { prev.textContent = ''; return; }
-            const e = interpretarEvento(t);
+            esperaPrev = setTimeout(() => pintarPrevDe(t), 250);
+        };
+        const pintarPrevDe = async (t) => {
+            const e = await rest.regla('evento', { texto: t });
+            if (e.error || inp.value.trim() !== t) return;
             prev.textContent = `${NOMBRE_EVENTO[e.tipo]} · ${e.fin ? fechaCorta(e.inicio) + ' – ' + fechaCorta(e.fin) : fechaBonita(desdeClaveDia(e.inicio))}${e.hora ? ' · ' + e.hora : ''}${e.titulo ? ' · «' + e.titulo + '»' : ''}`;
         };
         const guardar = async () => {
             const t = inp.value.trim();
             if (!t) return aviso('Escribe o dicta qué tienes.', 'error');
-            const e = interpretarEvento(t);
+            const e = await rest.regla('evento', { texto: t });
+            if (e.error) return aviso(e.error, 'error');
             const res = await rest.crearRegistro('eventos', { titulo: e.titulo || t, tipo: e.tipo, fin: e.fin, hora: e.hora }, e.inicio);
             if (!res.exito) return aviso(res.error || 'No se pudo guardar.', 'error');
             registrosCal = null;
@@ -278,19 +192,3 @@ async function fichaEventos(cont) {
     await render();
 }
 
-// --- Estudio: «tengo examen de Procesos el 12 de diciembre» ---
-function interpretarEstudio(texto) {
-    const it = interpretarFecha(texto);
-    const tipos = [['examen', /\b(examen|parcial|final|prueba)\b/i], ['practica', /\bpr[aá]ctica/i], ['deberes', /\bdeberes\b/i], ['tarea', /\b(tarea|entrega|trabajo)\b/i]];
-    const tipo = (tipos.find(([, re]) => re.test(texto)) || ['tarea'])[0];
-    let resto = it.resto.replace(/^\s*(?:tengo|hay)\s+(?:un|una|el|la)?\s*/i, '').trim();
-    let asignatura = '';
-    const a = /\b(?:de|del)\s+(.+)$/i.exec(resto);
-    if (a && /^(examen|parcial|final|pr[aá]ctica|deberes|tarea|entrega|trabajo)\b/i.test(resto)) {
-        asignatura = a[1].trim();
-        resto = resto.slice(0, a.index).trim();
-    }
-    resto = resto.charAt(0).toUpperCase() + resto.slice(1);
-    asignatura = asignatura.charAt(0).toUpperCase() + asignatura.slice(1);
-    return { tipo, titulo: resto, asignatura, fecha: claveDia(alFuturo(it.fecha, texto)) };
-}

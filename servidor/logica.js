@@ -7,6 +7,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('node:crypto'); // Hito 4: tokens de confirmación
 const mongoose = require('mongoose');  // Hitos 5: validación de ObjectId
 const datos = require('./datos.js');
+const reglas = require('./reglas.js'); // Sprint 2: reglas de los módulos (PBI-27)
 const correo = require('./correo.js'); // Hito 4: envío de correos (servicio externo)
 
 // Función 1: Solo para crear cuentas nuevas
@@ -128,16 +129,29 @@ async function loginUsuario(email, password) {
     }
 }
 
-// 1. Listar usuarios (solo administrador)
+// Regla de estado (spec §4.2): una cuenta está ACTIVA si está confirmada
+// (por correo o por Google) y no se ha eliminado; si no, está PENDIENTE.
+// Las cuentas antiguas no tienen el campo y cuentan como confirmadas.
+function estadoDe(usuario) {
+    if (!usuario) return 'eliminado';
+    return usuario.confirmada === false ? 'pendiente' : 'activo';
+}
+
+// 1. Listar usuarios (solo administrador), con su estado
 async function listarUsuarios(rolSolicitante) {
     if (rolSolicitante !== 'admin') {
         console.log(`[LOG - ALERTA] Intento de listar usuarios denegado`);
         return { exito: false, error: 'Acceso denegado. Solo para administradores.' };
     }
     try {
-        // Devuelve solo el email y el rol de todos los usuarios
         const usuarios = await datos.listarTodos();
-        return { exito: true, datos: usuarios };
+        const lista = usuarios.map((u) => ({
+            email: u.email,
+            rol: u.rol || 'usuario', // cuentas antiguas sin el campo
+            estado: estadoDe(u),
+            fechaRegistro: u.fechaRegistro
+        }));
+        return { exito: true, datos: lista };
     } catch (error) {
         return { exito: false, error: 'Error al obtener la lista de usuarios.' };
     }
@@ -149,10 +163,8 @@ async function comprobarEstado(email, rolSolicitante) {
         return { exito: false, error: 'Acceso denegado.' };
     }
     try {
-        const usuario = await datos.buscarPorEmail(email);
-        // Si el usuario existe en la BD, está activo. Si no, fue eliminado o no existe.
-        if (!usuario) return { exito: true, activo: false };
-        return { exito: true, activo: true };
+        const estado = estadoDe(await datos.buscarPorEmail(email));
+        return { exito: true, activo: estado === 'activo', estado };
     } catch (error) {
         return { exito: false, error: 'Error al comprobar el estado del usuario.' };
     }
@@ -534,6 +546,66 @@ async function actualizarRegistroModulo(email, clave, id, datosNuevos) {
     }
 }
 
+// ============================================================
+// SPRINT 2 (PBI-27) - REGLAS DE LOS MÓDULOS
+// El cliente ya no calcula: pide el resultado a esta capa.
+// Aquí se valida la entrada y se delega en reglas.js (funciones puras).
+// ============================================================
+const MAX_TEXTO_REGLA = 300;
+const MAX_LISTA_REGLA = 200;
+
+const esTexto = (t) => typeof t === 'string' && t.trim() && t.length <= MAX_TEXTO_REGLA;
+const esLista = (l) => Array.isArray(l) && l.length <= MAX_LISTA_REGLA;
+const esHora = (h) => /^\d{1,2}:\d{2}$/.test(String(h || ''));
+
+const REGLAS = {
+    // «comida con amigos mañana» -> { fecha, resto }
+    fecha: (p) => (esTexto(p.texto) ? reglas.interpretarFecha(p.texto, p.hoy) : 'Escribe una frase (máximo 300 caracteres).'),
+    evento: (p) => (esTexto(p.texto) ? reglas.interpretarEvento(p.texto, p.hoy) : 'Escribe una frase (máximo 300 caracteres).'),
+    estudio: (p) => (esTexto(p.texto) ? reglas.interpretarEstudio(p.texto, p.hoy) : 'Escribe una frase (máximo 300 caracteres).'),
+    'plan-estudio': (p) => {
+        if (!esLista(p.temas) || !p.temas.length) return 'Añade al menos un tema.';
+        if (!reglas.esClave(p.examen) || p.examen <= p.hoy) return 'Pon una fecha de examen futura.';
+        const horasDia = Number(p.horasDia);
+        if (!(horasDia > 0 && horasDia <= 16)) return 'Las horas al día deben estar entre 0 y 16.';
+        const temas = p.temas.map((t, i) => ({ nombre: String((t && t.nombre) || `Tema ${i + 1}`).slice(0, 80), horas: Math.max(0, Number(t && t.horas) || 0) }));
+        return reglas.planificarTemas(temas, p.examen, horasDia, p.hoy);
+    },
+    agua: (p) => {
+        if (!esHora(p.levantar) || !esHora(p.acostar)) return 'Indica a qué hora te levantas y te acuestas.';
+        const comidas = esLista(p.comidas) ? p.comidas.filter(esHora) : [];
+        return reglas.horarioAgua({ levantar: p.levantar, acostar: p.acostar, cada: p.cada, comidas });
+    },
+    sueno: (p) => {
+        if (!esHora(p.cena) || !esHora(p.levantar)) return 'Indica a qué hora cenas y te levantas.';
+        return reglas.horasSueno({ cena: p.cena, levantar: p.levantar, tardo: p.tardo });
+    },
+    outfits: (p) => (esLista(p.outfits) ? reglas.sugerirOutfits(p.outfits, p.pide || {}) : 'Lista de outfits no válida.'),
+    visionboard: (p) => {
+        if (!esLista(p.metas)) return 'Lista de metas no válida.';
+        return p.metas.map((m) => reglas.planPorMeses(esLista(m && m.pasos) ? m.pasos : [], reglas.esClave(m && m.fecha) ? m.fecha : '', p.hoy));
+    }
+};
+
+function listarReglas() {
+    return Object.keys(REGLAS);
+}
+
+// Aplica una regla por su nombre. Devuelve { exito, datos } o { exito: false, error }
+function aplicarRegla(nombre, params) {
+    const regla = Object.prototype.hasOwnProperty.call(REGLAS, nombre) ? REGLAS[nombre] : null;
+    if (!regla) return { exito: false, error: 'Esa regla no existe.' };
+    if (!esObjetoPlano(params)) return { exito: false, error: 'Faltan los datos de la regla.' };
+    if (!reglas.esClave(params.hoy)) return { exito: false, error: 'Falta la fecha de hoy (AAAA-MM-DD).' };
+    try {
+        const resultado = regla(params);
+        if (typeof resultado === 'string') return { exito: false, error: resultado };
+        return { exito: true, datos: resultado };
+    } catch (error) {
+        return { exito: false, error: 'No se pudo aplicar la regla.' };
+    }
+}
+
 module.exports = {
     registrarUsuario,
     confirmarCuenta,
@@ -541,6 +613,7 @@ module.exports = {
     loginUsuario,
     listarUsuarios,
     comprobarEstado,
+    estadoDe,
     eliminarUsuario,
     asegurarAdmin,
     puedeEliminar,
@@ -551,5 +624,8 @@ module.exports = {
     listarRegistrosModulo,
     crearRegistroModulo,
     borrarRegistroModulo,
-    actualizarRegistroModulo
+    actualizarRegistroModulo,
+    // Reglas de los módulos (Sprint 2)
+    listarReglas,
+    aplicarRegla
 };

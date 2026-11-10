@@ -119,9 +119,9 @@ async function buscarPorEmail(email) {
     return Usuario.findOne({ email });
 }
 
-// Devolver el listado de todos los usuarios (solo email y rol)
+// Devolver el listado de todos los usuarios (email, rol y lo necesario para su estado)
 async function listarTodos() {
-    return Usuario.find({}, 'email rol');
+    return Usuario.find({}, 'email rol confirmada fechaRegistro').lean();
 }
 
 // Eliminar un usuario por su email (devuelve null si no existía)

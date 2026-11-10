@@ -96,6 +96,22 @@ test('Batería de pruebas de Gestión de Usuarios (Dasna)', async (t) => {
         const resultado = await logica.listarUsuarios('admin');
         assert.strictEqual(resultado.exito, true);
         assert.ok(Array.isArray(resultado.datos));
+        // RF-07: el listado incluye el estado de cada cuenta
+        assert.ok(resultado.datos.every((u) => ['activo', 'pendiente'].includes(u.estado)));
+    });
+
+    await t.test('RF-08: una cuenta pendiente NO sale como activa; una inexistente sale eliminada', async () => {
+        // Cuenta recién registrada, sin confirmar
+        const emailPend = `pend_${Date.now()}@universo.com`;
+        await logica.registrarUsuario(emailPend, passwordTest);
+        const pendiente = await logica.comprobarEstado(emailPend, 'admin');
+        await logica.eliminarUsuario(emailPend, 'admin@universo.com', 'admin');
+        assert.strictEqual(pendiente.activo, false);
+        assert.strictEqual(pendiente.estado, 'pendiente');
+        const nadie = await logica.comprobarEstado('nadie_' + Date.now() + '@universo.com', 'admin');
+        assert.strictEqual(nadie.estado, 'eliminado');
+        assert.strictEqual(logica.estadoDe({ confirmada: true }), 'activo');
+        assert.strictEqual(logica.estadoDe({}), 'activo', 'cuentas antiguas sin el campo cuentan como confirmadas');
     });
 
     // ===== HITO 4: inicio de sesión con proveedor externo (Google) =====

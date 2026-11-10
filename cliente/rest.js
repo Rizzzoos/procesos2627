@@ -211,6 +211,26 @@ async function eliminarUsuario(email) {
     return peticionJson(`/api/usuarios/${encodeURIComponent(email)}`, { method: 'DELETE' });
 }
 
+// Foto al ticket: el servidor la lee con IA y devuelve { productos } o { error }
+async function leerTicket(imagen, mime) {
+    return peticionJson('/api/ticket', {
+        method: 'POST',
+        body: JSON.stringify({ imagen, mime })
+    });
+}
+
+// Reglas de los módulos (las calcula el servidor). Añade «hoy» del
+// navegador y devuelve los datos, o { error } si algo falla.
+async function regla(nombre, params = {}) {
+    const f = new Date();
+    const hoy = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+    const r = await peticionJson(`/api/reglas/${encodeURIComponent(nombre)}`, {
+        method: 'POST',
+        body: JSON.stringify({ hoy, ...params })
+    });
+    return r && r.exito ? r.datos : { error: (r && r.error) || 'No se pudo calcular.' };
+}
+
 // Espacio de nombres para las vistas (app.js usa rest.funcion(...))
 const rest = {
     obtenerSesion,
@@ -222,5 +242,7 @@ const rest = {
     borrarRegistro,
     listarUsuarios,
     estadoUsuario,
-    eliminarUsuario
+    eliminarUsuario,
+    leerTicket,
+    regla
 };

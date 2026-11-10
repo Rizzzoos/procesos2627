@@ -265,25 +265,10 @@ async function fichaViajes(cont) {
 // ============================================================
 // Un vaso cada `cada` minutos entre levantarse y acostarse;
 // el que caiga cerca de una comida se pone 30 min antes de ella.
-function horarioAgua(aj) {
-    const ini = aMinutos(aj.levantar);
-    let fin = aMinutos(aj.acostar);
-    if (fin <= ini) fin += 1440;
-    const cada = Math.max(30, Number(aj.cada) || 120);
-    const comidas = (aj.comidas || []).filter(Boolean).map((h) => {
-        let x = aMinutos(h);
-        if (x < ini) x += 1440;
-        return x;
-    });
-    const tomas = [];
-    for (let t = ini + 15; t <= fin - 30; t += cada) {
-        const cerca = comidas.find((cm) => Math.abs(cm - t) < cada / 2);
-        tomas.push({ min: cerca !== undefined ? Math.max(ini, cerca - 30) : t, comida: cerca !== undefined });
-    }
-    const vistos = new Set();
-    return tomas.filter((t) => (vistos.has(t.min) ? false : vistos.add(t.min)))
-        .sort((a, b) => a.min - b.min)
-        .map((t) => ({ hora: aHora(t.min), comida: t.comida, min: t.min }));
+// El horario de vasos lo calcula el servidor
+async function horarioAgua(aj) {
+    const r = await rest.regla('agua', { levantar: aj.levantar, acostar: aj.acostar, cada: aj.cada, comidas: aj.comidas || [] });
+    return Array.isArray(r) ? r : [];
 }
 
 const AGUA_POR_DEFECTO = { levantar: '08:00', acostar: '23:30', cada: 120, comidas: ['08:30', '14:00', '21:00'] };
@@ -298,7 +283,7 @@ async function programarAvisosAgua(aj) {
     }
     const avisos = [];
     for (const dia of [hoyClave(), sumarDias(hoyClave(), 1)]) {
-        for (const t of horarioAgua(aj)) {
+        for (const t of await horarioAgua(aj)) {
             avisos.push({
                 cuando: aLas(dia, '00:00') + t.min * 60000,
                 titulo: 'Dasna · Agua',
@@ -324,7 +309,7 @@ async function fichaAgua(cont) {
         const hoy = hoyClave();
         const regHoy = lista.find((x) => x.datos && x.datos.tipo === 'dia' && claveDia(x.fecha) === hoy) || null;
         const vasos = (regHoy && Number(regHoy.datos.vasos)) || 0;
-        const horario = horarioAgua(aj);
+        const horario = await horarioAgua(aj);
         const objetivo = horario.length;
         const ahora = new Date();
         const ahoraMin = ahora.getHours() * 60 + ahora.getMinutes();
@@ -407,13 +392,7 @@ const TIEMPOS_OUTFIT = [['☀️', 'calor'], ['⛅', 'templado'], ['❄️', 'fr
 const NIVELES_COMODO = ['Nada cómodo', 'Poco', 'Normal', 'Cómodo', 'Muy cómodo'];
 const NIVELES_ARREGLO = ['Muy informal', 'Informal', 'Normal', 'Arreglado', 'Muy arreglado'];
 
-function puntuarOutfit(d, pide) {
-    let p = 0;
-    if (pide.tiempo) p += (d.tiempos || []).includes(pide.tiempo) ? 4 : -3;
-    if (pide.comodidad) p -= Math.abs((Number(d.comodidad) || 3) - pide.comodidad) * 1.5;
-    if (pide.arreglo) p -= Math.abs((Number(d.arreglo) || 3) - pide.arreglo) * 1.5;
-    return p;
-}
+// La puntuación de cada outfit la calcula el servidor: rest.regla('outfits', …)
 
 async function fichaOutfits(cont) {
     let pestana = 'armario';
@@ -453,9 +432,16 @@ async function fichaOutfits(cont) {
                 || '<div class="tarjeta" style="grid-column:1/-1"><p class="pista" style="margin:0">Hazte una foto con lo que llevas hoy y apúntalo: así vas haciendo tu registro de conjuntos.</p></div>'}</div>`;
         } else {
             const hayFiltro = pide.tiempo || pide.comodidad || pide.arreglo;
-            const opciones = hayFiltro
-                ? outfits.map((x) => ({ x, p: puntuarOutfit(x.datos, pide) })).sort((a, b) => b.p - a.p).slice(0, 4)
+            // Solo mandamos lo que puntúa (sin fotos)
+            const mejores = hayFiltro
+                ? await rest.regla('outfits', {
+                    pide,
+                    outfits: outfits.map((x) => ({ id: x.id, datos: { tiempos: x.datos.tiempos, comodidad: x.datos.comodidad, arreglo: x.datos.arreglo } }))
+                })
                 : [];
+            const opciones = (Array.isArray(mejores) ? mejores : [])
+                .map((m) => ({ x: outfits.find((o) => o.id === m.id), p: m.puntos }))
+                .filter((o) => o.x);
             cuerpo = `
                 <div class="tarjeta">
                     <h3>¿Qué me pongo?</h3>
