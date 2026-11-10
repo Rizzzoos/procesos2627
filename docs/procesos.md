@@ -28,5 +28,5 @@ Fichero `.github/workflows/ci.yml`:
 
 - La app corre en un contenedor (ver `Dockerfile` en la raíz) desplegado en **Google Cloud Run** (servicio `procesos2627`, región `europe-west1`).
 - El despliegue es **continuo** (Sprint 2, decisión D-14): al integrar en `main`, si las pruebas pasan, el trabajo `desplegar` del workflow lo publica solo en Cloud Run. Las variables de entorno viven en el servicio (solo nombres en el [README §Variables de entorno](../README.md#variables-de-entorno-necesarias)).
-- La spec §7.2 exige despliegue continuo: "cada cambio que llega a main se despliega automáticamente… No se despliega a mano". Aquí **no hay paso de despliegue en el workflow**: por eso PRO-03 (despliegue continuo) está **pendiente** en [requisitos.md](requisitos.md).
+- La spec §7.2 exige despliegue continuo: "cada cambio que llega a main se despliega automáticamente… No se despliega a mano". Se cumple desde el Sprint 2: la primera ejecución con despliegue salió en verde el 10/11 (PR #10), así que PRO-03 está **hecho** en [requisitos.md](requisitos.md).
 - Detalle del contenedor y de la configuración de Cloud Run: [README §Despliegue en la nube](../README.md#despliegue-en-la-nube-google-cloud-run).
