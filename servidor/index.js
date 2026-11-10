@@ -19,7 +19,8 @@ const logica = require('./logica.js');         // Capa lógica
 const app = express();
 
 // Middlewares generales
-app.use(express.json());
+// Límite de 12mb: la foto del ticket viaja en base64 dentro del JSON
+app.use(express.json({ limit: '12mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '../cliente'))); // El backend sirve el frontend (mismo origen)
 

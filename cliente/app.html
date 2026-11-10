@@ -10,6 +10,9 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="/estilos/dasna.css">
     <script>
         // Tema antes de pintar nada (sin parpadeo): preferencia guardada o la del sistema
@@ -24,33 +27,25 @@
 </head>
 <body>
 
-    <!-- ================= BARRA LATERAL ================= -->
-    <aside class="lateral" id="lateral">
-        <div class="lateral-logo">
-            DASNA <small id="lateral-slogan">organiza tu vida</small>
+    <!-- ================= CABECERA (arriba) ================= -->
+    <header class="barra-superior">
+        <div class="barra-izq">
+            <span class="barra-logo">DASNA</span>
+            <button class="abrir-buscador" id="btn-buscador">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg> Buscar
+            </button>
         </div>
-
-        <button class="abrir-buscador" id="btn-buscador">
-            🔍 Buscar
-        </button>
-
-        <!-- Los grupos los pinta app.js con el catálogo del servidor -->
-        <nav id="menu" aria-label="Módulos"></nav>
-
-        <!-- Mini-calendario: siempre visible (acceso rápido) -->
-        <div class="mini-cal" id="mini-cal"></div>
-
-        <div class="lateral-pie">
+        <div class="barra-dcha">
             <span class="sesion-email" id="sesion-email">…</span>
-            <button class="icono-btn" id="btn-tema" title="Cambiar tema (claro/oscuro)" aria-label="Cambiar tema">🌙</button>
-            <button class="icono-btn" id="btn-salir" title="Cerrar sesión" aria-label="Cerrar sesión">🚪</button>
+            <button class="icono-btn" id="btn-tema" title="Cambiar tema (claro/oscuro)" aria-label="Cambiar tema"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
+            <button class="icono-btn" id="btn-salir" title="Tu cuenta" aria-label="Tu cuenta" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button>
         </div>
-    </aside>
+    </header>
 
     <!-- ================= CONTENIDO ================= -->
     <main class="contenido">
         <header class="cabecera">
-            <button class="icono-btn solo-movil" id="btn-menu" aria-label="Abrir menú">☰</button>
+            <a class="volver oculto" id="volver" href="#/panel">← Panel</a>
             <div>
                 <h1 id="vista-titulo">Panel</h1>
                 <p id="vista-sub">Cargando…</p>
@@ -73,5 +68,9 @@
     <script src="/estelas.js"></script>
     <script src="/rest.js"></script>
     <script src="/app.js"></script>
+    <script src="/modulos.js"></script>
+    <script src="/modulos-vida.js"></script>
+    <script src="/modulos-eventos.js"></script>
+    <script src="/modulos-panel.js"></script>
 </body>
 </html>

@@ -85,8 +85,28 @@ async function borrarRegistro(email, modulo, id) {
     return Registro.findOneAndDelete({ _id: id, email, modulo });
 }
 
+// Todos los registros de una persona, o de uno de sus módulos (para exportar)
+async function todosLosRegistros(email, modulo) {
+    return Registro.find(modulo ? { email, modulo } : { email }, '-email -__v').sort({ modulo: 1, fecha: 1 }).limit(130000).lean();
+}
+
+// Al eliminar una cuenta se borra también todo lo que guardó
+async function borrarDatosDe(email) {
+    await Registro.deleteMany({ email });
+    await Modulo.deleteMany({ email });
+}
+
 async function contarRegistros(email, modulo) {
     return Registro.countDocuments({ email, modulo });
+}
+
+// Solo actualiza si el documento es DEL USUARIO y DEL MÓDULO (nunca ajeno)
+async function actualizarRegistro(email, modulo, id, datos) {
+    return Registro.findOneAndUpdate(
+        { _id: id, email, modulo },
+        { $set: { datos } },
+        { new: true }
+    );
 }
 
 // Crear un documento usuario en la colección "usuarios"
@@ -110,9 +130,9 @@ async function buscarPorEmail(email) {
     return Usuario.findOne({ email });
 }
 
-// Devolver el listado de todos los usuarios (solo email y rol)
+// Devolver el listado de todos los usuarios (email, rol y lo necesario para su estado)
 async function listarTodos() {
-    return Usuario.find({}, 'email rol');
+    return Usuario.find({}, 'email rol confirmada fechaRegistro').lean();
 }
 
 // Eliminar un usuario por su email (devuelve null si no existía)
@@ -170,5 +190,8 @@ module.exports = {
     listarRegistros,
     crearRegistro,
     borrarRegistro,
-    contarRegistros
+    contarRegistros,
+    todosLosRegistros,
+    borrarDatosDe,
+    actualizarRegistro
 };

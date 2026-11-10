@@ -32,7 +32,7 @@ Los estados se contrastan con la especificación del Sprint 1 (apartados 3 a 7),
 | RNF-08 | Registro de actividad (log) | hecho | Marcadores `[LOG - …]` por consola en `index.js`, `api.js`, `logica.js` y `correo.js` (la spec §6 pide «registro de la actividad relevante» sin fijar el soporte) |
 | PRO-01 | Flujo de trabajo GitHub Flow | parcial | PR #3–#6 desde ramas `feature/*` (bases: `main` en #4–#6 y `feature/hito-1-esqueleto` en #3; los 4 con `merged_at` en la API de GitHub). **Falta:** la spec §7.1 prohíbe trabajar directamente sobre `main` y hubo 10 commits directos (11–13/10) → [sprint-1.md](sprint-1.md) |
 | PRO-02 | Integración continua | hecho | `ci.yml` ejecuta `npm test` en cada PR y en cada push a `main` (§7.2); 10 ejecuciones: 9 en verde y 1 en roja → [procesos.md](procesos.md) |
-| PRO-03 | Despliegue continuo | pendiente | La spec §7.2 exige desplegar cada cambio integrado automáticamente y dice textualmente «No se despliega a mano»; aquí no hay paso de despliegue en el workflow y el deploy se hace a mano con `gcloud` → [procesos.md](procesos.md) |
+| PRO-03 | Despliegue continuo | parcial | Sprint 2: trabajo `desplegar` en `.github/workflows/ci.yml` (solo en `main`, tras pasar las pruebas) → decisión D-14 y [procesos.md](procesos.md). **Falta:** configurar el secreto `GCP_SA_KEY` y ver la primera ejecución en verde |
 
 Notas:
 

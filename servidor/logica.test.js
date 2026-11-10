@@ -96,6 +96,42 @@ test('Batería de pruebas de Gestión de Usuarios (Dasna)', async (t) => {
         const resultado = await logica.listarUsuarios('admin');
         assert.strictEqual(resultado.exito, true);
         assert.ok(Array.isArray(resultado.datos));
+        // RF-07: el listado incluye el estado de cada cuenta
+        assert.ok(resultado.datos.every((u) => ['activo', 'pendiente'].includes(u.estado)));
+    });
+
+    await t.test('RF-08: una cuenta pendiente NO sale como activa; una inexistente sale eliminada', async () => {
+        // Cuenta recién registrada, sin confirmar
+        const emailPend = `pend_${Date.now()}@universo.com`;
+        await logica.registrarUsuario(emailPend, passwordTest);
+        const pendiente = await logica.comprobarEstado(emailPend, 'admin');
+        await logica.eliminarUsuario(emailPend, 'admin@universo.com', 'admin');
+        assert.strictEqual(pendiente.activo, false);
+        assert.strictEqual(pendiente.estado, 'pendiente');
+        const nadie = await logica.comprobarEstado('nadie_' + Date.now() + '@universo.com', 'admin');
+        assert.strictEqual(nadie.estado, 'eliminado');
+        assert.strictEqual(logica.estadoDe({ confirmada: true }), 'activo');
+        assert.strictEqual(logica.estadoDe({}), 'activo', 'cuentas antiguas sin el campo cuentan como confirmadas');
+    });
+
+    await t.test('Eliminar mi cuenta borra también mis registros; exportar por módulo', async () => {
+        const emailBorrar = `borrar_${Date.now()}@universo.com`;
+        await logica.registrarUsuario(emailBorrar, passwordTest);
+        await logica.crearRegistroModulo(emailBorrar, 'diario', { resumen: 'hola' });
+        await logica.crearRegistroModulo(emailBorrar, 'agua', { tipo: 'dia', vasos: 3 });
+
+        const soloAgua = await logica.exportarDatos(emailBorrar, 'json', 'agua');
+        assert.strictEqual(soloAgua.exito, true);
+        assert.ok(soloAgua.nombre.startsWith('dasna-agua-'));
+        const contenido = JSON.parse(soloAgua.contenido);
+        assert.deepStrictEqual(contenido.registros.map((r) => r.modulo), ['agua'], 'solo los registros de ese módulo');
+        const todo = await logica.exportarDatos(emailBorrar, 'csv');
+        assert.strictEqual(todo.contenido.trim().split('\r\n').length, 3, 'cabecera + 2 registros');
+
+        const borrada = await logica.eliminarUsuario(emailBorrar, emailBorrar, 'usuario');
+        assert.strictEqual(borrada.exito, true);
+        const quedan = await logica.listarRegistrosModulo(emailBorrar, 'diario', {});
+        assert.strictEqual(quedan.datos.length, 0, 'no quedan registros huérfanos');
     });
 
     // ===== HITO 4: inicio de sesión con proveedor externo (Google) =====
@@ -235,10 +271,10 @@ test('Motor de módulos (Dasna)', async (t) => {
     // Un email siempre válido para las pruebas que no necesitan usuario real
     const email = emailBase;
 
-    await t.test('1. Un usuario nuevo ve los 6 módulos por defecto', async () => {
+    await t.test('1. Un usuario nuevo ve los 7 módulos por defecto', async () => {
         const r = await logica.obtenerModulos(email);
         assert.strictEqual(r.exito, true);
-        assert.strictEqual(r.modulos.length, 6);
+        assert.strictEqual(r.modulos.length, 12);
         assert.ok(r.modulos.every((m) => m.nombre && m.icono && m.descripcion));
         assert.strictEqual(r.modulos[0].clave, 'visionboard', 'respeta el orden por defecto');
     });
@@ -335,6 +371,35 @@ test('Motor de módulos (Dasna)', async (t) => {
         const r = await logica.borrarRegistroModulo(email, 'otra-cosa', new mongoose.Types.ObjectId());
         assert.strictEqual(r.exito, false);
         assert.ok(r.error.includes('no existe'));
+    });
+
+    await t.test('9. Actualizar un registro propio (y nunca el ajeno)', async () => {
+        const creado = await logica.crearRegistroModulo(emailA, 'diario', { resumen: 'antes' });
+        const id = String(creado.id);
+
+        // Otra usuaria no puede tocarlo
+        const ajeno = await logica.actualizarRegistroModulo(emailB, 'diario', id, { resumen: 'vandalismo' });
+        assert.strictEqual(ajeno.exito, false);
+        assert.ok(ajeno.error.includes('no existe o no es tuyo'));
+
+        // La dueña sí lo actualiza (varias veces se puede)
+        const ok = await logica.actualizarRegistroModulo(emailA, 'diario', id, { resumen: 'después', humor: 4 });
+        assert.strictEqual(ok.exito, true);
+        const otraVez = await logica.actualizarRegistroModulo(emailA, 'diario', id, { resumen: 'y ahora', humor: 5 });
+        assert.strictEqual(otraVez.exito, true);
+
+        const listado = await logica.listarRegistrosModulo(emailA, 'diario', {});
+        const guardado = listado.datos.find((r) => String(r.id) === id);
+        assert.strictEqual(guardado.datos.resumen, 'y ahora', 'guarda la última versión');
+        assert.strictEqual(guardado.datos.humor, 5, 'conserva campos numéricos');
+
+        // Validaciones
+        const datosMalos = await logica.actualizarRegistroModulo(emailA, 'diario', id, 'no-objeto');
+        assert.strictEqual(datosMalos.exito, false);
+
+        const idMalo = await logica.actualizarRegistroModulo(emailA, 'diario', 'esto-no-es-un-id', { a: 1 });
+        assert.strictEqual(idMalo.exito, false);
+        assert.ok(idMalo.error.includes('no válido'));
     });
 
     // Limpieza

@@ -7,6 +7,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('node:crypto'); // Hito 4: tokens de confirmación
 const mongoose = require('mongoose');  // Hitos 5: validación de ObjectId
 const datos = require('./datos.js');
+const reglas = require('./reglas.js'); // Sprint 2: reglas de los módulos (PBI-27)
 const correo = require('./correo.js'); // Hito 4: envío de correos (servicio externo)
 
 // Función 1: Solo para crear cuentas nuevas
@@ -128,16 +129,29 @@ async function loginUsuario(email, password) {
     }
 }
 
-// 1. Listar usuarios (solo administrador)
+// Regla de estado (spec §4.2): una cuenta está ACTIVA si está confirmada
+// (por correo o por Google) y no se ha eliminado; si no, está PENDIENTE.
+// Las cuentas antiguas no tienen el campo y cuentan como confirmadas.
+function estadoDe(usuario) {
+    if (!usuario) return 'eliminado';
+    return usuario.confirmada === false ? 'pendiente' : 'activo';
+}
+
+// 1. Listar usuarios (solo administrador), con su estado
 async function listarUsuarios(rolSolicitante) {
     if (rolSolicitante !== 'admin') {
         console.log(`[LOG - ALERTA] Intento de listar usuarios denegado`);
         return { exito: false, error: 'Acceso denegado. Solo para administradores.' };
     }
     try {
-        // Devuelve solo el email y el rol de todos los usuarios
         const usuarios = await datos.listarTodos();
-        return { exito: true, datos: usuarios };
+        const lista = usuarios.map((u) => ({
+            email: u.email,
+            rol: u.rol || 'usuario', // cuentas antiguas sin el campo
+            estado: estadoDe(u),
+            fechaRegistro: u.fechaRegistro
+        }));
+        return { exito: true, datos: lista };
     } catch (error) {
         return { exito: false, error: 'Error al obtener la lista de usuarios.' };
     }
@@ -149,10 +163,8 @@ async function comprobarEstado(email, rolSolicitante) {
         return { exito: false, error: 'Acceso denegado.' };
     }
     try {
-        const usuario = await datos.buscarPorEmail(email);
-        // Si el usuario existe en la BD, está activo. Si no, fue eliminado o no existe.
-        if (!usuario) return { exito: true, activo: false };
-        return { exito: true, activo: true };
+        const estado = estadoDe(await datos.buscarPorEmail(email));
+        return { exito: true, activo: estado === 'activo', estado };
     } catch (error) {
         return { exito: false, error: 'Error al comprobar el estado del usuario.' };
     }
@@ -167,6 +179,7 @@ async function eliminarUsuario(emailAEliminar, emailSolicitante, rolSolicitante)
     }
     try {
         await datos.eliminarPorEmail(emailAEliminar);
+        await datos.borrarDatosDe(emailAEliminar); // sus módulos y registros también
         console.log(`[LOG - SEGURIDAD] Usuario eliminado: ${emailAEliminar} por ${emailSolicitante}`);
         return { exito: true, mensaje: 'Usuario eliminado correctamente.' };
     } catch (error) {
@@ -278,22 +291,22 @@ const CATALOGO = {
     visionboard: {
         nombre: 'Vision Board',
         icono: '✨',
-        descripcion: 'Plasma tus metas visualmente y mantén tu enfoque diario intacto.'
+        descripcion: 'Tus sueños y metas del año, con su plan y su collage.'
     },
     gimnasio: {
         nombre: 'Gimnasio',
         icono: '💪',
-        descripcion: 'Registra tus rutinas, levanta más peso y trackea tu progreso físico.'
+        descripcion: 'Tus rutinas, tus pesos y los días que vas.'
     },
     estudio: {
         nombre: 'Estudio',
         icono: '📚',
-        descripcion: 'Mide tus sesiones de concentración profunda con la técnica Pomodoro.'
+        descripcion: 'Exámenes, deberes y prácticas con recordatorios y plan de estudio.'
     },
     sueno: {
         nombre: 'Sueño',
         icono: '🌙',
-        descripcion: 'Monitoriza tus horas de descanso para garantizar una recuperación óptima.'
+        descripcion: 'A qué hora acostarte para no cortar los ciclos de sueño.'
     },
     ahorros: {
         nombre: 'Ahorros',
@@ -304,6 +317,36 @@ const CATALOGO = {
         nombre: 'Diario',
         icono: '📖',
         descripcion: 'Vuelca tus pensamientos, reflexiones y agradecimientos del día a día.'
+    },
+    comidas: {
+        nombre: 'Comidas',
+        icono: '🍽️',
+        descripcion: 'Tu cocina al día: alimentos, recetas propias, ideas y lista de la compra.'
+    },
+    pelislibros: {
+        nombre: 'Películas Libros',
+        icono: '🎬',
+        descripcion: 'Tu estantería de libros, películas y series.'
+    },
+    viajes: {
+        nombre: 'Viajes',
+        icono: '✈️',
+        descripcion: 'Tus viajes, los billetes que comprar y lo que quieres ver.'
+    },
+    agua: {
+        nombre: 'Beber agua',
+        icono: '💧',
+        descripcion: 'Tus vasos del día con recordatorios según tu horario.'
+    },
+    outfits: {
+        nombre: 'Outfits',
+        icono: '👗',
+        descripcion: 'Tus conjuntos y qué ponerte según el día.'
+    },
+    eventos: {
+        nombre: 'Eventos',
+        icono: '🎉',
+        descripcion: 'Comidas, cenas, viajes, conciertos y festivales, escritos o dictados.'
     }
 };
 
@@ -312,7 +355,7 @@ const ORDEN_POR_DEFECTO = Object.keys(CATALOGO);
 
 // Límites de seguridad comunes a todos los módulos
 const MAX_REGISTROS_MODULO = 10000;
-const MAX_BYTES_DATOS = 60 * 1024;   // 60 KB por registro
+const MAX_BYTES_DATOS = 400 * 1024;  // 400 KB por registro (cabe una foto del diario)
 const MAX_CLAVES_MODULOS = 50;
 
 function esEmailValido(email) {
@@ -345,7 +388,9 @@ async function obtenerModulos(email) {
             .filter((clave) => CATALOGO[clave])
             .map((clave) => ({ clave, ...CATALOGO[clave] }));
 
-        return { exito: true, modulos, disponibles: listarModulos() };
+        // configurado = ya eligió sus módulos (si no, el cliente le guía la primera vez)
+        const configurado = Boolean(guardado && guardado.claves && guardado.claves.length);
+        return { exito: true, modulos, disponibles: listarModulos(), configurado };
     } catch (error) {
         return { exito: false, error: 'Error al leer tus módulos.' };
     }
@@ -439,7 +484,7 @@ async function crearRegistroModulo(email, clave, datosNuevo, fecha) {
         return { exito: false, error: 'Demasiados campos en el registro (máximo 50).' };
     }
     if (JSON.stringify(datosNuevo).length > MAX_BYTES_DATOS) {
-        return { exito: false, error: 'El registro es demasiado grande (máximo 60 KB).' };
+        return { exito: false, error: 'El registro es demasiado grande (máximo 400 KB).' };
     }
     if (fecha !== undefined && Number.isNaN(new Date(fecha).getTime())) {
         return { exito: false, error: 'La fecha no es válida.' };
@@ -476,6 +521,155 @@ async function borrarRegistroModulo(email, clave, id) {
     }
 }
 
+// Actualizar los datos de un registro propio (p. ej. el diario de un día)
+async function actualizarRegistroModulo(email, clave, id, datosNuevos) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    if (!CATALOGO[clave]) return { exito: false, error: `El módulo "${clave}" no existe.` };
+    if (!id || !mongoose.isValidObjectId(id)) {
+        return { exito: false, error: 'Identificador de registro no válido.' };
+    }
+    if (!esObjetoPlano(datosNuevos)) {
+        return { exito: false, error: 'Los datos deben ser un objeto con al menos un campo.' };
+    }
+    if (Object.keys(datosNuevos).length > 50) {
+        return { exito: false, error: 'Demasiados campos en el registro (máximo 50).' };
+    }
+    if (JSON.stringify(datosNuevos).length > MAX_BYTES_DATOS) {
+        return { exito: false, error: 'El registro es demasiado grande (máximo 400 KB).' };
+    }
+
+    try {
+        const actualizado = await datos.actualizarRegistro(email, clave, id, datosNuevos);
+        if (!actualizado) {
+            return { exito: false, error: 'Este registro no existe o no es tuyo.' };
+        }
+        return { exito: true, mensaje: 'Registro actualizado.', id: actualizado._id, fecha: actualizado.fecha };
+    } catch (error) {
+        return { exito: false, error: 'Error al actualizar el registro.' };
+    }
+}
+
+// ============================================================
+// SPRINT 2 (PBI-27) - REGLAS DE LOS MÓDULOS
+// El cliente ya no calcula: pide el resultado a esta capa.
+// Aquí se valida la entrada y se delega en reglas.js (funciones puras).
+// ============================================================
+const MAX_TEXTO_REGLA = 300;
+const MAX_LISTA_REGLA = 200;
+
+const esTexto = (t) => typeof t === 'string' && t.trim() && t.length <= MAX_TEXTO_REGLA;
+const esLista = (l) => Array.isArray(l) && l.length <= MAX_LISTA_REGLA;
+const esHora = (h) => /^\d{1,2}:\d{2}$/.test(String(h || ''));
+
+const REGLAS = {
+    // «comida con amigos mañana» -> { fecha, resto }
+    fecha: (p) => (esTexto(p.texto) ? reglas.interpretarFecha(p.texto, p.hoy) : 'Escribe una frase (máximo 300 caracteres).'),
+    evento: (p) => (esTexto(p.texto) ? reglas.interpretarEvento(p.texto, p.hoy) : 'Escribe una frase (máximo 300 caracteres).'),
+    estudio: (p) => (esTexto(p.texto) ? reglas.interpretarEstudio(p.texto, p.hoy) : 'Escribe una frase (máximo 300 caracteres).'),
+    'plan-estudio': (p) => {
+        if (!esLista(p.temas) || !p.temas.length) return 'Añade al menos un tema.';
+        if (!reglas.esClave(p.examen) || p.examen <= p.hoy) return 'Pon una fecha de examen futura.';
+        const horasDia = Number(p.horasDia);
+        if (!(horasDia > 0 && horasDia <= 16)) return 'Las horas al día deben estar entre 0 y 16.';
+        const temas = p.temas.map((t, i) => ({ nombre: String((t && t.nombre) || `Tema ${i + 1}`).slice(0, 80), horas: Math.max(0, Number(t && t.horas) || 0) }));
+        return reglas.planificarTemas(temas, p.examen, horasDia, p.hoy);
+    },
+    agua: (p) => {
+        if (!esHora(p.levantar) || !esHora(p.acostar)) return 'Indica a qué hora te levantas y te acuestas.';
+        const comidas = esLista(p.comidas) ? p.comidas.filter(esHora) : [];
+        return reglas.horarioAgua({ levantar: p.levantar, acostar: p.acostar, cada: p.cada, comidas });
+    },
+    sueno: (p) => {
+        if (!esHora(p.cena) || !esHora(p.levantar)) return 'Indica a qué hora cenas y te levantas.';
+        return reglas.horasSueno({ cena: p.cena, levantar: p.levantar, tardo: p.tardo });
+    },
+    outfits: (p) => (esLista(p.outfits) ? reglas.sugerirOutfits(p.outfits, p.pide || {}) : 'Lista de outfits no válida.'),
+    visionboard: (p) => {
+        if (!esLista(p.metas)) return 'Lista de metas no válida.';
+        return p.metas.map((m) => reglas.planPorMeses(esLista(m && m.pasos) ? m.pasos : [], reglas.esClave(m && m.fecha) ? m.fecha : '', p.hoy));
+    }
+};
+
+function listarReglas() {
+    return Object.keys(REGLAS);
+}
+
+// Aplica una regla por su nombre. Devuelve { exito, datos } o { exito: false, error }
+function aplicarRegla(nombre, params) {
+    const regla = Object.prototype.hasOwnProperty.call(REGLAS, nombre) ? REGLAS[nombre] : null;
+    if (!regla) return { exito: false, error: 'Esa regla no existe.' };
+    if (!esObjetoPlano(params)) return { exito: false, error: 'Faltan los datos de la regla.' };
+    if (!reglas.esClave(params.hoy)) return { exito: false, error: 'Falta la fecha de hoy (AAAA-MM-DD).' };
+    try {
+        const resultado = regla(params);
+        if (typeof resultado === 'string') return { exito: false, error: resultado };
+        return { exito: true, datos: resultado };
+    } catch (error) {
+        return { exito: false, error: 'No se pudo aplicar la regla.' };
+    }
+}
+
+// ============================================================
+// SPRINT 2 - IDEAS: resumen semanal y exportar datos
+// ============================================================
+const MODULOS_RESUMEN = ['agua', 'diario', 'gimnasio'];
+const claveDeFecha = (f) => new Date(f).toISOString().slice(0, 10);
+
+// Resumen de los últimos 7 días, solo de los módulos que tiene activos
+async function resumenSemanal(email, hoy) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    if (!reglas.esClave(hoy)) return { exito: false, error: 'Falta la fecha de hoy (AAAA-MM-DD).' };
+    try {
+        const { modulos } = await obtenerModulos(email);
+        const activos = MODULOS_RESUMEN.filter((m) => (modulos || []).some((x) => x.clave === m));
+        const desde = reglas.sumarDias(hoy, -6);
+        const hasta = `${hoy}T23:59:59.999Z`;
+        const registros = {};
+        for (const m of activos) {
+            const lista = await datos.listarRegistros(email, m, { desde, hasta, limite: 500 });
+            registros[m] = lista.map((r) => ({ fecha: claveDeFecha(r.fecha), datos: r.datos || {} }));
+        }
+        return { exito: true, datos: reglas.resumenSemana(registros, hoy) };
+    } catch (error) {
+        return { exito: false, error: 'No se pudo preparar el resumen.' };
+    }
+}
+
+// CSV: una fila por registro; los datos van como JSON en su columna
+function aCsv(filas) {
+    const celda = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    return ['modulo,fecha,datos', ...filas.map((r) => [r.modulo, r.fecha, JSON.stringify(r.datos)].map(celda).join(','))].join('\r\n');
+}
+
+// Exportar lo de una persona, todo o un módulo (derecho de acceso y portabilidad)
+async function exportarDatos(email, formato = 'json', modulo = '') {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    if (!['json', 'csv'].includes(formato)) return { exito: false, error: 'Formato no válido (json o csv).' };
+    if (modulo && !CATALOGO[modulo]) return { exito: false, error: `El módulo "${modulo}" no existe.` };
+    try {
+        const usuario = await datos.buscarPorEmail(email);
+        if (!usuario) return { exito: false, error: 'La cuenta no existe.' };
+        const { modulos } = await obtenerModulos(email);
+        const registros = (await datos.todosLosRegistros(email, modulo || undefined)).map((r) => ({
+            id: String(r._id), modulo: r.modulo, fecha: claveDeFecha(r.fecha), datos: r.datos
+        }));
+        const dia = new Date().toISOString().slice(0, 10);
+        const base = modulo ? `dasna-${modulo}-${dia}` : `dasna-${dia}`;
+        if (formato === 'csv') {
+            return { exito: true, nombre: `${base}.csv`, tipo: 'text/csv; charset=utf-8', contenido: '\uFEFF' + aCsv(registros) };
+        }
+        const todo = {
+            exportado: new Date().toISOString(),
+            cuenta: { email: usuario.email, nombre: usuario.nombre || '', rol: usuario.rol || 'usuario', fechaRegistro: usuario.fechaRegistro },
+            modulos: modulo ? [modulo] : (modulos || []).map((m) => m.clave),
+            registros
+        };
+        return { exito: true, nombre: `${base}.json`, tipo: 'application/json; charset=utf-8', contenido: JSON.stringify(todo, null, 2) };
+    } catch (error) {
+        return { exito: false, error: 'No se pudieron exportar tus datos.' };
+    }
+}
+
 module.exports = {
     registrarUsuario,
     confirmarCuenta,
@@ -483,6 +677,7 @@ module.exports = {
     loginUsuario,
     listarUsuarios,
     comprobarEstado,
+    estadoDe,
     eliminarUsuario,
     asegurarAdmin,
     puedeEliminar,
@@ -492,5 +687,12 @@ module.exports = {
     actualizarModulos,
     listarRegistrosModulo,
     crearRegistroModulo,
-    borrarRegistroModulo
+    borrarRegistroModulo,
+    actualizarRegistroModulo,
+    // Reglas de los módulos (Sprint 2)
+    listarReglas,
+    aplicarRegla,
+    // Ideas: resumen y exportar
+    resumenSemanal,
+    exportarDatos
 };

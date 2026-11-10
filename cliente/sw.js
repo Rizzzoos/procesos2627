@@ -12,7 +12,7 @@
 // lo detecta y monta la caché nueva en la siguiente recarga.
 // ============================================================
 
-const CACHE = 'dasna-v2';
+const CACHE = 'dasna-v43';
 
 const SHELL = [
     '/',
@@ -21,6 +21,10 @@ const SHELL = [
     '/app.html',
     '/rest.js',
     '/app.js',
+    '/modulos.js',
+    '/modulos-vida.js',
+    '/modulos-eventos.js',
+    '/modulos-panel.js',
     '/estelas.js',
     '/estilos/dasna.css',
     '/manifest.json',
@@ -29,10 +33,14 @@ const SHELL = [
     '/icon-512.png'
 ];
 
-// 1. Instalación: guardamos la "carcasa" de la app
+// 1. Instalación: guardamos la "carcasa" de la app.
+//    { cache: 'no-cache' } fuerza que venga de red: así la caché
+//    nueva NUNCA se queda con ficheros viejos de la caché HTTP.
 self.addEventListener('install', (evento) => {
     evento.waitUntil(
-        caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting())
+        caches.open(CACHE)
+            .then((cache) => cache.addAll(SHELL.map((u) => new Request(u, { cache: 'no-cache' }))))
+            .then(() => self.skipWaiting())
     );
 });
 

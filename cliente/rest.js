@@ -47,11 +47,11 @@ async function enviarDatos(ruta) {
         } else {
             // Si hay error, lo mostramos
             mensajeDiv.textContent = resultado.error;
-            mensajeDiv.style.color = 'red';
+            mensajeDiv.style.color = '#fb7185';
         }
     } catch (error) {
         mensajeDiv.textContent = 'Error de conexión con el servidor.';
-        mensajeDiv.style.color = 'red';
+        mensajeDiv.style.color = '#fb7185';
     }
 }
 
@@ -69,12 +69,12 @@ async function crearCuenta() {
     // Validaciones en el cliente (el servidor también valida)
     if (password.length < 8) {
         mensajeDiv.textContent = 'La contraseña debe tener mínimo 8 caracteres.';
-        mensajeDiv.style.color = 'red';
+        mensajeDiv.style.color = '#fb7185';
         return;
     }
     if (password !== password2) {
         mensajeDiv.textContent = 'Las contraseñas no coinciden.';
-        mensajeDiv.style.color = 'red';
+        mensajeDiv.style.color = '#fb7185';
         return;
     }
 
@@ -96,11 +96,11 @@ async function crearCuenta() {
             mensajeDiv.style.color = '#4ade80'; // verde para éxito
         } else {
             mensajeDiv.textContent = resultado.error;
-            mensajeDiv.style.color = 'red';
+            mensajeDiv.style.color = '#fb7185';
         }
     } catch (error) {
         mensajeDiv.textContent = 'Error de conexión con el servidor.';
-        mensajeDiv.style.color = 'red';
+        mensajeDiv.style.color = '#fb7185';
     }
 }
 
@@ -118,14 +118,14 @@ function mostrarResultadoUrl() {
     if (!resultado) return;
 
     const mensajes = {
-        'confirmada': ['✅ Cuenta confirmada. Ya puedes iniciar sesión.', '#4ade80'],
-        'error': ['El enlace de confirmación no es válido o ha caducado. Regístrate de nuevo.', 'orange'],
-        'google_denegado': ['Has cancelado el inicio de sesión con Google.', 'orange'],
-        'oauth_no_configurado': ['El inicio de sesión con Google no está configurado en el servidor.', 'orange'],
-        'oauth_fallo': ['No se pudo completar el inicio de sesión con Google. Inténtalo de nuevo.', 'orange'],
-        'codigo_ausente': ['Google no devolvió el código de autorización. Inténtalo de nuevo.', 'orange']
+        'confirmada': ['Cuenta confirmada. Ya puedes iniciar sesión.', '#4ade80'],
+        'error': ['El enlace de confirmación no es válido o ha caducado. Regístrate de nuevo.', '#fbbf24'],
+        'google_denegado': ['Has cancelado el inicio de sesión con Google.', '#fbbf24'],
+        'oauth_no_configurado': ['El inicio de sesión con Google no está configurado en el servidor.', '#fbbf24'],
+        'oauth_fallo': ['No se pudo completar el inicio de sesión con Google. Inténtalo de nuevo.', '#fbbf24'],
+        'codigo_ausente': ['Google no devolvió el código de autorización. Inténtalo de nuevo.', '#fbbf24']
     };
-    const [texto, color] = mensajes[resultado] || ['Se ha producido un error. Inténtalo de nuevo.', 'red'];
+    const [texto, color] = mensajes[resultado] || ['Se ha producido un error. Inténtalo de nuevo.', '#fb7185'];
 
     mostrarLogin();
     const div = document.getElementById('mensaje');
@@ -170,8 +170,13 @@ async function obtenerModulos() {
     return peticionJson('/api/modulos');
 }
 
-async function listarRegistros(clave) {
-    return peticionJson(`/api/modulos/${encodeURIComponent(clave)}/registros`);
+async function listarRegistros(clave, filtros = {}) {
+    const q = new URLSearchParams();
+    if (filtros.limite) q.set('limite', filtros.limite);
+    if (filtros.desde) q.set('desde', filtros.desde);
+    if (filtros.hasta) q.set('hasta', filtros.hasta);
+    const sufijo = q.toString() ? `?${q.toString()}` : '';
+    return peticionJson(`/api/modulos/${encodeURIComponent(clave)}/registros${sufijo}`);
 }
 
 async function crearRegistro(clave, datos, fecha) {
@@ -187,6 +192,13 @@ async function borrarRegistro(clave, id) {
     });
 }
 
+async function actualizarRegistro(clave, id, datos) {
+    return peticionJson(`/api/modulos/${encodeURIComponent(clave)}/registros/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ datos })
+    });
+}
+
 async function listarUsuarios() {
     return peticionJson('/api/admin/usuarios');
 }
@@ -199,6 +211,57 @@ async function eliminarUsuario(email) {
     return peticionJson(`/api/usuarios/${encodeURIComponent(email)}`, { method: 'DELETE' });
 }
 
+// Foto al ticket: el servidor la lee con IA y devuelve { productos } o { error }
+async function leerTicket(imagen, mime) {
+    return peticionJson('/api/ticket', {
+        method: 'POST',
+        body: JSON.stringify({ imagen, mime })
+    });
+}
+
+// Reglas de los módulos (las calcula el servidor). Añade «hoy» del
+// navegador y devuelve los datos, o { error } si algo falla.
+async function regla(nombre, params = {}) {
+    const hoy = hoyNavegador();
+    const r = await peticionJson(`/api/reglas/${encodeURIComponent(nombre)}`, {
+        method: 'POST',
+        body: JSON.stringify({ hoy, ...params })
+    });
+    return r && r.exito ? r.datos : { error: (r && r.error) || 'No se pudo calcular.' };
+}
+
+function hoyNavegador() {
+    const f = new Date();
+    return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+}
+
+// Guardar qué módulos ve (primer uso y «Elegir módulos»)
+async function guardarModulos(claves) {
+    return peticionJson('/api/modulos', { method: 'PUT', body: JSON.stringify({ claves }) });
+}
+
+// Resumen de la semana (lo calcula el servidor)
+async function resumen() {
+    const r = await peticionJson(`/api/resumen?hoy=${hoyNavegador()}`);
+    return r && r.exito ? r.datos : { error: (r && r.error) || 'No se pudo leer el resumen.' };
+}
+
+// Exportar mis datos (todo, o un módulo): devuelve { blob, nombre } o { error }
+async function descargarDatos(formato, modulo = '') {
+    try {
+        const extra = modulo ? `&modulo=${encodeURIComponent(modulo)}` : '';
+        const res = await fetch(`/api/exportar?formato=${encodeURIComponent(formato)}${extra}`);
+        if (!res.ok) {
+            const r = await res.json().catch(() => ({}));
+            return { error: r.error || 'No se pudieron exportar tus datos.' };
+        }
+        const nombre = (/filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '') || [])[1] || `dasna.${formato}`;
+        return { blob: await res.blob(), nombre };
+    } catch (error) {
+        return { error: 'Error de conexión con el servidor.' };
+    }
+}
+
 // Espacio de nombres para las vistas (app.js usa rest.funcion(...))
 const rest = {
     obtenerSesion,
@@ -206,8 +269,14 @@ const rest = {
     obtenerModulos,
     listarRegistros,
     crearRegistro,
+    actualizarRegistro,
     borrarRegistro,
     listarUsuarios,
     estadoUsuario,
-    eliminarUsuario
+    eliminarUsuario,
+    leerTicket,
+    regla,
+    guardarModulos,
+    resumen,
+    descargarDatos
 };

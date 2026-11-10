@@ -8,6 +8,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const logica = require('./logica.js');
 const oauth = require('./oauth.js'); // Hito 4: inicio de sesión con Google
+const ticket = require('./ticket.js'); // Foto al ticket: lectura con IA (Gemini)
 
 // Middleware "Guardaespaldas". Comprueba la cookie antes de dejar pasar.
 function protegerRuta(req, res, next) {
@@ -137,7 +138,7 @@ function crearRouter() {
         const emailAComprobar = req.params.email;
         const resultado = await logica.comprobarEstado(emailAComprobar, req.usuario.rol);
 
-        if (resultado.exito) res.status(200).json({ activo: resultado.activo });
+        if (resultado.exito) res.status(200).json({ activo: resultado.activo, estado: resultado.estado });
         else res.status(403).json({ error: resultado.error });
     });
 
@@ -149,8 +150,10 @@ function crearRouter() {
             req.usuario.rol
         );
 
-        if (resultado.exito) res.status(200).json({ mensaje: resultado.mensaje });
-        else res.status(403).json({ error: resultado.error });
+        if (!resultado.exito) return res.status(403).json({ error: resultado.error });
+        // Si se ha borrado a sí misma, se cierra también su sesión
+        if (req.params.email === req.usuario.email) res.clearCookie('sesion_dasna');
+        res.status(200).json({ exito: true, mensaje: resultado.mensaje });
     });
 
     // [VARIANTE 5] Decidir si un actor puede eliminar a un objetivo (ruta pública, no requiere sesión)
@@ -206,6 +209,51 @@ function crearRouter() {
         const resultado = await logica.borrarRegistroModulo(req.usuario.email, req.params.clave, req.params.id);
         if (resultado.exito) res.status(200).json(resultado);
         else res.status(400).json({ error: resultado.error });
+    });
+
+    router.put('/modulos/:clave/registros/:id', protegerRuta, async (req, res) => {
+        const { datos } = req.body || {};
+        const resultado = await logica.actualizarRegistroModulo(req.usuario.email, req.params.clave, req.params.id, datos);
+        if (resultado.exito) res.status(200).json(resultado);
+        else res.status(400).json({ error: resultado.error });
+    });
+
+    // ========================================================
+    // FOTO AL TICKET - leemos un ticket con IA y devolvemos
+    // los productos. La clave de la IA NUNCA sale de aquí.
+    // ========================================================
+    router.post('/ticket', protegerRuta, async (req, res) => {
+        const { imagen, mime } = req.body || {};
+        const resultado = await ticket.leerImagen(imagen, mime);
+        if (resultado.productos) res.status(200).json(resultado);
+        else res.status(resultado.status || 400).json({ error: resultado.error });
+    });
+
+    // ========================================================
+    // SPRINT 2 (PBI-27) - REGLAS DE LOS MÓDULOS
+    // Una sola ruta: el nombre elige la regla y la lógica valida.
+    // ========================================================
+    router.post('/reglas/:nombre', protegerRuta, (req, res) => {
+        const resultado = logica.aplicarRegla(req.params.nombre, req.body || {});
+        if (resultado.exito) res.status(200).json(resultado);
+        else res.status(400).json({ error: resultado.error });
+    });
+
+    // ========================================================
+    // SPRINT 2 - Resumen de la semana y exportar mis datos (todo o un módulo)
+    // ========================================================
+    router.get('/resumen', protegerRuta, async (req, res) => {
+        const resultado = await logica.resumenSemanal(req.usuario.email, req.query.hoy);
+        if (resultado.exito) res.status(200).json(resultado);
+        else res.status(400).json({ error: resultado.error });
+    });
+
+    router.get('/exportar', protegerRuta, async (req, res) => {
+        const resultado = await logica.exportarDatos(req.usuario.email, req.query.formato || 'json', req.query.modulo || '');
+        if (!resultado.exito) return res.status(400).json({ error: resultado.error });
+        res.setHeader('Content-Type', resultado.tipo);
+        res.setHeader('Content-Disposition', `attachment; filename="${resultado.nombre}"`);
+        res.status(200).send(resultado.contenido);
     });
 
     return router;
