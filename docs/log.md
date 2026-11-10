@@ -2,6 +2,8 @@
 
 Formato: **fecha · evento · enlace**, del más reciente al más antiguo. Los enlaces apuntan a la web pública del repositorio. Fechas y hashes tomados de `git log --first-parent --format='%h %ad %s' --date=short main` y de la API de GitHub (fechas de fusión de los PR).
 
+- 2026-11-10 · Primer despliegue automático a Cloud Run en verde (PRO-03) · [run 42848282430](https://github.com/Rizzzoos/procesos2627/actions/runs/42848282430)
+- 2026-11-10 · Sprint 2 se fusiona en main: capas, estado de usuarios, resumen de la semana, menú de la cuenta y despliegue continuo · [PR #10](https://github.com/Rizzzoos/procesos2627/pull/10)
 - 2026-10-21 · El Hito 4 del correo (Brevo y reenvío de confirmación) se fusiona en main · [PR #6](https://github.com/Rizzzoos/procesos2627/pull/6)
 - 2026-10-21 · El Hito 4 de OAuth con Google y confirmación de cuenta se fusiona en main · [PR #5](https://github.com/Rizzzoos/procesos2627/pull/5)
 - 2026-10-15 · Variante 5: regla de permiso para eliminar usuarios · [PR #4](https://github.com/Rizzzoos/procesos2627/pull/4)

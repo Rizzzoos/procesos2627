@@ -12,7 +12,8 @@ Resumen operativo. La descripción completa está en el [README §Arquitectura e
 | Capa | Archivo | Responsabilidad |
 |---|---|---|
 | API (HTTP) | `servidor/api.js` | Endpoints, cookies, firma/lectura del JWT, sesión y roles. Único módulo que conoce Express. |
-| Lógica de negocio | `servidor/logica.js` | Registro, login, confirmación de cuentas, acceso con Google, roles y permisos de borrado. No recibe HTTP. |
+| Lógica de negocio | `servidor/logica.js` | Registro, login, confirmación de cuentas, acceso con Google, roles, permisos de borrado, estado de los usuarios, resumen de la semana y exportar datos. No recibe HTTP. |
+| Reglas de los módulos | `servidor/reglas.js` | Funciones puras (sin base de datos ni HTTP) que usa la lógica: interpretar fechas y eventos, planificador de estudio, horario de agua, horas de sueño, sugerencia de outfits, plan por meses y resumen de la semana. Reciben «hoy» del cliente. Sprint 2 (PBI-27). |
 | Datos | `servidor/datos.js` | Único módulo que habla con MongoDB (Mongoose); define colecciones y reglas de consulta. |
 | Servicios externos | `servidor/oauth.js`, `servidor/correo.js` | Solo estos dos tocan proveedores de fuera: Google (OAuth 2.0) y el proveedor de correo. |
 | Composición | `servidor/index.js` | Arranque, conexión a la base de datos, administrador inicial, estáticos del cliente y montaje del router en `/api`. |
@@ -21,8 +22,8 @@ Resumen operativo. La descripción completa está en el [README §Arquitectura e
 
 | Capa | Archivo | Responsabilidad |
 |---|---|---|
-| Presentación | `cliente/index.html`, `cliente/dashboard.html` | Pantallas (portada con login/registro y panel de usuario), diseño *glassmorphism*. |
-| Comunicación | `cliente/rest.js` | Todas las llamadas a la API (`fetch`). `dashboard.html` usa además dos `fetch` puntuales al cargar: `/api/auth/me` y `/api/logout`. |
+| Presentación | `cliente/index.html`, `cliente/app.html`, `cliente/dashboard.html`, `cliente/app.js`, `cliente/modulos*.js` | Pantallas y módulos, diseño *glassmorphism*. Solo pintan: los cálculos los pide al servidor por `rest.js`. |
+| Comunicación | `cliente/rest.js` | Todas las llamadas a la API (`fetch`); ningún otro archivo del cliente usa `fetch` (Sprint 2, PBI-28). |
 
 ## Frontera exacta entre capas
 
