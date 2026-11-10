@@ -150,8 +150,10 @@ function crearRouter() {
             req.usuario.rol
         );
 
-        if (resultado.exito) res.status(200).json({ mensaje: resultado.mensaje });
-        else res.status(403).json({ error: resultado.error });
+        if (!resultado.exito) return res.status(403).json({ error: resultado.error });
+        // Si se ha borrado a sí misma, se cierra también su sesión
+        if (req.params.email === req.usuario.email) res.clearCookie('sesion_dasna');
+        res.status(200).json({ exito: true, mensaje: resultado.mensaje });
     });
 
     // [VARIANTE 5] Decidir si un actor puede eliminar a un objetivo (ruta pública, no requiere sesión)
@@ -238,7 +240,7 @@ function crearRouter() {
     });
 
     // ========================================================
-    // SPRINT 2 - Resumen de la semana (con rachas) y exportar mis datos
+    // SPRINT 2 - Resumen de la semana y exportar mis datos (todo o un módulo)
     // ========================================================
     router.get('/resumen', protegerRuta, async (req, res) => {
         const resultado = await logica.resumenSemanal(req.usuario.email, req.query.hoy);
@@ -247,7 +249,7 @@ function crearRouter() {
     });
 
     router.get('/exportar', protegerRuta, async (req, res) => {
-        const resultado = await logica.exportarDatos(req.usuario.email, req.query.formato || 'json');
+        const resultado = await logica.exportarDatos(req.usuario.email, req.query.formato || 'json', req.query.modulo || '');
         if (!resultado.exito) return res.status(400).json({ error: resultado.error });
         res.setHeader('Content-Type', resultado.tipo);
         res.setHeader('Content-Disposition', `attachment; filename="${resultado.nombre}"`);

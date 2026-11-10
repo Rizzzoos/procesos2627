@@ -1269,18 +1269,8 @@ body { animation-duration: 120s; letter-spacing: -0.005em; }
     #dia-recap { order: 5; align-self: center; }
 }
 
-/* ---------- Panel: tu semana, rachas y tu cuenta (Sprint 2) ---------- */
+/* ---------- Panel: tu semana y primer uso (Sprint 2) ---------- */
 .resumen-semana { padding: 1.1rem 1.2rem; margin-bottom: 1.5rem; }
-.resumen-cab { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
-.resumen-cab h3 { margin: 0; }
-.rachas { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.racha {
-    display: inline-flex; align-items: center; gap: 0.35rem;
-    padding: 0.3rem 0.7rem; border-radius: 999px;
-    border: 1px solid rgba(251, 191, 36, 0.45); color: var(--texto);
-    font-size: 0.82rem; text-decoration: none;
-}
-.racha svg { width: 1em; height: 1em; color: #fbbf24; }
 .resumen-rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.8rem; }
 .resumen-dato {
     display: flex; flex-direction: column; gap: 0.2rem;
@@ -1290,10 +1280,6 @@ body { animation-duration: 120s; letter-spacing: -0.005em; }
 }
 .resumen-dato strong { font-size: 1.15rem; }
 .resumen-dato .etiqueta { margin: 0; }
-.resumen-proximos { grid-column: span 2; }
-.resumen-proximos a { color: var(--texto); text-decoration: none; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cuenta-panel { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 1rem 1.2rem; margin-top: 1.5rem; }
-.cuenta-panel h3 { margin: 0 0 0.2rem; }
 .primer-uso { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.6rem; }
 .primer-uso-op {
     display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer;
@@ -1307,6 +1293,25 @@ body { animation-duration: 120s; letter-spacing: -0.005em; }
 .primer-uso-icono svg { width: 1.3rem; height: 1.3rem; }
 @media (max-width: 720px) {
     .resumen-rejilla { grid-template-columns: 1fr 1fr; }
-    .resumen-proximos { grid-column: 1 / -1; }
-    .cuenta-panel .fila-botones { width: 100%; }
 }
+
+/* ---------- Menú de la cuenta (botón de salir) ---------- */
+.barra-dcha { position: relative; }
+/* La cabecera por encima del contenido para que el menú no quede detrás */
+.barra-superior { z-index: 5; }
+.menu-cuenta {
+    position: absolute; top: calc(100% + 0.5rem); right: 0; z-index: 60;
+    min-width: 210px; padding: 0.35rem;
+    display: flex; flex-direction: column;
+    background: var(--cristal-fuerte);
+    backdrop-filter: blur(var(--blur)); -webkit-backdrop-filter: blur(var(--blur));
+    border: 1px solid var(--cristal-borde); border-radius: 14px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
+}
+.menu-cuenta button {
+    text-align: left; padding: 0.65rem 0.8rem; min-height: 44px;
+    background: none; border: none; border-radius: 10px;
+    color: var(--texto); font: inherit; font-size: 0.92rem; cursor: pointer;
+}
+.menu-cuenta button:hover, .menu-cuenta button:focus-visible { background: var(--cristal); outline: none; }
+.menu-cuenta button.peligro { color: var(--peligro); }

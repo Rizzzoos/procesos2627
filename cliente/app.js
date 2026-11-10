@@ -295,7 +295,7 @@ function vistaPanel() {
     cont.innerHTML = '';
     registrosCal = null;   // al volver al panel, se leen los registros frescos
 
-    // Resumen de la semana y rachas (arriba)
+    // Resumen de la semana (arriba)
     const resumenZona = document.createElement('div');
     cont.appendChild(resumenZona);
     pintarResumen(resumenZona);
@@ -358,11 +358,6 @@ function vistaPanel() {
 
     cont.appendChild(dos);
     pintarCalendario();
-
-    // Tu cuenta: elegir módulos y exportar datos (abajo)
-    const cuentaZona = document.createElement('div');
-    cont.appendChild(cuentaZona);
-    pintarCuenta(cuentaZona);
 
     // Los puntos de los registros llegan después (una petición por módulo)
     cargarRegistrosCal().then(() => {
@@ -2052,7 +2047,9 @@ async function iniciar() {
         aplicarTema(document.documentElement.dataset.tema === 'oscuro' ? 'claro' : 'oscuro'));
 
     // --- Cerrar sesión ---
-    document.getElementById('btn-salir').addEventListener('click', () => rest.cerrarSesionApp());
+    // El botón de salir abre el menú de la cuenta (salir, descargar, eliminar)
+    const btnCuenta = document.getElementById('btn-salir');
+    btnCuenta.addEventListener('click', () => alternarMenuCuenta(btnCuenta));
 
     // --- Buscador ---
     document.getElementById('btn-buscador').addEventListener('click', abrirBuscador);

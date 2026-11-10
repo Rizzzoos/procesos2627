@@ -179,6 +179,7 @@ async function eliminarUsuario(emailAEliminar, emailSolicitante, rolSolicitante)
     }
     try {
         await datos.eliminarPorEmail(emailAEliminar);
+        await datos.borrarDatosDe(emailAEliminar); // sus módulos y registros también
         console.log(`[LOG - SEGURIDAD] Usuario eliminado: ${emailAEliminar} por ${emailSolicitante}`);
         return { exito: true, mensaje: 'Usuario eliminado correctamente.' };
     } catch (error) {
@@ -609,20 +610,20 @@ function aplicarRegla(nombre, params) {
 }
 
 // ============================================================
-// SPRINT 2 - IDEAS: resumen semanal, rachas y exportar datos
+// SPRINT 2 - IDEAS: resumen semanal y exportar datos
 // ============================================================
-const MODULOS_RESUMEN = ['agua', 'diario', 'gimnasio', 'estudio', 'eventos'];
+const MODULOS_RESUMEN = ['agua', 'diario', 'gimnasio'];
 const claveDeFecha = (f) => new Date(f).toISOString().slice(0, 10);
 
-// Resumen de los últimos 7 días + rachas, solo de los módulos que tiene activos
+// Resumen de los últimos 7 días, solo de los módulos que tiene activos
 async function resumenSemanal(email, hoy) {
     if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
     if (!reglas.esClave(hoy)) return { exito: false, error: 'Falta la fecha de hoy (AAAA-MM-DD).' };
     try {
         const { modulos } = await obtenerModulos(email);
         const activos = MODULOS_RESUMEN.filter((m) => (modulos || []).some((x) => x.clave === m));
-        const desde = reglas.sumarDias(hoy, -120); // historia suficiente para las rachas
-        const hasta = `${reglas.sumarDias(hoy, 7)}T23:59:59.999Z`;
+        const desde = reglas.sumarDias(hoy, -6);
+        const hasta = `${hoy}T23:59:59.999Z`;
         const registros = {};
         for (const m of activos) {
             const lista = await datos.listarRegistros(email, m, { desde, hasta, limite: 500 });
@@ -640,28 +641,30 @@ function aCsv(filas) {
     return ['modulo,fecha,datos', ...filas.map((r) => [r.modulo, r.fecha, JSON.stringify(r.datos)].map(celda).join(','))].join('\r\n');
 }
 
-// Exportar todo lo de una persona (derecho de acceso y portabilidad)
-async function exportarDatos(email, formato = 'json') {
+// Exportar lo de una persona, todo o un módulo (derecho de acceso y portabilidad)
+async function exportarDatos(email, formato = 'json', modulo = '') {
     if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
     if (!['json', 'csv'].includes(formato)) return { exito: false, error: 'Formato no válido (json o csv).' };
+    if (modulo && !CATALOGO[modulo]) return { exito: false, error: `El módulo "${modulo}" no existe.` };
     try {
         const usuario = await datos.buscarPorEmail(email);
         if (!usuario) return { exito: false, error: 'La cuenta no existe.' };
         const { modulos } = await obtenerModulos(email);
-        const registros = (await datos.todosLosRegistros(email)).map((r) => ({
+        const registros = (await datos.todosLosRegistros(email, modulo || undefined)).map((r) => ({
             id: String(r._id), modulo: r.modulo, fecha: claveDeFecha(r.fecha), datos: r.datos
         }));
         const dia = new Date().toISOString().slice(0, 10);
+        const base = modulo ? `dasna-${modulo}-${dia}` : `dasna-${dia}`;
         if (formato === 'csv') {
-            return { exito: true, nombre: `dasna-${dia}.csv`, tipo: 'text/csv; charset=utf-8', contenido: '\uFEFF' + aCsv(registros) };
+            return { exito: true, nombre: `${base}.csv`, tipo: 'text/csv; charset=utf-8', contenido: '\uFEFF' + aCsv(registros) };
         }
         const todo = {
             exportado: new Date().toISOString(),
             cuenta: { email: usuario.email, nombre: usuario.nombre || '', rol: usuario.rol || 'usuario', fechaRegistro: usuario.fechaRegistro },
-            modulos: (modulos || []).map((m) => m.clave),
+            modulos: modulo ? [modulo] : (modulos || []).map((m) => m.clave),
             registros
         };
-        return { exito: true, nombre: `dasna-${dia}.json`, tipo: 'application/json; charset=utf-8', contenido: JSON.stringify(todo, null, 2) };
+        return { exito: true, nombre: `${base}.json`, tipo: 'application/json; charset=utf-8', contenido: JSON.stringify(todo, null, 2) };
     } catch (error) {
         return { exito: false, error: 'No se pudieron exportar tus datos.' };
     }
@@ -689,7 +692,7 @@ module.exports = {
     // Reglas de los módulos (Sprint 2)
     listarReglas,
     aplicarRegla,
-    // Ideas: resumen, rachas y exportar
+    // Ideas: resumen y exportar
     resumenSemanal,
     exportarDatos
 };

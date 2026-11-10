@@ -114,6 +114,26 @@ test('Batería de pruebas de Gestión de Usuarios (Dasna)', async (t) => {
         assert.strictEqual(logica.estadoDe({}), 'activo', 'cuentas antiguas sin el campo cuentan como confirmadas');
     });
 
+    await t.test('Eliminar mi cuenta borra también mis registros; exportar por módulo', async () => {
+        const emailBorrar = `borrar_${Date.now()}@universo.com`;
+        await logica.registrarUsuario(emailBorrar, passwordTest);
+        await logica.crearRegistroModulo(emailBorrar, 'diario', { resumen: 'hola' });
+        await logica.crearRegistroModulo(emailBorrar, 'agua', { tipo: 'dia', vasos: 3 });
+
+        const soloAgua = await logica.exportarDatos(emailBorrar, 'json', 'agua');
+        assert.strictEqual(soloAgua.exito, true);
+        assert.ok(soloAgua.nombre.startsWith('dasna-agua-'));
+        const contenido = JSON.parse(soloAgua.contenido);
+        assert.deepStrictEqual(contenido.registros.map((r) => r.modulo), ['agua'], 'solo los registros de ese módulo');
+        const todo = await logica.exportarDatos(emailBorrar, 'csv');
+        assert.strictEqual(todo.contenido.trim().split('\r\n').length, 3, 'cabecera + 2 registros');
+
+        const borrada = await logica.eliminarUsuario(emailBorrar, emailBorrar, 'usuario');
+        assert.strictEqual(borrada.exito, true);
+        const quedan = await logica.listarRegistrosModulo(emailBorrar, 'diario', {});
+        assert.strictEqual(quedan.datos.length, 0, 'no quedan registros huérfanos');
+    });
+
     // ===== HITO 4: inicio de sesión con proveedor externo (Google) =====
 
     const emailGoogle = `oauth_${Date.now()}@gmail.com`;

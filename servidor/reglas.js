@@ -349,31 +349,15 @@ function planPorMeses(pasos, fechaMeta, hoyK) {
     });
 }
 
-// --- Panel: resumen de la semana y rachas (Sprint 2, ideas) ---
+// --- Panel: resumen de la semana (Sprint 2, ideas) ---
 const AGUA_POR_DEFECTO = { levantar: '08:00', acostar: '23:30', cada: 120, comidas: ['08:30', '14:00', '21:00'] };
-
-// Lunes de la semana de una fecha (las semanas empiezan en lunes)
-function lunesDe(k) {
-    const f = desdeClave(k);
-    return sumarDias(k, -((f.getDay() + 6) % 7));
-}
-
-// Días seguidos (hacia atrás) que cumplen; hoy cuenta si ya se cumple,
-// y si aún no, la racha sigue viva desde ayer
-function diasSeguidos(cumple, hoyK) {
-    let k = cumple.has(hoyK) ? hoyK : sumarDias(hoyK, -1);
-    let n = 0;
-    while (cumple.has(k)) { n++; k = sumarDias(k, -1); }
-    return n;
-}
 
 // registros: { modulo: [{ fecha: 'AAAA-MM-DD', datos }] } (solo los módulos activos)
 function resumenSemana(registros, hoyK) {
     const desde = sumarDias(hoyK, -6);
-    const hasta7 = sumarDias(hoyK, 7);
     const enSemana = (r) => r.fecha >= desde && r.fecha <= hoyK;
     const de = (m) => registros[m] || null;
-    const resumen = { desde, hasta: hoyK, rachas: [] };
+    const resumen = { desde, hasta: hoyK };
 
     if (de('agua')) {
         const ajustes = de('agua').find((r) => r.datos && r.datos.tipo === 'ajustes');
@@ -386,8 +370,6 @@ function resumenSemana(registros, hoyK) {
             mediaVasos: Math.round((vasos / 7) * 10) / 10,
             diasMeta: semana.filter((r) => Number(r.datos.vasos) >= meta).length
         };
-        const cumple = new Set(dias.filter((r) => Number(r.datos.vasos) >= meta).map((r) => r.fecha));
-        resumen.rachas.push({ modulo: 'agua', nombre: 'Agua', valor: diasSeguidos(cumple, hoyK), unidad: 'días' });
     }
     if (de('diario')) {
         const semana = de('diario').filter(enSemana);
@@ -396,26 +378,11 @@ function resumenSemana(registros, hoyK) {
             dias: new Set(semana.map((r) => r.fecha)).size,
             humorMedio: humores.length ? Math.round((humores.reduce((a, b) => a + b, 0) / humores.length) * 10) / 10 : null
         };
-        const cumple = new Set(de('diario').map((r) => r.fecha));
-        resumen.rachas.push({ modulo: 'diario', nombre: 'Diario', valor: diasSeguidos(cumple, hoyK), unidad: 'días' });
     }
     if (de('gimnasio')) {
         const sesiones = de('gimnasio').filter((r) => r.datos && r.datos.tipo === 'sesion');
         resumen.gimnasio = { entrenos: sesiones.filter(enSemana).length };
-        // Racha en semanas: la meta no es entrenar a diario, sí cada semana
-        const semanas = new Set(sesiones.map((r) => lunesDe(r.fecha)));
-        let k = semanas.has(lunesDe(hoyK)) ? lunesDe(hoyK) : sumarDias(lunesDe(hoyK), -7);
-        let n = 0;
-        while (semanas.has(k)) { n++; k = sumarDias(k, -7); }
-        resumen.rachas.push({ modulo: 'gimnasio', nombre: 'Gimnasio', valor: n, unidad: 'semanas' });
     }
-    const proximos = (m) => (de(m) || [])
-        .filter((r) => r.fecha >= hoyK && r.fecha <= hasta7 && r.datos && r.datos.titulo)
-        .sort((a, b) => a.fecha.localeCompare(b.fecha))
-        .slice(0, 5)
-        .map((r) => ({ fecha: r.fecha, titulo: String(r.datos.titulo).slice(0, 80), tipo: r.datos.tipo || '' }));
-    if (de('estudio')) resumen.estudio = { proximos: proximos('estudio') };
-    if (de('eventos')) resumen.eventos = { proximos: proximos('eventos') };
     return resumen;
 }
 

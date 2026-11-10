@@ -240,16 +240,17 @@ async function guardarModulos(claves) {
     return peticionJson('/api/modulos', { method: 'PUT', body: JSON.stringify({ claves }) });
 }
 
-// Resumen de la semana y rachas (lo calcula el servidor)
+// Resumen de la semana (lo calcula el servidor)
 async function resumen() {
     const r = await peticionJson(`/api/resumen?hoy=${hoyNavegador()}`);
     return r && r.exito ? r.datos : { error: (r && r.error) || 'No se pudo leer el resumen.' };
 }
 
-// Exportar mis datos: devuelve { blob, nombre } o { error }
-async function descargarDatos(formato) {
+// Exportar mis datos (todo, o un módulo): devuelve { blob, nombre } o { error }
+async function descargarDatos(formato, modulo = '') {
     try {
-        const res = await fetch(`/api/exportar?formato=${encodeURIComponent(formato)}`);
+        const extra = modulo ? `&modulo=${encodeURIComponent(modulo)}` : '';
+        const res = await fetch(`/api/exportar?formato=${encodeURIComponent(formato)}${extra}`);
         if (!res.ok) {
             const r = await res.json().catch(() => ({}));
             return { error: r.error || 'No se pudieron exportar tus datos.' };
