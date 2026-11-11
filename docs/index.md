@@ -12,7 +12,8 @@ Ejecución, tecnologías, variables de entorno y despliegue: en el [README](../R
 | [decisiones.md](decisiones.md) | Decisiones D-01 en adelante, con qué se decidió, por qué y su estado. |
 | [procesos.md](procesos.md) | Flujo de trabajo, integración continua y despliegue. |
 | [sprint-1.md](sprint-1.md) | Un apartado por hito del Sprint 1 y la retrospectiva. |
-| [sprint-2.md](sprint-2.md) | Objetivo por definir y requisitos que pasan del Sprint 1. |
+| [sprint-2.md](sprint-2.md) | Objetivo, requisitos que pasaron del Sprint 1 y trabajo nuevo del sprint. |
+| [backlog.md](backlog.md) | Product backlog: PBI, mejoras y decisiones tomadas, con su estado. |
 
 Secciones del README enlazadas desde este bundle:
 [Arquitectura en capas](../README.md#arquitectura-en-capas) ·

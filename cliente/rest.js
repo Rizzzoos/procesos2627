@@ -4,7 +4,23 @@
 // ============================================================
 
 // --- Cambiar entre pestañas de Iniciar sesión / Crear cuenta ---
+// Formularios de la portada: solo uno visible a la vez
+function soloFormulario(id) {
+    ['formLogin', 'formRegistro', 'formRecuperar', 'formRestablecer'].forEach((f) => {
+        const el = document.getElementById(f);
+        if (el) el.classList.toggle('oculto', f !== id);
+    });
+    ['mensaje', 'mensajeRegistro', 'mensajeRecuperar', 'mensajeRestablecer'].forEach((m) => {
+        const el = document.getElementById(m);
+        if (el) el.textContent = '';
+    });
+    const conPestanas = id === 'formLogin' || id === 'formRegistro';
+    document.querySelector('.tabs').classList.toggle('oculto', !conPestanas);
+    document.querySelector('.oauth-box').classList.toggle('oculto', !conPestanas);
+}
+
 function mostrarLogin() {
+    soloFormulario('formLogin');
     document.getElementById('formLogin').classList.remove('oculto');
     document.getElementById('formRegistro').classList.add('oculto');
     document.getElementById('tab-login').classList.add('activo');
@@ -14,6 +30,7 @@ function mostrarLogin() {
 }
 
 function mostrarRegistro() {
+    soloFormulario('formRegistro');
     document.getElementById('formLogin').classList.add('oculto');
     document.getElementById('formRegistro').classList.remove('oculto');
     document.getElementById('tab-login').classList.remove('activo');
@@ -104,6 +121,53 @@ async function crearCuenta() {
     }
 }
 
+// --- Recuperar contraseña ---
+function mostrarRecuperar() {
+    const email = document.getElementById('email').value;
+    soloFormulario('formRecuperar');
+    const campo = document.getElementById('rec-email');
+    if (email && !campo.value) campo.value = email;
+    campo.focus();
+}
+
+function pintarMensaje(id, texto, ok) {
+    const div = document.getElementById(id);
+    div.textContent = texto;
+    div.style.color = ok ? '#4ade80' : '#fb7185';
+}
+
+async function pedirRecuperacion() {
+    const email = document.getElementById('rec-email').value.trim();
+    const boton = document.getElementById('rec-enviar');
+    if (!email) return pintarMensaje('mensajeRecuperar', 'Escribe tu correo.', false);
+    boton.disabled = true;
+    const r = await peticionJson('/api/recuperar', { method: 'POST', body: JSON.stringify({ email }) });
+    boton.disabled = false;
+    pintarMensaje('mensajeRecuperar', r.mensaje || r.error, !!r.mensaje);
+}
+
+// El enlace del correo abre /?recuperar=TOKEN
+function mostrarRestablecer(token) {
+    soloFormulario('formRestablecer');
+    document.getElementById('formRestablecer').dataset.token = token;
+    window.history.replaceState({}, '', '/');
+}
+
+async function guardarNuevaContrasena() {
+    const form = document.getElementById('formRestablecer');
+    const password = document.getElementById('res-password').value;
+    const password2 = document.getElementById('res-password2').value;
+    if (password.length < 8) return pintarMensaje('mensajeRestablecer', 'La contraseña debe tener mínimo 8 caracteres.', false);
+    if (password !== password2) return pintarMensaje('mensajeRestablecer', 'Las contraseñas no coinciden.', false);
+    const boton = document.getElementById('res-guardar');
+    boton.disabled = true;
+    const r = await peticionJson('/api/restablecer', { method: 'POST', body: JSON.stringify({ token: form.dataset.token, password }) });
+    boton.disabled = false;
+    if (r.error) return pintarMensaje('mensajeRestablecer', r.error, false);
+    mostrarLogin();
+    pintarMensaje('mensaje', r.mensaje, true);
+}
+
 // --- HITO 4: acceso con Google (solo redirige; el servidor hace el resto) ---
 function entrarConGoogle() {
     window.location.href = '/api/oauth/google';
@@ -114,6 +178,8 @@ function entrarConGoogle() {
 // /?resultado=error|google_denegado|... -> algo ha fallado, se explica igual
 function mostrarResultadoUrl() {
     const params = new URLSearchParams(window.location.search);
+    const recuperar = params.get('recuperar');
+    if (recuperar) return mostrarRestablecer(recuperar);
     const resultado = params.get('resultado');
     if (!resultado) return;
 

@@ -28,7 +28,7 @@ function nombreRemitente() {
     return process.env.EMAIL_FROM_NAME || 'Dasna';
 }
 
-function cuerpoCorreo(enlace) {
+function cuerpoConfirmacion(enlace) {
     return `
         <div style="font-family: sans-serif; max-width: 480px; margin: auto;">
             <h2>¡Bienvenida a Dasna!</h2>
@@ -46,8 +46,25 @@ function cuerpoCorreo(enlace) {
         </div>`;
 }
 
+function cuerpoRecuperar(enlace) {
+    return `
+        <div style="font-family: sans-serif; max-width: 480px; margin: auto;">
+            <h2>Recupera tu contraseña de Dasna</h2>
+            <p>Has pedido cambiar tu contraseña. Pulsa el botón para elegir una nueva.</p>
+            <p style="text-align: center; margin: 28px 0;">
+                <a href="${enlace}"
+                   style="background: #8b5cf6; color: #fff; padding: 12px 24px;
+                          border-radius: 8px; text-decoration: none; font-weight: bold;">
+                    Elegir contraseña nueva
+                </a>
+            </p>
+            <p>El enlace caduca en 1 hora y solo sirve una vez. Si no has sido tú, ignora este correo: tu contraseña no cambia.</p>
+            <p style="color:#888; font-size:12px;">${enlace}</p>
+        </div>`;
+}
+
 // --- Brevo (Sendinblue): POST https://api.brevo.com/v3/smtp/email ---
-async function enviarConBrevo(emailDestino, enlace) {
+async function enviarConBrevo(emailDestino, asunto, html) {
     const respuesta = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
@@ -58,8 +75,8 @@ async function enviarConBrevo(emailDestino, enlace) {
         body: JSON.stringify({
             sender: { name: nombreRemitente(), email: remitente() },
             to: [{ email: emailDestino }],
-            subject: 'Confirma tu cuenta de Dasna',
-            htmlContent: cuerpoCorreo(enlace)
+            subject: asunto,
+            htmlContent: html
         })
     });
 
@@ -70,7 +87,7 @@ async function enviarConBrevo(emailDestino, enlace) {
 }
 
 // --- Resend: POST https://api.resend.com/emails ---
-async function enviarConResend(emailDestino, enlace) {
+async function enviarConResend(emailDestino, asunto, html) {
     const respuesta = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -80,8 +97,8 @@ async function enviarConResend(emailDestino, enlace) {
         body: JSON.stringify({
             from: `${nombreRemitente()} <${remitente()}>`,
             to: [emailDestino],
-            subject: 'Confirma tu cuenta de Dasna',
-            html: cuerpoCorreo(enlace)
+            subject: asunto,
+            html: html
         })
     });
 
@@ -91,26 +108,36 @@ async function enviarConResend(emailDestino, enlace) {
     }
 }
 
-// Función principal: envía el correo de confirmación con el proveedor configurado.
-async function enviarConfirmacion(emailDestino, token) {
-    const enlace = `${urlBase()}/api/confirmar?token=${token}`;
-
+// Envía un correo con el proveedor configurado.
+async function enviar(emailDestino, asunto, html, enlace, tipo) {
     if (process.env.BREVO_API_KEY) {
-        await enviarConBrevo(emailDestino, enlace);
-        console.log(`[LOG - CORREO] Correo de confirmación enviado (Brevo) a ${emailDestino}`);
+        await enviarConBrevo(emailDestino, asunto, html);
+        console.log(`[LOG - CORREO] Correo de ${tipo} enviado (Brevo) a ${emailDestino}`);
         return { enviado: true, proveedor: 'brevo' };
     }
 
     if (process.env.RESEND_API_KEY) {
-        await enviarConResend(emailDestino, enlace);
-        console.log(`[LOG - CORREO] Correo de confirmación enviado (Resend) a ${emailDestino}`);
+        await enviarConResend(emailDestino, asunto, html);
+        console.log(`[LOG - CORREO] Correo de ${tipo} enviado (Resend) a ${emailDestino}`);
         return { enviado: true, proveedor: 'resend' };
     }
 
     // Sin configurar: no lanzamos error para no romper pruebas ni CI,
     // pero avisamos con claridad en el registro del servidor.
-    console.log(`[LOG - CORREO] AVISO: falta BREVO_API_KEY (o RESEND_API_KEY). Enlace para ${emailDestino}: ${enlace}`);
+    console.log(`[LOG - CORREO] AVISO: falta BREVO_API_KEY (o RESEND_API_KEY). Enlace de ${tipo} para ${emailDestino}: ${enlace}`);
     return { enviado: false, motivo: 'sin_api_key' };
 }
 
-module.exports = { enviarConfirmacion };
+// Correo de confirmación de la cuenta (Hito 4)
+async function enviarConfirmacion(emailDestino, token) {
+    const enlace = `${urlBase()}/api/confirmar?token=${token}`;
+    return enviar(emailDestino, 'Confirma tu cuenta de Dasna', cuerpoConfirmacion(enlace), enlace, 'confirmación');
+}
+
+// Correo para recuperar la contraseña: el enlace abre la portada con el token
+async function enviarRecuperacion(emailDestino, token) {
+    const enlace = `${urlBase()}/?recuperar=${token}`;
+    return enviar(emailDestino, 'Recupera tu contraseña de Dasna', cuerpoRecuperar(enlace), enlace, 'recuperación');
+}
+
+module.exports = { enviarConfirmacion, enviarRecuperacion };

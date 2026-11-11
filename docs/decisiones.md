@@ -5,7 +5,7 @@ description: Qué se decidió, por qué y en qué estado está cada decisión.
 timestamp: 2026-10-28
 ---
 
-Las decisiones D-01 a D-05 recogen las tecnologías; D-06 y D-07 registran un cambio de enfoque en el proveedor de correo (queda la antigua, sustituida); D-08 a D-14, decisiones del producto y del proceso (D-14 sustituye a D-13). Los motivos de D-06, D-08, D-12 y D-13 los aportó la persona responsable del proyecto.
+Las decisiones D-01 a D-05 recogen las tecnologías; D-06 y D-07 registran un cambio de enfoque en el proveedor de correo (queda la antigua, sustituida); D-08 a D-16, decisiones del producto y del proceso (D-14 sustituye a D-13). Los motivos de D-06, D-08, D-12 y D-13 los aportó la persona responsable del proyecto.
 
 ### D-01 — Express + Node.js para la API
 - **Qué se decidió:** montar la API REST con Express sobre Node.js.
@@ -76,3 +76,15 @@ Las decisiones D-01 a D-05 recogen las tecnologías; D-06 y D-07 registran un ca
 - **Qué se decidió:** añadir al workflow de CI un trabajo `desplegar` que, en cada push a `main` y solo si pasan las pruebas, despliega en Cloud Run con `google-github-actions/deploy-cloudrun` (desde el código fuente) y comprueba que la URL pública responde.
 - **Por qué:** la spec §7.2 exige que cada cambio integrado se despliegue solo. Se autentica con la clave de una cuenta de servicio guardada como secreto de GitHub (`GCP_SA_KEY`) porque es la opción más sencilla de montar; Workload Identity Federation (sin claves) queda como mejora posible.
 - **Estado:** vigente desde el Sprint 2.
+
+### D-15 — El login dice qué ha fallado: el correo o la contraseña
+- **Qué se decidió:** cuando el inicio de sesión falla, el mensaje dice exactamente qué está mal: «No existe ninguna cuenta con este correo», «Contraseña incorrecta» o «Tu cuenta aún no está confirmada», en vez de un único mensaje global del tipo «algo ha fallado».
+- **Por qué:** decidido en clase (Sprint 2). La persona sabe qué corregir sin adivinar: si se equivocó al escribir el correo o la contraseña, o si le falta confirmar la cuenta. Junto con el botón del ojo para ver la contraseña, reduce los intentos fallidos.
+- **Riesgo asumido:** el mensaje revela si un correo tiene cuenta en Dasna (enumeración de usuarios). Se acepta porque la contraseña sigue protegida con bcrypt (D-03) y no basta con saber el correo para entrar. Si hiciera falta reforzarlo: limitar intentos por IP o volver al mensaje genérico «correo o contraseña incorrectos».
+- **Estado:** vigente.
+
+### D-16 — Recuperar la contraseña con un enlace de un solo uso (1 h)
+- **Qué se decidió:** «¿Has olvidado tu contraseña?» manda por correo un enlace con un token aleatorio de 32 bytes que caduca en 1 hora y solo sirve una vez. En la base de datos se guarda el **hash SHA-256** del token, no el token. Al elegir la contraseña nueva, la cuenta queda además confirmada (abrir el correo lo demuestra).
+- **Por qué:** es el mecanismo habitual y reutiliza el proveedor de correo de D-07. Guardar solo el hash impide usar el enlace a quien lea la base de datos; 1 hora (frente a las 24 h de la confirmación, D-10) porque el enlace permite cambiar la contraseña.
+- **Mensaje al pedirlo:** siempre el mismo, exista o no la cuenta («Si hay una cuenta con ese correo, te hemos enviado un enlace…»), para que esta pantalla no sirva para probar correos.
+- **Estado:** vigente desde el Sprint 2 (PBI-29).
