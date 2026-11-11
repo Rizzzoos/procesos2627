@@ -15,7 +15,7 @@ El proyecto separa claramente la frontera entre capas:
 
 * **Frontend** (presentación + comunicación): `cliente/index.html` y `cliente/dashboard.html` son la capa de presentación (GUI). `cliente/rest.js` es la capa de comunicación del cliente con la API.
 * **Capa API** (HTTP): `servidor/api.js` define los endpoints REST, las cookies y el JWT. Único módulo que conoce Express.
-* **Capa de lógica de negocio**: `servidor/logica.js` contiene las reglas de gestión de usuarios (registro, login, confirmación de cuentas, acceso con Google, roles admin/usuario, permisos de borrado). No conoce HTTP.
+* **Capa de lógica de negocio**: `servidor/logica.js` contiene las reglas de gestión de usuarios (registro, login, confirmación de cuentas, recuperar contraseña, acceso con Google, roles admin/usuario, permisos de borrado). No conoce HTTP.
 * **Capa de acceso a datos**: `servidor/datos.js` es el único módulo que habla con MongoDB (Mongoose).
 * **Servicios externos** (Hito 4): `servidor/oauth.js` habla con Google (OAuth 2.0) y `servidor/correo.js` con el proveedor de correo (Brevo, con Resend como alternativa). Solo estos dos módulos conocen a los proveedores externos.
 * **Punto de entrada**: `servidor/index.js` monta la aplicación y conecta las capas.

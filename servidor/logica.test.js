@@ -178,6 +178,47 @@ test('Batería de pruebas de Gestión de Usuarios (Dasna)', async (t) => {
         await mongoose.connection.collection('usuarios').deleteOne({ email: emailPendiente });
     });
 
+    await t.test('Recuperar 1: pedir el enlace responde igual exista o no la cuenta', async () => {
+        const conCuenta = await logica.solicitarRecuperacion(emailTest);
+        const sinCuenta = await logica.solicitarRecuperacion(`nadie_${Date.now()}@universo.com`);
+        assert.strictEqual(conCuenta.exito, true);
+        assert.deepStrictEqual(conCuenta, sinCuenta, 'no revela si el correo tiene cuenta');
+        const doc = await mongoose.connection.collection('usuarios').findOne({ email: emailTest });
+        assert.match(doc.tokenRecuperar, /^[a-f0-9]{64}$/, 'se guarda el hash del token');
+        assert.ok(doc.recuperarCaduca > new Date(), 'con caducidad futura');
+    });
+
+    await t.test('Recuperar 2: el enlace cambia la contraseña una sola vez', async () => {
+        const crypto = require('node:crypto');
+        const token = crypto.randomBytes(32).toString('hex');
+        const hash = crypto.createHash('sha256').update(token).digest('hex');
+        await mongoose.connection.collection('usuarios').updateOne(
+            { email: emailTest },
+            { $set: { tokenRecuperar: hash, recuperarCaduca: new Date(Date.now() + 60000) } }
+        );
+        assert.strictEqual((await logica.restablecerPassword(token, 'corta')).exito, false, 'mínimo 8 caracteres');
+
+        const r = await logica.restablecerPassword(token, 'nuevaClave123');
+        assert.strictEqual(r.exito, true);
+        assert.strictEqual((await logica.loginUsuario(emailTest, 'nuevaClave123')).exito, true, 'entra con la nueva');
+        assert.strictEqual((await logica.loginUsuario(emailTest, passwordTest)).exito, false, 'la antigua ya no vale');
+        assert.strictEqual((await logica.restablecerPassword(token, 'otraClave123')).exito, false, 'el enlace no sirve dos veces');
+    });
+
+    await t.test('Recuperar 3: un enlace caducado o inventado no sirve', async () => {
+        const crypto = require('node:crypto');
+        const token = crypto.randomBytes(32).toString('hex');
+        await mongoose.connection.collection('usuarios').updateOne(
+            { email: emailTest },
+            { $set: { tokenRecuperar: crypto.createHash('sha256').update(token).digest('hex'), recuperarCaduca: new Date(Date.now() - 1000) } }
+        );
+        const caducado = await logica.restablecerPassword(token, 'nuevaClave123');
+        assert.strictEqual(caducado.exito, false);
+        assert.ok(caducado.error.includes('caducado'));
+        assert.strictEqual((await logica.restablecerPassword('no-es-un-token', 'nuevaClave123')).exito, false);
+        assert.strictEqual((await logica.solicitarRecuperacion('no-es-email')).exito, false);
+    });
+
     // Limpieza: Borramos los usuarios de prueba y desconectamos
     await mongoose.connection.collection('usuarios').deleteOne({ email: emailTest });
     await mongoose.connection.collection('usuarios').deleteOne({ email: emailGoogle });

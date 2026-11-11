@@ -129,6 +129,64 @@ async function loginUsuario(email, password) {
     }
 }
 
+// ============================================================
+// RECUPERAR CONTRASEÑA
+// 1. solicitarRecuperacion: genera un token de un solo uso (1 h) y lo
+//    manda por correo. En la base de datos se guarda solo su hash SHA-256,
+//    así que quien lea la BD no puede usar el enlace.
+// 2. restablecerPassword: con el token del enlace, guarda la contraseña
+//    nueva (con bcrypt), confirma la cuenta y borra el token.
+// La respuesta de 1 es la misma exista o no la cuenta (decisión D-16).
+// ============================================================
+const HORA_MS = 60 * 60 * 1000;
+const MENSAJE_RECUPERAR = 'Si hay una cuenta con ese correo, te hemos enviado un enlace para elegir una contraseña nueva. Caduca en 1 hora.';
+const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
+
+async function solicitarRecuperacion(email) {
+    if (!esEmailValido(email)) return { exito: false, error: 'Escribe un correo válido.' };
+    try {
+        const usuario = await datos.buscarPorEmail(email);
+        if (usuario) {
+            const token = crypto.randomBytes(32).toString('hex');
+            await datos.guardarTokenRecuperar(email, hashToken(token), new Date(Date.now() + HORA_MS));
+            try {
+                await correo.enviarRecuperacion(email, token);
+            } catch (error) {
+                console.error('[LOG - CORREO] No se pudo enviar el correo de recuperación:', error.message);
+                return { exito: false, error: 'No se pudo enviar el correo. Inténtalo de nuevo en unos minutos.' };
+            }
+            console.log(`[LOG - SEGURIDAD] Recuperación de contraseña pedida para: ${email}`);
+        }
+        return { exito: true, mensaje: MENSAJE_RECUPERAR };
+    } catch (error) {
+        return { exito: false, error: 'Error al conectar con la base de datos.' };
+    }
+}
+
+async function restablecerPassword(token, password) {
+    if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) {
+        return { exito: false, error: 'El enlace para cambiar la contraseña no es válido.' };
+    }
+    if (typeof password !== 'string' || password.length < 8) {
+        return { exito: false, error: 'La contraseña debe tener mínimo 8 caracteres.' };
+    }
+    try {
+        const usuario = await datos.buscarPorTokenRecuperar(hashToken(token));
+        if (!usuario) {
+            return { exito: false, error: 'Este enlace no es válido o ya se ha usado. Pide otro desde «¿Has olvidado tu contraseña?».' };
+        }
+        if (!usuario.recuperarCaduca || usuario.recuperarCaduca < new Date()) {
+            return { exito: false, error: 'El enlace ha caducado. Pide otro desde «¿Has olvidado tu contraseña?».' };
+        }
+        const hash = await bcrypt.hash(password, 10);
+        await datos.restablecerPassword(usuario.email, hash);
+        console.log(`[LOG - SEGURIDAD] Contraseña cambiada con enlace de recuperación: ${usuario.email}`);
+        return { exito: true, mensaje: 'Contraseña cambiada. Ya puedes iniciar sesión con la nueva.' };
+    } catch (error) {
+        return { exito: false, error: 'Error al conectar con la base de datos.' };
+    }
+}
+
 // Regla de estado (spec §4.2): una cuenta está ACTIVA si está confirmada
 // (por correo o por Google) y no se ha eliminado; si no, está PENDIENTE.
 // Las cuentas antiguas no tienen el campo y cuentan como confirmadas.
@@ -675,6 +733,8 @@ module.exports = {
     confirmarCuenta,
     entrarConGoogle,
     loginUsuario,
+    solicitarRecuperacion,
+    restablecerPassword,
     listarUsuarios,
     comprobarEstado,
     estadoDe,

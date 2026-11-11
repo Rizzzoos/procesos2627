@@ -55,6 +55,20 @@ function crearRouter() {
         }
     });
 
+    // Recuperar contraseña: 1) pedir el enlace por correo, 2) elegir la nueva
+    router.post('/recuperar', async (req, res) => {
+        const resultado = await logica.solicitarRecuperacion((req.body || {}).email);
+        if (resultado.exito) res.status(200).json({ mensaje: resultado.mensaje });
+        else res.status(400).json({ error: resultado.error });
+    });
+
+    router.post('/restablecer', async (req, res) => {
+        const { token, password } = req.body || {};
+        const resultado = await logica.restablecerPassword(token, password);
+        if (resultado.exito) res.status(200).json({ mensaje: resultado.mensaje });
+        else res.status(400).json({ error: resultado.error });
+    });
+
     // ========================================================
     // HITO 4 - Confirmación de cuenta por correo
     // ========================================================

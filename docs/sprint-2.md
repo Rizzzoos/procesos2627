@@ -7,7 +7,7 @@ timestamp: 2026-11-10
 
 - **Objetivo:** cerrar los requisitos que quedaron parciales en el Sprint 1, dejar el cliente solo como presentación (reglas en el servidor) y desplegar de forma continua.
 - **Tablero:** no uso (así lo indicó la persona responsable; las tareas del día a día se organizan fuera de este bundle).
-- **Integración:** PR #10 (`feature/panel-sin-lateral` → `main`), fusionado el 10/11 con el CI en verde. Pruebas: `npm test`, 50/50.
+- **Integración:** PR #10 (`feature/panel-sin-lateral` → `main`), fusionado el 10/11 con el CI en verde. Pruebas: `npm test`, 53/53.
 
 ## Requisitos que pasaron del Sprint 1
 
@@ -32,3 +32,7 @@ timestamp: 2026-11-10
 | — | **Menú de la cuenta** (botón de salir): descargar mis datos (todo o por módulo, JSON o CSV), salir y eliminar la cuenta (pide escribir el correo). | `GET /api/exportar`, `DELETE /api/usuarios/:email` |
 | — | Adaptación a móvil: botones a tamaño de dedo, tablas con scroll, ventanas casi a pantalla completa. | `cliente/estilos/dasna.css` |
 | — | Despliegue continuo a Cloud Run (D-14). | `.github/workflows/ci.yml` |
+| PBI-29 | Recuperar la contraseña por correo (D-16). | `POST /api/recuperar`, `POST /api/restablecer`; tests *Recuperar 1–3* |
+| — | Ojo para ver la contraseña; el login dice si falla el correo o la contraseña (D-15). | `cliente/index.html` |
+
+Backlog completo (PBI, mejoras y decisiones): [backlog.md](backlog.md).

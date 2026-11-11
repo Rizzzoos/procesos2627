@@ -16,6 +16,9 @@ const usuarioSchema = new mongoose.Schema({
     confirmada: { type: Boolean, default: true },
     tokenConfirmacion: { type: String, default: undefined },
     confirmacionCaduca: { type: Date, default: undefined },
+    // Recuperar contraseña: se guarda el HASH del token (no el token) y cuándo caduca
+    tokenRecuperar: { type: String, default: undefined },
+    recuperarCaduca: { type: Date, default: undefined },
     fechaRegistro: { type: Date, default: Date.now }
 });
 
@@ -174,6 +177,32 @@ async function guardarToken(email, token, caduca) {
     );
 }
 
+// Recuperar contraseña: guardar el hash del token y su caducidad
+async function guardarTokenRecuperar(email, hashToken, caduca) {
+    return Usuario.findOneAndUpdate(
+        { email },
+        { $set: { tokenRecuperar: hashToken, recuperarCaduca: caduca } },
+        { new: true }
+    );
+}
+
+async function buscarPorTokenRecuperar(hashToken) {
+    return Usuario.findOne({ tokenRecuperar: hashToken });
+}
+
+// Nueva contraseña: la cuenta queda confirmada (abrir el correo lo demuestra)
+// y el token se borra para que el enlace no sirva dos veces.
+async function restablecerPassword(email, password) {
+    return Usuario.findOneAndUpdate(
+        { email },
+        {
+            $set: { password, confirmada: true },
+            $unset: { tokenRecuperar: '', recuperarCaduca: '', tokenConfirmacion: '', confirmacionCaduca: '' }
+        },
+        { new: true }
+    );
+}
+
 module.exports = {
     crearUsuario,
     buscarPorEmail,
@@ -184,6 +213,9 @@ module.exports = {
     buscarPorToken,
     confirmarCuenta,
     guardarToken,
+    guardarTokenRecuperar,
+    buscarPorTokenRecuperar,
+    restablecerPassword,
     // Motor de módulos
     buscarModulos,
     guardarModulos,

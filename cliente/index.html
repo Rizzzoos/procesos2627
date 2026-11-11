@@ -157,6 +157,17 @@
         .btn-primario:hover { transform: translateY(-2px); box-shadow: 0 9px 24px rgba(167, 139, 250, 0.55); }
         .hint { display: block; font-size: 0.75rem; color: var(--texto-tenue); margin: -0.2rem 0 0.5rem; text-transform: none; letter-spacing: 0; }
         .oculto { display: none; }
+        .enlace-suave {
+            display: block; margin: -0.35rem 0 0.9rem auto; padding: 0.2rem 0;
+            background: none; border: 0; cursor: pointer;
+            font-size: 0.8rem; font-weight: 600; color: var(--texto-tenue); text-align: right;
+        }
+        .enlace-suave:hover, .enlace-suave:focus-visible { color: #fff; text-decoration: underline; outline: none; }
+        .titulo-form { margin: 0 0 0.4rem; font-size: 1.05rem; text-align: left; }
+        .texto-form { margin: 0 0 1rem; font-size: 0.85rem; color: var(--texto-suave); text-align: left; }
+        .mensaje-form { margin-top: 15px; font-weight: bold; text-align: center; font-size: 0.88rem; }
+        .fila-volver { text-align: center; margin-top: 0.8rem; }
+        .fila-volver .enlace-suave { display: inline-block; margin: 0; text-align: center; }
         .oauth-box { margin-top: 1.2rem; }
         .oauth-divisor {
             display: flex;
@@ -221,6 +232,7 @@
                 <label for="password">Contraseña</label>
                 <input type="password" id="password" placeholder="••••••••" required>
             </div>
+            <button type="button" class="enlace-suave" onclick="mostrarRecuperar()">¿Has olvidado tu contraseña?</button>
 
             <button type="button" class="btn-primario" onclick="enviarDatos('/api/login')">Iniciar sesión</button>
 
@@ -254,6 +266,36 @@
             <button type="button" class="btn-primario" onclick="crearCuenta()">Crear cuenta</button>
 
             <div id="mensajeRegistro" style="margin-top: 15px; font-weight: bold; text-align: center;"></div>
+        </form>
+
+        <!-- FORMULARIO: Recuperar contraseña (pedir el enlace) -->
+        <form id="formRecuperar" class="oculto" autocomplete="off" onsubmit="event.preventDefault(); pedirRecuperacion();">
+            <h2 class="titulo-form">Recuperar contraseña</h2>
+            <p class="texto-form">Escribe tu correo y te enviaremos un enlace para elegir una contraseña nueva.</p>
+            <div class="form-group">
+                <label for="rec-email">Email</label>
+                <input type="email" id="rec-email" placeholder="hola@universo.com" required>
+            </div>
+            <button type="submit" class="btn-primario" id="rec-enviar">Enviar enlace</button>
+            <div id="mensajeRecuperar" class="mensaje-form" role="status"></div>
+            <div class="fila-volver"><button type="button" class="enlace-suave" onclick="mostrarLogin()">Volver a iniciar sesión</button></div>
+        </form>
+
+        <!-- FORMULARIO: Elegir contraseña nueva (se llega desde el enlace del correo) -->
+        <form id="formRestablecer" class="oculto" autocomplete="off" onsubmit="event.preventDefault(); guardarNuevaContrasena();">
+            <h2 class="titulo-form">Elige una contraseña nueva</h2>
+            <div class="form-group">
+                <label for="res-password">Contraseña nueva</label>
+                <span class="hint">(mínimo 8 caracteres)</span>
+                <input type="password" id="res-password" placeholder="••••••••" minlength="8" required>
+            </div>
+            <div class="form-group">
+                <label for="res-password2">Repite la contraseña</label>
+                <input type="password" id="res-password2" placeholder="••••••••" minlength="8" required>
+            </div>
+            <button type="submit" class="btn-primario" id="res-guardar">Guardar contraseña</button>
+            <div id="mensajeRestablecer" class="mensaje-form" role="status"></div>
+            <div class="fila-volver"><button type="button" class="enlace-suave" onclick="mostrarLogin()">Volver a iniciar sesión</button></div>
         </form>
 
         <!-- HITO 4: acceso con proveedor externo (Google) -->
