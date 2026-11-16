@@ -65,6 +65,9 @@ const TRAZOS_ICONO = {
     usuarios: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
 };
 TRAZOS_ICONO.registros = TRAZOS_ICONO.pelislibros;
+// Recuadros de arriba del Panel: sol (Hoy) y gráfica (Tu semana)
+TRAZOS_ICONO.hoy = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>';
+TRAZOS_ICONO.semana = '<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/>';
 
 // Icono de línea de un apartado (id 'm/clave', 'clave' o 'archivo'…); si no hay, el de siempre
 function iconoDe(id, deRespaldo = '') {
@@ -76,6 +79,13 @@ function iconoDe(id, deRespaldo = '') {
 let sesion = null;   // { email, rol } de /api/auth/me
 let modulos = [];    // módulos activos del usuario (del servidor)
 let modulosDisponibles = [];   // todo el catálogo (para «Elegir módulos»)
+let panelVisible = new Set();  // recuadros de arriba del Panel elegidos: 'hoy', 'semana'
+
+// Separa lo que llega del servidor: módulos de verdad y recuadros del Panel
+function fijarModulos(lista) {
+    modulos = (lista || []).filter((m) => !m.panel);
+    panelVisible = new Set((lista || []).filter((m) => m.panel).map((m) => m.clave));
+}
 
 // ============================================================
 // Utilidades de presentación
@@ -298,12 +308,16 @@ function vistaPanel() {
     cont.innerHTML = '';
     registrosCal = null;   // al volver al panel, se leen los registros frescos
 
-    // Franja «Hoy» y resumen de la semana (arriba)
-    const hoyZona = document.createElement('div');
-    cont.appendChild(hoyZona);
-    const resumenZona = document.createElement('div');
-    cont.appendChild(resumenZona);
-    pintarResumen(resumenZona, hoyZona);
+    // Franja «Hoy» y resumen de la semana (arriba), si los tiene elegidos
+    const zonaSi = (clave) => {
+        if (!panelVisible.has(clave)) return null;
+        const z = document.createElement('div');
+        cont.appendChild(z);
+        return z;
+    };
+    const hoyZona = zonaSi('hoy');
+    const resumenZona = zonaSi('semana');
+    if (hoyZona || resumenZona) pintarResumen(resumenZona, hoyZona);
 
     const dos = document.createElement('div');
     dos.className = 'panel-dos';
@@ -2014,7 +2028,7 @@ async function iniciar() {
 
     // Módulos del usuario desde el motor
     const r = await rest.obtenerModulos();
-    modulos = (r && r.exito && r.modulos) || [];
+    fijarModulos(r && r.exito && r.modulos);
     modulosDisponibles = (r && r.exito && r.disponibles) || [];
 
     pintarBarraInferior();

@@ -35,6 +35,8 @@ const modulosSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     // Orden exacto de las claves visibles, p. ej. ['ahorros','diario','gimnasio']
     claves: { type: [String], default: [] },
+    // true desde que la elección incluye los recuadros del Panel (Hoy, Tu semana)
+    conPanel: { type: Boolean, default: false },
     actualizadoEn: { type: Date, default: Date.now }
 });
 
@@ -115,7 +117,7 @@ async function buscarModulos(email) {
 async function guardarModulos(email, claves) {
     return Modulo.findOneAndUpdate(
         { email },
-        { $set: { claves, actualizadoEn: new Date() } },
+        { $set: { claves, conPanel: true, actualizadoEn: new Date() } },
         { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 }

@@ -415,6 +415,22 @@ const CATALOGO = {
 };
 
 // Orden por defecto de la barra lateral (los 6 activos de fábrica)
+// Recuadros de arriba del Panel: se eligen igual que los módulos (vienen
+// activados de fábrica), pero no guardan registros propios (panel: true)
+CATALOGO.hoy = {
+    nombre: 'Hoy',
+    icono: '☀️',
+    descripcion: 'Arriba del Panel: tus vasos de agua, el diario, lo próximo y tu ciclo de un vistazo.',
+    panel: true
+};
+CATALOGO.semana = {
+    nombre: 'Tu semana',
+    icono: '📈',
+    descripcion: 'Arriba del Panel: resumen de los últimos 7 días de agua, diario y gimnasio.',
+    panel: true
+};
+const CLAVES_PANEL = ['hoy', 'semana'];
+
 // Los opcionales (Mi ciclo) no vienen de fábrica: se eligen en el primer uso o en «Elegir módulos»
 const ORDEN_CATALOGO = Object.keys(CATALOGO);
 const ORDEN_POR_DEFECTO = ORDEN_CATALOGO.filter((c) => !CATALOGO[c].opcional);
@@ -445,9 +461,14 @@ async function obtenerModulos(email) {
     if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
     try {
         const guardado = await datos.buscarModulos(email);
-        const claves = guardado && guardado.claves && guardado.claves.length
+        let claves = guardado && guardado.claves && guardado.claves.length
             ? guardado.claves
             : ORDEN_POR_DEFECTO;
+        // Quien eligió sus módulos antes de que existieran «Hoy» y «Tu semana»
+        // los sigue viendo (se guardan de verdad la próxima vez que elija)
+        if (guardado && guardado.claves && guardado.claves.length && !guardado.conPanel) {
+            claves = CLAVES_PANEL.concat(claves.filter((c) => !CLAVES_PANEL.includes(c)));
+        }
 
         // Se cruza con el catálogo: si algún día borramos un módulo, no rompe
         const modulos = claves
@@ -493,8 +514,8 @@ async function actualizarModulos(email, claves) {
 
 // Resolver la clave: existe el módulo y el filtro de fechas es válido
 function resolverModulo(clave, filtros = {}) {
-    if (!CATALOGO[clave]) {
-        return { error: `El módulo "${clave}" no existe. Disponibles: ${ORDEN_POR_DEFECTO.join(', ')}.` };
+    if (!CATALOGO[clave] || CATALOGO[clave].panel) {
+        return { error: `El módulo "${clave}" no existe. Disponibles: ${ORDEN_POR_DEFECTO.filter((c) => !CATALOGO[c].panel).join(', ')}.` };
     }
     const { desde, hasta, limite } = filtros;
     for (const [nombre, valor] of Object.entries({ desde, hasta })) {
@@ -817,7 +838,7 @@ function aCsv(filas) {
 async function exportarDatos(email, formato = 'json', modulo = '') {
     if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
     if (!['json', 'csv'].includes(formato)) return { exito: false, error: 'Formato no válido (json o csv).' };
-    if (modulo && !CATALOGO[modulo]) return { exito: false, error: `El módulo "${modulo}" no existe.` };
+    if (modulo && (!CATALOGO[modulo] || CATALOGO[modulo].panel)) return { exito: false, error: `El módulo "${modulo}" no existe.` };
     try {
         const usuario = await datos.buscarPorEmail(email);
         if (!usuario) return { exito: false, error: 'La cuenta no existe.' };
@@ -833,7 +854,7 @@ async function exportarDatos(email, formato = 'json', modulo = '') {
         const todo = {
             exportado: new Date().toISOString(),
             cuenta: { email: usuario.email, nombre: usuario.nombre || '', rol: usuario.rol || 'usuario', fechaRegistro: usuario.fechaRegistro },
-            modulos: modulo ? [modulo] : (modulos || []).map((m) => m.clave),
+            modulos: modulo ? [modulo] : (modulos || []).filter((m) => !m.panel).map((m) => m.clave),
             registros
         };
         return { exito: true, nombre: `${base}.json`, tipo: 'application/json; charset=utf-8', contenido: JSON.stringify(todo, null, 2) };

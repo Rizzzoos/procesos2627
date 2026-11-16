@@ -1397,3 +1397,13 @@ body { animation-duration: 120s; letter-spacing: -0.005em; }
     .hoy-titulo { flex-direction: row; align-items: baseline; gap: 0.5rem; width: 100%; }
     .hoy-dato { font-size: 0.8rem; }
 }
+
+/* Elegir módulos: apartados «Arriba del Panel» y «Módulos» */
+.primer-uso-grupo {
+    margin: 1rem 0 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--texto-suave);
+}

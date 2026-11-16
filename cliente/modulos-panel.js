@@ -62,10 +62,10 @@ async function pintarHoy(zona, r) {
 }
 
 async function pintarResumen(zona, zonaHoy) {
-    zona.innerHTML = '<div class="skeleton"></div>';
+    if (zona) zona.innerHTML = '<div class="skeleton"></div>';
     const r = await rest.resumen();
     if (zonaHoy && zonaHoy.isConnected) pintarHoy(zonaHoy, r && !r.error ? r : null);
-    if (!zona.isConnected) return;
+    if (!zona || !zona.isConnected) return;
     if (!r || r.error) { zona.innerHTML = ''; return; }
 
     const datos = [];
@@ -90,22 +90,29 @@ async function pintarResumen(zona, zonaHoy) {
 
 // --- Primer uso: elegir qué módulos ver ---
 function abrirPrimerUso(disponibles, activos, alTerminar, opciones = {}) {
-    const elegidos = new Set(activos.map((m) => m.clave));
-    const { caja, cerrar } = abrirModal(opciones.titulo || 'Bienvenida a Dasna', `
-        <p class="pista" style="margin-top:0">Elige qué quieres organizar. Podrás cambiarlo cuando quieras desde el menú de tu cuenta (Elegir módulos).</p>
-        <div class="primer-uso">${disponibles.map((m) => `
+    // Marcados: los módulos que tiene y los recuadros del Panel que ve
+    const elegidos = new Set(activos.map((m) => m.clave).concat([...panelVisible]));
+    const opcion = (m) => `
             <label class="primer-uso-op">
                 <input type="checkbox" value="${esc(m.clave)}" ${elegidos.has(m.clave) ? 'checked' : ''}>
                 <span class="primer-uso-icono">${iconoDe(m.clave, m.icono)}</span>
                 <span><strong>${esc(m.nombre)}</strong><small class="pista">${esc(m.descripcion || '')}</small></span>
-            </label>`).join('')}</div>
+            </label>`;
+    const delPanel = disponibles.filter((m) => m.panel);
+    const deModulos = disponibles.filter((m) => !m.panel);
+    const { caja, cerrar } = abrirModal(opciones.titulo || 'Bienvenida a Dasna', `
+        <p class="pista" style="margin-top:0">Elige qué quieres organizar. Podrás cambiarlo cuando quieras desde el menú de tu cuenta (Elegir módulos).</p>
+        ${delPanel.length ? `<h4 class="primer-uso-grupo">Arriba del Panel</h4>
+        <div class="primer-uso">${delPanel.map(opcion).join('')}</div>
+        <h4 class="primer-uso-grupo">Módulos</h4>` : ''}
+        <div class="primer-uso">${deModulos.map(opcion).join('')}</div>
         <div class="fila-botones"><button class="boton-primario" id="pu-guardar">${opciones.boton || 'Empezar'}</button></div>`);
     caja.querySelector('#pu-guardar').addEventListener('click', async () => {
         const claves = [...caja.querySelectorAll('input:checked')].map((i) => i.value);
-        if (!claves.length) return aviso('Elige al menos un módulo.', 'error');
+        if (!claves.some((c) => deModulos.some((m) => m.clave === c))) return aviso('Elige al menos un módulo.', 'error');
         const res = await rest.guardarModulos(claves);
         if (!res || !res.exito) return aviso((res && res.error) || 'No se pudo guardar.', 'error');
-        modulos = res.modulos;
+        fijarModulos(res.modulos);
         cerrar();
         pintarBarraInferior();
         enrutar();

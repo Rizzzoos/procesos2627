@@ -316,10 +316,26 @@ test('Motor de módulos (Dasna)', async (t) => {
     await t.test('1. Un usuario nuevo ve los 7 módulos por defecto', async () => {
         const r = await logica.obtenerModulos(email);
         assert.strictEqual(r.exito, true);
-        assert.strictEqual(r.modulos.length, 12, 'Mi ciclo es opcional: no viene de fábrica');
+        assert.strictEqual(r.modulos.length, 14, 'Mi ciclo es opcional: no viene de fábrica');
+        assert.ok(r.modulos.some((m) => m.clave === 'hoy' && m.panel), '«Hoy» viene activado de fábrica');
+        assert.ok(r.modulos.some((m) => m.clave === 'semana' && m.panel), '«Tu semana» también');
         assert.ok(r.disponibles.some((m) => m.clave === 'ciclo'), 'pero se puede elegir');
         assert.ok(r.modulos.every((m) => m.nombre && m.icono && m.descripcion));
         assert.strictEqual(r.modulos[0].clave, 'visionboard', 'respeta el orden por defecto');
+    });
+
+    await t.test('1b. «Hoy» y «Tu semana» se eligen como un módulo más; las cuentas antiguas los conservan', async () => {
+        const emailViejo = `panel_${Date.now()}@universo.com`;
+        // Cuenta que eligió sus módulos antes de que existieran (sin conPanel)
+        await mongoose.connection.collection('modulos').insertOne({ email: emailViejo, claves: ['diario'] });
+        const antes = await logica.obtenerModulos(emailViejo);
+        assert.deepStrictEqual(antes.modulos.map((m) => m.clave), ['hoy', 'semana', 'diario']);
+        // Ahora quita «Tu semana»: se respeta
+        const despues = await logica.actualizarModulos(emailViejo, ['hoy', 'diario']);
+        assert.deepStrictEqual(despues.modulos.map((m) => m.clave), ['hoy', 'diario']);
+        // No son módulos con registros
+        assert.strictEqual((await logica.crearRegistroModulo(emailViejo, 'hoy', { a: 1 })).exito, false);
+        await mongoose.connection.collection('modulos').deleteOne({ email: emailViejo });
     });
 
     await t.test('2. Se puede reordenar y ocultar módulos (barra lateral configurable)', async () => {

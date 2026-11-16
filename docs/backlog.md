@@ -36,6 +36,7 @@ Tres apartados: los **PBI** (trabajo planificado del producto), las **mejoras** 
 | Autenticación del despliegue sin claves (Workload Identity Federation) | D-14 | pendiente | — |
 | Actualizar las acciones de GitHub que usan Node 20 (obsoleto): ahora todas corren en Node 24 | Aviso de GitHub Actions | hecho | `.github/workflows/ci.yml` |
 | Franja «Hoy» arriba del Panel: vasos de agua, diario escrito o no, entreno, lo próximo de Estudio o Eventos y el día del ciclo | Idea propia | hecho | `cliente/modulos-panel.js`; test *S6* |
+| «Hoy» y «Tu semana» se eligen en «Elegir módulos» como un módulo más (apartado «Arriba del Panel», activados de fábrica; las cuentas que ya habían elegido sus módulos los conservan) | Petición de la responsable | hecho | `CATALOGO` en `servidor/logica.js` (`panel: true`); test *1b* |
 | Ayuda al día (foto al ticket, avisos, tus datos) y cabeceras sin emoji en Usuarios y Ayuda | Revisión final | hecho | `cliente/app.js` |
 
 ## Decisiones tomadas
