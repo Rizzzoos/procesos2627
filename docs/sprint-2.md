@@ -7,7 +7,7 @@ timestamp: 2026-11-10
 
 - **Objetivo:** cerrar los requisitos que quedaron parciales en el Sprint 1, dejar el cliente solo como presentación (reglas en el servidor) y desplegar de forma continua.
 - **Tablero:** no uso (así lo indicó la persona responsable; las tareas del día a día se organizan fuera de este bundle).
-- **Integración:** PR #10 (`feature/panel-sin-lateral` → `main`), fusionado el 10/11 con el CI en verde. Cierre: PR «app terminada» con Web Push, franja «Hoy», límite de intentos y base de pruebas separada. Pruebas: `npm test`, 69/69.
+- **Integración:** PR #10 (`feature/panel-sin-lateral` → `main`), fusionado el 10/11 con el CI en verde. Cierre: [PR #16](https://github.com/Rizzzoos/procesos2627/pull/16) («app terminada») con Web Push, franja «Hoy», límite de intentos y base de pruebas separada. Pruebas: `npm test`, 69/69.
 
 ## Requisitos que pasaron del Sprint 1
 
