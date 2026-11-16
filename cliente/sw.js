@@ -12,7 +12,7 @@
 // lo detecta y monta la caché nueva en la siguiente recarga.
 // ============================================================
 
-const CACHE = 'dasna-v45';
+const CACHE = 'dasna-v46';
 
 const SHELL = [
     '/',
@@ -23,6 +23,7 @@ const SHELL = [
     '/app.js',
     '/modulos.js',
     '/modulos-vida.js',
+    '/modulos-ciclo.js',
     '/modulos-eventos.js',
     '/modulos-panel.js',
     '/estelas.js',

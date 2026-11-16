@@ -262,6 +262,13 @@ function crearRouter() {
         else res.status(400).json({ error: resultado.error });
     });
 
+    // Mi ciclo: predicción con los días apuntados
+    router.get('/ciclo', protegerRuta, async (req, res) => {
+        const resultado = await logica.analizarCiclo(req.usuario.email, req.query.hoy);
+        if (resultado.exito) res.status(200).json(resultado);
+        else res.status(400).json({ error: resultado.error });
+    });
+
     router.get('/exportar', protegerRuta, async (req, res) => {
         const resultado = await logica.exportarDatos(req.usuario.email, req.query.formato || 'json', req.query.modulo || '');
         if (!resultado.exito) return res.status(400).json({ error: resultado.error });

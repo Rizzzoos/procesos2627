@@ -386,7 +386,134 @@ function resumenSemana(registros, hoyK) {
     return resumen;
 }
 
+// ============================================================
+// MI CICLO: predicción a partir de los días apuntados.
+// Cada día: { fecha, sangrado 0-4, relaciones, sintomas[] }.
+//  sangrado: 0 nada, 1 manchado, 2 ligero, 3 medio, 4 abundante.
+// Una regla empieza el primer día con sangrado >= 2 tras al menos
+// 3 días sin sangrar. La duración del ciclo es la media de los
+// últimos 6 ciclos (o 28 si aún no hay ninguno completo). La
+// ovulación se estima 14 días antes de la próxima regla y la
+// ventana fértil va de 5 días antes a 1 después.
+// Los síntomas se miden en «días antes de la regla»: si en la
+// mitad o más de los ciclos completos aparece un síntoma, se
+// avisa en esos días del ciclo actual.
+// ============================================================
+const SINTOMAS_CICLO = {
+    triste: 'más triste',
+    antojos: 'con antojos',
+    pecho: 'con dolor de pecho',
+    granos: 'con granos',
+    dolor: 'con dolor de regla',
+    hinchazon: 'con hinchazón'
+};
+const CICLO_POR_DEFECTO = 28;
+const REGLA_POR_DEFECTO = 5;
+const DIAS_SEMANA_TXT = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+const diasEntre = (a, b) => Math.round((desdeClave(b) - desdeClave(a)) / 86400000);
+const media = (l) => l.reduce((x, y) => x + y, 0) / l.length;
+
+function cuandoTxt(n, k) {
+    if (n === 0) return 'hoy';
+    if (n === 1) return 'mañana';
+    return `el ${DIAS_SEMANA_TXT[desdeClave(k).getUTCDay()]} (en ${n} días)`;
+}
+
+function analizarCiclo(dias, hoyK) {
+    const lista = (dias || []).filter((d) => d && esClave(d.fecha) && d.fecha <= hoyK)
+        .sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+    // 1. Reglas: bloques de días con sangrado (huecos de hasta 2 días)
+    const sangra = lista.filter((d) => Number(d.sangrado) >= 1);
+    const reglas = [];
+    for (const d of sangra) {
+        const ult = reglas[reglas.length - 1];
+        if (ult && diasEntre(ult.fin, d.fecha) <= 3) { ult.fin = d.fecha; ult.dias.push(d); continue; }
+        if (Number(d.sangrado) >= 2) reglas.push({ inicio: d.fecha, fin: d.fecha, dias: [d] });
+    }
+
+    // 2. Duraciones (se descartan ciclos raros: < 15 o > 60 días, p. ej. un mes sin apuntar)
+    const ciclos = [];
+    for (let i = 1; i < reglas.length; i++) {
+        const n = diasEntre(reglas[i - 1].inicio, reglas[i].inicio);
+        if (n >= 15 && n <= 60) ciclos.push({ inicio: reglas[i - 1].inicio, siguiente: reglas[i].inicio, dias: n });
+    }
+    const ultimos = ciclos.slice(-6).map((c) => c.dias);
+    const duracionCiclo = ultimos.length ? Math.round(media(ultimos)) : CICLO_POR_DEFECTO;
+    const duracionRegla = reglas.length ? Math.round(media(reglas.slice(-6).map((r) => diasEntre(r.inicio, r.fin) + 1))) : REGLA_POR_DEFECTO;
+    const variacion = ultimos.length >= 2 ? Math.round(Math.sqrt(media(ultimos.map((x) => (x - duracionCiclo) ** 2)))) : null;
+    const confianza = ultimos.length >= 4 && variacion <= 3 ? 'alta' : ultimos.length >= 2 ? 'media' : 'baja';
+
+    const base = { duracionCiclo, duracionRegla, ciclosCompletos: ciclos.length, variacion, confianza, patrones: [], avisos: [] };
+    if (!reglas.length) return { ...base, hayDatos: lista.length > 0 };
+
+    // 3. Dónde estás hoy y qué viene
+    const ultima = reglas[reglas.length - 1];
+    const diaCiclo = diasEntre(ultima.inicio, hoyK) + 1;
+    const proximaRegla = sumarDias(ultima.inicio, duracionCiclo);
+    const retraso = Math.max(0, diasEntre(proximaRegla, hoyK));
+    const ovulacion = sumarDias(proximaRegla, -14);
+    const fertil = { desde: sumarDias(ovulacion, -5), hasta: sumarDias(ovulacion, 1) };
+    let fase = 'lutea';
+    if (diaCiclo <= Math.max(duracionRegla, diasEntre(ultima.inicio, ultima.fin) + 1)) fase = 'regla';
+    else if (hoyK >= fertil.desde && hoyK <= fertil.hasta) fase = 'fertil';
+    else if (hoyK < fertil.desde) fase = 'folicular';
+
+    // 4. Patrones de síntomas en los ciclos completos
+    const patrones = [];
+    if (ciclos.length) {
+        for (const [clave, texto] of Object.entries(SINTOMAS_CICLO)) {
+            const antes = [];   // días que faltaban para la siguiente regla
+            const delCiclo = []; // día del ciclo (1 = primer día de regla)
+            let conSintoma = 0;
+            for (const c of ciclos) {
+                const enCiclo = lista.filter((d) => d.fecha >= c.inicio && d.fecha < c.siguiente && (d.sintomas || []).includes(clave));
+                if (!enCiclo.length) continue;
+                conSintoma++;
+                enCiclo.forEach((d) => { antes.push(diasEntre(d.fecha, c.siguiente)); delCiclo.push(diasEntre(c.inicio, d.fecha) + 1); });
+            }
+            if (conSintoma < 2 || conSintoma / ciclos.length < 0.5) continue;
+            const q = (l, f) => [...l].sort((a, b) => a - b)[Math.min(l.length - 1, Math.floor(f * l.length))];
+            // Si suele pasar en la primera mitad del ciclo se cuenta desde el inicio
+            // de la regla («días 1–2»); si no, hacia atrás desde la siguiente («3–2 días antes»)
+            const alPrincipio = q(delCiclo, 0.5) <= duracionCiclo / 2;
+            patrones.push(alPrincipio
+                ? { sintoma: clave, texto, referencia: 'inicio', desde: q(delCiclo, 0.25), hasta: q(delCiclo, 0.75), ciclos: conSintoma, de: ciclos.length }
+                : { sintoma: clave, texto, referencia: 'antes', desde: q(antes, 0.75), hasta: q(antes, 0.25), ciclos: conSintoma, de: ciclos.length });
+        }
+    }
+
+    // 5. Avisos de los próximos 3 días (hoy incluido)
+    const avisos = [];
+    const faltan = diasEntre(hoyK, proximaRegla);
+    if (retraso > 0 && hoyK > ultima.fin) avisos.push({ tipo: 'retraso', texto: `Tu regla lleva ${retraso} ${retraso === 1 ? 'día' : 'días'} de retraso según tu ciclo medio.` });
+    else if (faltan >= 0 && faltan <= 3) avisos.push({ tipo: 'regla', texto: `Seguramente te baje ${cuandoTxt(faltan, proximaRegla)}.` });
+    const aFertil = diasEntre(hoyK, fertil.desde);
+    if (aFertil >= 0 && aFertil <= 2) avisos.push({ tipo: 'fertil', texto: `Tu ventana fértil empieza ${cuandoTxt(aFertil, fertil.desde)}.` });
+    else if (fase === 'fertil') avisos.push({ tipo: 'fertil', texto: `Estás en tu ventana fértil (hasta el ${Number(fertil.hasta.slice(8))}).` });
+    if (retraso === 0) {
+        for (const p of patrones) {
+            // Ventana prevista: en este ciclo o, si ya pasó, en el siguiente
+            const ventanas = p.referencia === 'inicio'
+                ? [ultima.inicio, proximaRegla].map((ini) => [sumarDias(ini, p.desde - 1), sumarDias(ini, p.hasta - 1)])
+                : [[sumarDias(proximaRegla, -p.desde), sumarDias(proximaRegla, -p.hasta)]];
+            const [desde, hasta] = ventanas.find(([, h]) => h >= hoyK) || ventanas[ventanas.length - 1];
+            const empieza = diasEntre(hoyK, desde);
+            if (hoyK >= desde && hoyK <= hasta) avisos.push({ tipo: 'sintoma', sintoma: p.sintoma, texto: `Estos días sueles estar ${p.texto}.` });
+            else if (empieza > 0 && empieza <= 3) avisos.push({ tipo: 'sintoma', sintoma: p.sintoma, texto: `En ${empieza} ${empieza === 1 ? 'día' : 'días'} sueles empezar a estar ${p.texto}.` });
+        }
+    }
+
+    return {
+        ...base, hayDatos: true, ultimaRegla: { inicio: ultima.inicio, fin: ultima.fin },
+        diaCiclo, fase, proximaRegla, retraso, ovulacion, fertil, patrones, avisos
+    };
+}
+
 module.exports = {
+    analizarCiclo,
+    SINTOMAS_CICLO,
     esClave,
     interpretarFecha,
     interpretarEvento,

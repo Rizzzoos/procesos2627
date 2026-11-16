@@ -306,6 +306,12 @@ async function guardarModulos(claves) {
     return peticionJson('/api/modulos', { method: 'PUT', body: JSON.stringify({ claves }) });
 }
 
+// Mi ciclo: predicción (la calcula el servidor)
+async function ciclo() {
+    const r = await peticionJson(`/api/ciclo?hoy=${hoyNavegador()}`);
+    return r && r.exito ? r.datos : { error: (r && r.error) || 'No se pudo leer tu ciclo.' };
+}
+
 // Resumen de la semana (lo calcula el servidor)
 async function resumen() {
     const r = await peticionJson(`/api/resumen?hoy=${hoyNavegador()}`);
@@ -344,5 +350,6 @@ const rest = {
     regla,
     guardarModulos,
     resumen,
+    ciclo,
     descargarDatos
 };

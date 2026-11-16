@@ -13,7 +13,7 @@ Resumen operativo. La descripción completa está en el [README §Arquitectura e
 |---|---|---|
 | API (HTTP) | `servidor/api.js` | Endpoints, cookies, firma/lectura del JWT, sesión y roles. Único módulo que conoce Express. |
 | Lógica de negocio | `servidor/logica.js` | Registro, login, confirmación de cuentas, acceso con Google, recuperar contraseña, roles, permisos de borrado, estado de los usuarios, resumen de la semana y exportar datos. No recibe HTTP. |
-| Reglas de los módulos | `servidor/reglas.js` | Funciones puras (sin base de datos ni HTTP) que usa la lógica: interpretar fechas y eventos, planificador de estudio, horario de agua, horas de sueño, sugerencia de outfits, plan por meses y resumen de la semana. Reciben «hoy» del cliente. Sprint 2 (PBI-27). |
+| Reglas de los módulos | `servidor/reglas.js` | Funciones puras (sin base de datos ni HTTP) que usa la lógica: interpretar fechas y eventos, planificador de estudio, horario de agua, horas de sueño, sugerencia de outfits, plan por meses, resumen de la semana y predicción de Mi ciclo. Reciben «hoy» del cliente. Sprint 2 (PBI-27). |
 | Datos | `servidor/datos.js` | Único módulo que habla con MongoDB (Mongoose); define colecciones y reglas de consulta. |
 | Servicios externos | `servidor/oauth.js`, `servidor/correo.js` | Solo estos dos tocan proveedores de fuera: Google (OAuth 2.0) y el proveedor de correo. |
 | Composición | `servidor/index.js` | Arranque, conexión a la base de datos, administrador inicial, estáticos del cliente y montaje del router en `/api`. |
