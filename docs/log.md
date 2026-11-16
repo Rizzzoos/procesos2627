@@ -2,6 +2,10 @@
 
 Formato: **fecha · evento · enlace**, del más reciente al más antiguo. Los enlaces apuntan a la web pública del repositorio. Fechas y hashes tomados de `git log --first-parent --format='%h %ad %s' --date=short main` y de la API de GitHub (fechas de fusión de los PR).
 
+- 2026-11-16 · Login con Google funcionando en la URL pública: página de privacidad y app de Google en producción (RF-04) · [PR #14](https://github.com/Rizzzoos/procesos2627/pull/14)
+- 2026-11-16 · Módulo opcional Mi ciclo con predicción · [PR #13](https://github.com/Rizzzoos/procesos2627/pull/13)
+- 2026-11-11 · Recuperar contraseña, backlog y decisiones D-15/D-16 · [PR #12](https://github.com/Rizzzoos/procesos2627/pull/12)
+- 2026-11-10 · Ojo en la contraseña y docs al día · [PR #11](https://github.com/Rizzzoos/procesos2627/pull/11)
 - 2026-11-10 · Primer despliegue automático a Cloud Run en verde (PRO-03) · [run 42848282430](https://github.com/Rizzzoos/procesos2627/actions/runs/42848282430)
 - 2026-11-10 · Sprint 2 se fusiona en main: capas, estado de usuarios, resumen de la semana, menú de la cuenta y despliegue continuo · [PR #10](https://github.com/Rizzzoos/procesos2627/pull/10)
 - 2026-10-21 · El Hito 4 del correo (Brevo y reenvío de confirmación) se fusiona en main · [PR #6](https://github.com/Rizzzoos/procesos2627/pull/6)

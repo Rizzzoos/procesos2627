@@ -14,8 +14,8 @@ timestamp: 2026-11-10
 | ID | Estado | Qué se hizo / qué falta |
 |---|---|---|
 | ARQ-03 — Capas del frontend | hecho | `dashboard.html` usa `rest.js` en vez de `fetch` directos. |
-| RF-02 — Confirmación de cuenta por correo | parcial | El código está en `main`. **Falta:** verificar un envío real desde la URL pública y crear la etiqueta `hito-4`. |
-| RF-04 — Inicio de sesión con OAuth | parcial | El código está en `main`. **Falta:** probar el login con Google en la URL pública. |
+| RF-02 — Confirmación de cuenta por correo | hecho | Verificado en la URL pública: llega el correo de Brevo y el enlace activa la cuenta. Queda opcional crear la etiqueta `hito-4`. |
+| RF-04 — Inicio de sesión con OAuth | hecho | URI de redirección pública autorizada, página de privacidad y app de Google en producción; login con Google verificado en la URL pública. |
 | RF-07 — Listar usuarios | hecho | El listado devuelve también el estado de cada usuario. |
 | RF-08 — Comprobar si un usuario está activo | hecho | Activo = confirmado (o Google) y no eliminado; una cuenta pendiente ya no sale activa. |
 | PRO-01 — GitHub Flow | parcial | Todo el Sprint 2 entró por PR; los commits directos de la fase inicial quedan como deuda documentada. |
@@ -34,6 +34,7 @@ timestamp: 2026-11-10
 | — | Despliegue continuo a Cloud Run (D-14). | `.github/workflows/ci.yml` |
 | PBI-29 | Recuperar la contraseña por correo (D-16). | `POST /api/recuperar`, `POST /api/restablecer`; tests *Recuperar 1–3* |
 | — | Ojo para ver la contraseña; el login dice si falla el correo o la contraseña (D-15). | `cliente/index.html` |
+| — | Página de privacidad (`/privacidad.html`), necesaria para publicar el acceso con Google. | PR #14 |
 | PBI-30 | Módulo opcional Mi ciclo con predicción (D-17) y «Elegir módulos» en el menú de la cuenta. | `GET /api/ciclo`, `cliente/modulos-ciclo.js`; tests *C1–C7* |
 
 Backlog completo (PBI, mejoras y decisiones): [backlog.md](backlog.md).
