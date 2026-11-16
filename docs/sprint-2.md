@@ -7,7 +7,7 @@ timestamp: 2026-11-10
 
 - **Objetivo:** cerrar los requisitos que quedaron parciales en el Sprint 1, dejar el cliente solo como presentación (reglas en el servidor) y desplegar de forma continua.
 - **Tablero:** no uso (así lo indicó la persona responsable; las tareas del día a día se organizan fuera de este bundle).
-- **Integración:** PR #10 (`feature/panel-sin-lateral` → `main`), fusionado el 10/11 con el CI en verde. Pruebas: `npm test`, 61/61.
+- **Integración:** PR #10 (`feature/panel-sin-lateral` → `main`), fusionado el 10/11 con el CI en verde. Cierre: PR «app terminada» con Web Push, franja «Hoy», límite de intentos y base de pruebas separada. Pruebas: `npm test`, 68/68.
 
 ## Requisitos que pasaron del Sprint 1
 
@@ -36,5 +36,9 @@ timestamp: 2026-11-10
 | — | Ojo para ver la contraseña; el login dice si falla el correo o la contraseña (D-15). | `cliente/index.html` |
 | — | Página de privacidad (`/privacidad.html`), necesaria para publicar el acceso con Google. | PR #14 |
 | PBI-30 | Módulo opcional Mi ciclo con predicción (D-17) y «Elegir módulos» en el menú de la cuenta. | `GET /api/ciclo`, `cliente/modulos-ciclo.js`; tests *C1–C7* |
+| PBI-24 | Avisos con la app cerrada (Web Push) con un trabajo de Cloud Scheduler cada 5 min (D-18). | `servidor/push.js`, `POST /api/push/enviar`; tests *Push 1–2* |
+| — | Franja «Hoy» en el Panel. | `cliente/modulos-panel.js`; test *S6* |
+| — | Límite de intentos de login y de recuperar contraseña por IP. | `servidor/limite.js`; tests *L1–L3* |
+| — | Pruebas en una base de datos aparte (`dasna_pruebas`) y acciones de GitHub en Node 24. | `servidor/logica.test.js`, `.github/workflows/ci.yml` |
 
 Backlog completo (PBI, mejoras y decisiones): [backlog.md](backlog.md).

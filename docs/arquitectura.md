@@ -15,7 +15,8 @@ Resumen operativo. La descripción completa está en el [README §Arquitectura e
 | Lógica de negocio | `servidor/logica.js` | Registro, login, confirmación de cuentas, acceso con Google, recuperar contraseña, roles, permisos de borrado, estado de los usuarios, resumen de la semana y exportar datos. No recibe HTTP. |
 | Reglas de los módulos | `servidor/reglas.js` | Funciones puras (sin base de datos ni HTTP) que usa la lógica: interpretar fechas y eventos, planificador de estudio, horario de agua, horas de sueño, sugerencia de outfits, plan por meses, resumen de la semana y predicción de Mi ciclo. Reciben «hoy» del cliente. Sprint 2 (PBI-27). |
 | Datos | `servidor/datos.js` | Único módulo que habla con MongoDB (Mongoose); define colecciones y reglas de consulta. |
-| Servicios externos | `servidor/oauth.js`, `servidor/correo.js` | Solo estos dos tocan proveedores de fuera: Google (OAuth 2.0) y el proveedor de correo. |
+| Servicios externos | `servidor/oauth.js`, `servidor/correo.js`, `servidor/push.js`, `servidor/ticket.js` | Solo estos tocan proveedores de fuera: Google (OAuth 2.0), el proveedor de correo, los servicios de Web Push de los navegadores y Gemini (foto al ticket). |
+| Límite de intentos | `servidor/limite.js` | Cuenta los fallos de login y las peticiones de recuperar contraseña por IP (en memoria). |
 | Composición | `servidor/index.js` | Arranque, conexión a la base de datos, administrador inicial, estáticos del cliente y montaje del router en `/api`. |
 
 ## Capas del frontend
@@ -36,7 +37,7 @@ Resumen operativo. La descripción completa está en el [README §Arquitectura e
 
 ## Endpoints
 
-Todos quedan montados bajo `/api` (`app.use('/api', crearRouter())` en `servidor/index.js`). Fuente: `servidor/api.js` (11 rutas, recuento con grep).
+Todos quedan montados bajo `/api` (`app.use('/api', crearRouter())` en `servidor/index.js`). Fuente: `servidor/api.js` (recuento con grep).
 
 | Método | Ruta | Quién puede |
 |---|---|---|
@@ -53,5 +54,11 @@ Todos quedan montados bajo `/api` (`app.use('/api', crearRouter())` en `servidor
 | GET | `/admin/usuarios/:email/estado` | administrador |
 | DELETE | `/usuarios/:email` | sesión con permiso: a sí mismo, o administrador sobre una cuenta que no sea administrador (regla `puedeEliminar`) |
 | POST | `/prueba/eliminar` | cualquiera (contrato público de la variante 5) |
+| GET | `/push/clave` | cualquiera (clave pública VAPID) |
+| POST | `/push/suscribir` · `/push/baja` | sesión válida (este dispositivo recibe o deja de recibir avisos) |
+| PUT | `/avisos/:nombre` | sesión válida (sus avisos de agua, estudio, viajes, ciclo o diario) |
+| POST | `/push/enviar` | solo Cloud Scheduler, con la cabecera `X-Clave-Cron` |
+
+`/login` responde 429 tras 10 fallos en 15 min desde la misma IP, y `/recuperar` tras 5 peticiones.
 
 Detalle de reglas de permisos y mensajes de error: en el [README §Manejo de errores](../README.md#manejo-de-errores).

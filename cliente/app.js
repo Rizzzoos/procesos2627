@@ -298,10 +298,12 @@ function vistaPanel() {
     cont.innerHTML = '';
     registrosCal = null;   // al volver al panel, se leen los registros frescos
 
-    // Resumen de la semana (arriba)
+    // Franja «Hoy» y resumen de la semana (arriba)
+    const hoyZona = document.createElement('div');
+    cont.appendChild(hoyZona);
     const resumenZona = document.createElement('div');
     cont.appendChild(resumenZona);
-    pintarResumen(resumenZona);
+    pintarResumen(resumenZona, hoyZona);
 
     const dos = document.createElement('div');
     dos.className = 'panel-dos';
@@ -524,11 +526,27 @@ async function enviarNotificacion(titulo, cuerpo) {
     }
 }
 
-function programarRecordatorioDiario() {
+async function programarRecordatorioDiario() {
     if (temporizadorRecordatorio) clearTimeout(temporizadorRecordatorio);
     temporizadorRecordatorio = null;
     let activo = false;
     try { activo = localStorage.getItem('dasna-recordatorio') === 'si'; } catch (e) { /* opcional */ }
+
+    // Con avisos con la app cerrada: las 22:00 de los próximos 7 días,
+    // saltando los días que ya están escritos
+    if (pushActivo()) {
+        if (!activo) return programarAvisos('diario', 'dasna-recordatorio', []);
+        const r = await rest.listarRegistros('diario').catch(() => null);
+        const escritos = new Set(r && r.exito ? r.datos
+            .filter((x) => x.datos && (x.datos.resumen || x.datos.humor))
+            .map((x) => claveDia(x.fecha)) : []);
+        const avisos = [];
+        for (let i = 0; i < 7; i++) {
+            const dia = sumarDias(hoyClave(), i);
+            if (!escritos.has(dia)) avisos.push({ cuando: aLas(dia, '22:00'), titulo: 'Dasna · Diario', texto: '¿Ya has escrito tu día? Cinco minutitos y listo.' });
+        }
+        return programarAvisos('diario', 'dasna-recordatorio', avisos);
+    }
     if (!activo || !('Notification' in window) || Notification.permission !== 'granted') return;
 
     const ahora = new Date();
@@ -798,6 +816,7 @@ async function fichaDiario(cont) {
             if (!res.exito) return aviso(res.error || 'No se pudo guardar.', 'error');
             fotoPendiente = null;
             aviso(`Día guardado (${fechaCorta(diaSel)})`);
+            if (pushActivo()) programarRecordatorioDiario();   // ese día ya no necesita aviso
             render();
         });
 
@@ -1668,7 +1687,7 @@ const TEXTO_ESTADO = { activo: 'Activo', pendiente: 'Pendiente', eliminado: 'Eli
 const CHIP_ESTADO = { activo: 'chip-ok', pendiente: '', eliminado: 'chip-peligro' };
 
 async function vistaUsuarios() {
-    cabecera('🛡️ Usuarios', 'Solo administradores.');
+    cabecera('Usuarios', 'Solo administradores.');
     const cont = document.getElementById('vista');
 
     if (!sesion || sesion.rol !== 'admin') {
@@ -1730,27 +1749,16 @@ async function vistaUsuarios() {
     cont.appendChild(caja);
 }
 
-function vistaCalendario() {
-    cabecera('🗓️ Calendario', 'La pieza central de Dasna.');
-    document.getElementById('vista').innerHTML = `
-        <div class="cristal">
-            <h3 style="margin-top:0">Fase 2 🚧</h3>
-            <p style="color:var(--texto-suave);line-height:1.6">Aquí vivirá tu <strong>calendario global</strong>: los exámenes y tareas de
-            Estudios, las quedadas de Eventos y la salida de tus Viajes, todo en una sola vista con filtros.
-            De momento este apartado está en construcción; el plan completo está en la vista
-            <a class="enlace" href="#/ayuda">Ayuda</a>.</p>
-        </div>`;
-}
-
 function vistaAyuda() {
-    cabecera('💬 Ayuda', 'Cómo funciona Dasna.');
+    cabecera('Ayuda', 'Cómo funciona Dasna.');
     document.getElementById('vista').innerHTML = `
         <div class="rejilla">
-            <div class="tarjeta"><h3>⌨️ Atajos</h3><p><strong>Ctrl / ⌘ + K</strong>: buscador universal.<br>
-El tema claro/oscuro lo cambias con la luna de arriba a la derecha.</p></div>
-            <div class="tarjeta"><h3>🧱 Módulos</h3><p>Cada módulo guarda <em>registros</em> (JSON con fecha) en tu cuenta.
-            Los recuadros con etiqueta de fase son las ideas planeadas que faltan por construir.</p></div>
-            <div class="tarjeta"><h3>✨ Tutorial</h3><p>Si quieres volver a ver las explicaciones:</p>
+            <div class="tarjeta"><h3>Tu panel</h3><p>Arriba tienes lo de <strong>hoy</strong> (agua, diario, lo próximo y tu ciclo) y el resumen de la semana; debajo, el calendario del mes y un recuadro por apartado. Con la lupa buscas cualquier apartado.</p></div>
+            <div class="tarjeta"><h3>Tus módulos</h3><p>Cada módulo guarda lo que apuntas con su fecha, solo en tu cuenta. Puedes añadir o quitar módulos cuando quieras desde el menú de tu cuenta, en <em>Elegir módulos</em>.</p></div>
+            <div class="tarjeta"><h3>Foto al ticket</h3><p>En Comidas, haz una foto al ticket de la compra: la IA lee los productos, descarta totales y pagos, y te deja elegir cuáles pasan a tu despensa.</p></div>
+            <div class="tarjeta"><h3>Avisos</h3><p>Estudio, Agua, Viajes, Diario y Mi ciclo tienen su propio interruptor de avisos. Si además activas <em>Avisos con la app cerrada</em> en el menú de tu cuenta, te llegan aunque cierres Dasna (en iPhone, primero añádela a la pantalla de inicio).</p></div>
+            <div class="tarjeta"><h3>Tus datos</h3><p>Desde el menú de tu cuenta puedes descargarlo todo (JSON o CSV) o eliminar tu cuenta con todo lo guardado. Más detalles en la <a class="enlace" href="/privacidad.html">página de privacidad</a>.</p></div>
+            <div class="tarjeta"><h3>Tutorial</h3><p>Si quieres volver a ver las explicaciones:</p>
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.6rem">
                 <button class="boton-suave" id="btn-tutorial">Ver el tutorial</button>
                 <button class="boton-suave" id="btn-tutorial-comidas">Ver cómo se usa Comidas</button>
@@ -1773,7 +1781,8 @@ function vistaArchivo() {
         ['Fase 2', 'Estudio con recordatorios y plan de temas, y Eventos escritos o dictados.', true],
         ['Fase 3', 'Comidas (nevera, despensa, compra y foto al ticket), Viajes y Beber agua.', true],
         ['Fase 4', 'Outfits, Gimnasio, Diario, Ahorros, Sueño, Visionboard y Películas Libros.', true],
-        ['Fase 5', 'Aspecto profesional, barra inferior en el móvil y adaptación móvil completa.', false]
+        ['Fase 5', 'Aspecto profesional, barra inferior en el móvil y adaptación móvil completa.', true],
+        ['Sprint 2', 'Recuperar contraseña, Mi ciclo, resumen de la semana y franja de hoy, descargar o borrar tus datos y avisos con la app cerrada (Web Push).', true]
     ];
     document.getElementById('vista').innerHTML = `
         <div class="ficha-propia">
@@ -1799,11 +1808,11 @@ function vistaArchivo() {
 
 function vistaProximo() {
     const id = location.hash.replace(/^#\/?/, '');
-    cabecera('🚧 En construcción', 'Esta idea ya está planeada.');
+    cabecera('No encontrado', 'Este apartado no existe o no lo tienes activado.');
     document.getElementById('vista').innerHTML = `
         <div class="cristal">
-            <p style="color:var(--texto-suave);line-height:1.6">Este módulo está en el plan de fases de Dasna.
-            Pronto vivirá aquí. Puedes ver el plan completo en la vista <a class="enlace" href="#/ayuda">Ayuda</a>.</p>
+            <p style="color:var(--texto-suave);line-height:1.6">Vuelve al <a class="enlace" href="#/panel">Panel</a>
+            o añade el módulo desde el menú de tu cuenta, en <em>Elegir módulos</em>.</p>
         </div>`;
 }
 
@@ -2030,12 +2039,9 @@ async function iniciar() {
         if (location.hash.indexOf('/diario') !== -1) enrutar();
     }, 60000);
 
-    // Recordatorio de las 22:00 para escribir el diario (si está activado)
-    programarRecordatorioDiario();
-    programarAvisosEstudio();
-    programarAvisosViajes();
-    programarAvisosAgua();
-    programarAvisosCiclo();
+    // Avisos de cada módulo (diario a las 22:00, estudio, viajes, agua, ciclo);
+    // con Web Push activo se guardan en el servidor y llegan con la app cerrada
+    comprobarPush().finally(reprogramarAvisos);
 
     // --- Tema claro/oscuro (icono de línea: sol o luna) ---
     const SVG_SOL = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';

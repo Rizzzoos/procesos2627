@@ -334,6 +334,22 @@ async function descargarDatos(formato, modulo = '') {
     }
 }
 
+// Web Push (PBI-24): avisos con la app cerrada
+async function pushClave() {
+    const r = await peticionJson('/api/push/clave');
+    return (r && r.clave) || null;
+}
+async function pushSuscribir(suscripcion) {
+    return peticionJson('/api/push/suscribir', { method: 'POST', body: JSON.stringify(suscripcion) });
+}
+async function pushBaja(endpoint) {
+    return peticionJson('/api/push/baja', { method: 'POST', body: JSON.stringify({ endpoint }) });
+}
+// Todos los avisos de un módulo (sustituyen a los que hubiera en el servidor)
+async function guardarAvisos(nombre, avisos) {
+    return peticionJson(`/api/avisos/${encodeURIComponent(nombre)}`, { method: 'PUT', body: JSON.stringify({ avisos }) });
+}
+
 // Espacio de nombres para las vistas (app.js usa rest.funcion(...))
 const rest = {
     obtenerSesion,
@@ -351,5 +367,9 @@ const rest = {
     guardarModulos,
     resumen,
     ciclo,
-    descargarDatos
+    descargarDatos,
+    pushClave,
+    pushSuscribir,
+    pushBaja,
+    guardarAvisos
 };

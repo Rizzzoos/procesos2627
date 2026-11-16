@@ -12,7 +12,7 @@
 // lo detecta y monta la caché nueva en la siguiente recarga.
 // ============================================================
 
-const CACHE = 'dasna-v47';
+const CACHE = 'dasna-v48';
 
 const SHELL = [
     '/',
@@ -96,6 +96,30 @@ self.addEventListener('fetch', (evento) => {
                 .catch(() => cacheteado);
 
             return cacheteado || revalidar;
+        })
+    );
+});
+
+// 4. Web Push (PBI-24): el servidor manda { titulo, texto } y se enseña
+//    aunque Dasna esté cerrada
+self.addEventListener('push', (evento) => {
+    let datos = {};
+    try { datos = evento.data ? evento.data.json() : {}; } catch (e) { datos = { texto: evento.data && evento.data.text() }; }
+    evento.waitUntil(self.registration.showNotification(datos.titulo || 'Dasna', {
+        body: datos.texto || '',
+        icon: '/icon-192.png',
+        badge: '/icon-96.png',
+        lang: 'es'
+    }));
+});
+
+// Al tocar la notificación: se abre (o se enfoca) Dasna
+self.addEventListener('notificationclick', (evento) => {
+    evento.notification.close();
+    evento.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ventanas) => {
+            const abierta = ventanas.find((v) => new URL(v.url).pathname === '/app.html');
+            return abierta ? abierta.focus() : self.clients.openWindow('/app.html');
         })
     );
 });

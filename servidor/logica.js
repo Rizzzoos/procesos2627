@@ -722,6 +722,91 @@ async function analizarCiclo(email, hoy) {
     }
 }
 
+// ============================================================
+// WEB PUSH (PBI-24, decisión D-18)
+// El cliente calcula sus avisos (como antes) y los guarda aquí; un
+// trabajo programado (Cloud Scheduler) llama cada 5 min a
+// enviarAvisosPendientes, que manda los que ya tocan y los borra.
+// ============================================================
+const NOMBRES_AVISO = ['agua', 'estudio', 'viajes', 'ciclo', 'diario'];
+const MAX_AVISOS = 200;
+const HORIZONTE_AVISOS = 60 * 24 * 3600 * 1000;   // como mucho 60 días vista
+const CADUCIDAD_AVISO = 2 * 3600 * 1000;          // uno que se quedó 2 h atrás ya no se manda
+
+function esSuscripcionValida(sub) {
+    return esObjetoPlano(sub) && typeof sub.endpoint === 'string' && /^https:\/\//.test(sub.endpoint) &&
+        sub.endpoint.length <= 1000 && esObjetoPlano(sub.keys) &&
+        typeof sub.keys.p256dh === 'string' && typeof sub.keys.auth === 'string' &&
+        sub.keys.p256dh.length <= 200 && sub.keys.auth.length <= 100;
+}
+
+async function guardarSuscripcion(email, sub) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    if (!esSuscripcionValida(sub)) return { exito: false, error: 'Suscripción no válida.' };
+    try {
+        await datos.guardarSuscripcion(email, sub.endpoint, { p256dh: sub.keys.p256dh, auth: sub.keys.auth });
+        return { exito: true, mensaje: 'Avisos con la app cerrada activados en este dispositivo.' };
+    } catch (error) {
+        return { exito: false, error: 'No se pudo guardar la suscripción.' };
+    }
+}
+
+async function borrarSuscripcion(email, endpoint) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    if (typeof endpoint !== 'string' || !endpoint) return { exito: false, error: 'Falta el dispositivo.' };
+    try {
+        await datos.borrarSuscripcion(endpoint, email);
+        return { exito: true, mensaje: 'Avisos con la app cerrada desactivados en este dispositivo.' };
+    } catch (error) {
+        return { exito: false, error: 'No se pudo desactivar.' };
+    }
+}
+
+async function guardarAvisos(email, nombre, lista, ahora = Date.now()) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    if (!NOMBRES_AVISO.includes(nombre)) return { exito: false, error: 'Tipo de aviso no válido.' };
+    if (!Array.isArray(lista) || lista.length > MAX_AVISOS) return { exito: false, error: `Envía una lista de como mucho ${MAX_AVISOS} avisos.` };
+    const limpios = [];
+    for (const a of lista) {
+        const cuando = Number(a && a.cuando);
+        if (!Number.isFinite(cuando) || typeof a.titulo !== 'string' || typeof a.texto !== 'string' ||
+            !a.titulo.trim() || !a.texto.trim()) {
+            return { exito: false, error: 'Cada aviso necesita cuándo, título y texto.' };
+        }
+        if (cuando <= ahora || cuando > ahora + HORIZONTE_AVISOS) continue;   // pasados o muy lejanos: fuera
+        limpios.push({ cuando: new Date(cuando), titulo: a.titulo.trim().slice(0, 80), texto: a.texto.trim().slice(0, 300) });
+    }
+    try {
+        await datos.reemplazarAvisos(email, nombre, limpios);
+        return { exito: true, guardados: limpios.length };
+    } catch (error) {
+        return { exito: false, error: 'No se pudieron guardar los avisos.' };
+    }
+}
+
+// `enviar(suscripcion, {titulo, texto})` se inyecta (push.js en producción,
+// una función falsa en los tests) y devuelve 'ok', 'caducada' o 'error'.
+async function enviarAvisosPendientes(enviar, ahora = Date.now()) {
+    try {
+        const vencidos = await datos.avisosVencidos(new Date(ahora));
+        let enviados = 0, caducados = 0;
+        const subsPorEmail = new Map();
+        for (const a of vencidos) {
+            if (ahora - new Date(a.cuando).getTime() > CADUCIDAD_AVISO) { caducados++; continue; }
+            if (!subsPorEmail.has(a.email)) subsPorEmail.set(a.email, await datos.suscripcionesDe(a.email));
+            for (const sub of subsPorEmail.get(a.email)) {
+                const r = await enviar(sub, { titulo: a.titulo, texto: a.texto });
+                if (r === 'ok') enviados++;
+                else if (r === 'caducada') await datos.borrarSuscripcion(sub.endpoint);
+            }
+        }
+        await datos.borrarAvisosPorId(vencidos.map((a) => a._id));
+        return { exito: true, revisados: vencidos.length, enviados, caducados };
+    } catch (error) {
+        return { exito: false, error: 'No se pudieron enviar los avisos.' };
+    }
+}
+
 // CSV: una fila por registro; los datos van como JSON en su columna
 function aCsv(filas) {
     const celda = (v) => `"${String(v).replace(/"/g, '""')}"`;
@@ -784,5 +869,10 @@ module.exports = {
     // Ideas: resumen y exportar
     resumenSemanal,
     analizarCiclo,
-    exportarDatos
+    exportarDatos,
+    // Web Push
+    guardarSuscripcion,
+    borrarSuscripcion,
+    guardarAvisos,
+    enviarAvisosPendientes
 };

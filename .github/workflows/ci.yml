@@ -12,12 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Instalar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Instalar dependencias
@@ -39,16 +39,16 @@ jobs:
     concurrency: despliegue-produccion   # nunca dos despliegues a la vez
     steps:
       - name: Checkout del código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Autenticarse en Google Cloud
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           # Clave de la cuenta de servicio de despliegue (Settings > Secrets > Actions)
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Desplegar en Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
+        uses: google-github-actions/deploy-cloudrun@v3
         with:
           service: procesos2627
           region: europe-west1

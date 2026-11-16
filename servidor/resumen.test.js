@@ -27,6 +27,16 @@ test('Resumen semanal', async (t) => {
         assert.deepStrictEqual(r.diario, { dias: 3, humorMedio: 3.5 });
     });
 
+    await t.test('S6: la franja «Hoy» trae los vasos de hoy, si el diario está escrito y si hubo entreno', () => {
+        const r = reglas.resumenSemana({
+            agua: [{ fecha: HOY, datos: { tipo: 'dia', vasos: 3 } }, { fecha: '2026-11-09', datos: { tipo: 'dia', vasos: 8 } }],
+            diario: [{ fecha: '2026-11-09', datos: { humor: 4 } }],
+            gimnasio: [{ fecha: HOY, datos: { tipo: 'sesion' } }]
+        }, HOY);
+        assert.deepStrictEqual(r.hoy, { agua: { vasos: 3, meta: 8 }, diario: false, gimnasio: true });
+        assert.deepStrictEqual(reglas.resumenSemana({}, HOY).hoy, {}, 'sin módulos, nada');
+    });
+
     await t.test('S3: gimnasio cuenta los entrenos (no las rutinas)', () => {
         const r = reglas.resumenSemana({
             gimnasio: [
@@ -40,7 +50,7 @@ test('Resumen semanal', async (t) => {
     });
 
     await t.test('S4: solo aparecen los módulos activos', () => {
-        assert.deepStrictEqual(reglas.resumenSemana({}, HOY), { desde: '2026-11-04', hasta: HOY });
+        assert.deepStrictEqual(reglas.resumenSemana({}, HOY), { desde: '2026-11-04', hasta: HOY, hoy: {} });
     });
 
     await t.test('S5: validaciones de resumen y exportar', async () => {

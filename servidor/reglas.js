@@ -357,7 +357,7 @@ function resumenSemana(registros, hoyK) {
     const desde = sumarDias(hoyK, -6);
     const enSemana = (r) => r.fecha >= desde && r.fecha <= hoyK;
     const de = (m) => registros[m] || null;
-    const resumen = { desde, hasta: hoyK };
+    const resumen = { desde, hasta: hoyK, hoy: {} };
 
     if (de('agua')) {
         const ajustes = de('agua').find((r) => r.datos && r.datos.tipo === 'ajustes');
@@ -370,10 +370,13 @@ function resumenSemana(registros, hoyK) {
             mediaVasos: Math.round((vasos / 7) * 10) / 10,
             diasMeta: semana.filter((r) => Number(r.datos.vasos) >= meta).length
         };
+        const deHoy = dias.find((r) => r.fecha === hoyK);
+        resumen.hoy.agua = { vasos: (deHoy && Number(deHoy.datos.vasos)) || 0, meta };
     }
     if (de('diario')) {
         const semana = de('diario').filter(enSemana);
         const humores = semana.map((r) => Number(r.datos && r.datos.humor)).filter((h) => h > 0);
+        resumen.hoy.diario = semana.some((r) => r.fecha === hoyK);
         resumen.diario = {
             dias: new Set(semana.map((r) => r.fecha)).size,
             humorMedio: humores.length ? Math.round((humores.reduce((a, b) => a + b, 0) / humores.length) * 10) / 10 : null
@@ -382,6 +385,7 @@ function resumenSemana(registros, hoyK) {
     if (de('gimnasio')) {
         const sesiones = de('gimnasio').filter((r) => r.datos && r.datos.tipo === 'sesion');
         resumen.gimnasio = { entrenos: sesiones.filter(enSemana).length };
+        resumen.hoy.gimnasio = sesiones.some((r) => r.fecha === hoyK);
     }
     return resumen;
 }
