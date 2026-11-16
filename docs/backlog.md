@@ -18,6 +18,7 @@ Tres apartados: los **PBI** (trabajo planificado del producto), las **mejoras** 
 | PBI-27 | Reglas de los módulos al servidor: fechas, planificador de estudio, agua, sueño, outfits y plan por meses. | 2 | hecho | `servidor/reglas.js`, `POST /api/reglas/:nombre` |
 | PBI-28 | El cliente solo presenta: todas las llamadas a la API pasan por `cliente/rest.js`. | 2 | hecho | ARQ-03 en [requisitos.md](requisitos.md) |
 | PBI-29 | Recuperar la contraseña por correo. | 2 | hecho | `POST /api/recuperar` y `POST /api/restablecer`; tests *Recuperar 1–3*; decisión D-16 |
+| PBI-30 | Módulo opcional **Mi ciclo**: apuntar cada día el sangrado (5 niveles), las relaciones sexuales y los síntomas (más triste, antojos, dolor de pecho, granos, dolor de regla, hinchazón); predice la próxima regla, la ovulación y la ventana fértil, aprende qué síntomas se repiten y avisa por notificación. | 2 | hecho | `servidor/reglas.js` (`analizarCiclo`), `GET /api/ciclo`, `cliente/modulos-ciclo.js`; tests *C1–C7*; decisión D-17 |
 
 ## Mejoras
 
@@ -28,6 +29,7 @@ Tres apartados: los **PBI** (trabajo planificado del producto), las **mejoras** 
 | Primer uso guiado: elegir los módulos al entrar la primera vez | Idea propia | hecho | `cliente/modulos-panel.js` |
 | Menú de la cuenta en el botón de salir: descargar mis datos (todo o por módulo, JSON/CSV), salir y eliminar la cuenta | Idea propia | hecho | `GET /api/exportar`, `DELETE /api/usuarios/:email` |
 | Al eliminar una cuenta se borran también sus módulos y registros | Revisión del código | hecho | `datos.borrarDatosDe()` |
+| «Elegir módulos» en el menú de la cuenta, para añadir o quitar módulos después del primer uso | Al añadir Mi ciclo | hecho | `cliente/modulos-panel.js` |
 | Adaptación a móvil: botones a tamaño de dedo, tablas con scroll, ventanas casi a pantalla completa | Prueba en móvil | hecho | `cliente/estilos/dasna.css` |
 | Base de datos separada para las pruebas (hoy usan la real y borran lo que crean) | Riesgo del Sprint 2 | pendiente | — |
 | Limitar los intentos de login por IP | Riesgo de D-15 | pendiente | — |
@@ -46,3 +48,4 @@ Tres apartados: los **PBI** (trabajo planificado del producto), las **mejoras** 
 | D-13 → D-14 | Despliegue manual sustituido por despliegue continuo con GitHub Actions | D-14 vigente |
 | D-15 | El login dice si falla el correo o la contraseña, en vez de un error global | vigente |
 | D-16 | Recuperar contraseña con enlace de un solo uso (1 h) y token guardado como hash | vigente |
+| D-17 | Mi ciclo: módulo opcional y predicción con reglas sencillas que mejoran con más ciclos | vigente |

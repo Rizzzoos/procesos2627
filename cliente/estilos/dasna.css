@@ -1315,3 +1315,41 @@ body { animation-duration: 120s; letter-spacing: -0.005em; }
 }
 .menu-cuenta button:hover, .menu-cuenta button:focus-visible { background: var(--cristal); outline: none; }
 .menu-cuenta button.peligro { color: var(--peligro); }
+
+/* ---------- Mi ciclo ---------- */
+.ci-estado { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.9rem; }
+.ci-estado > div { display: flex; flex-direction: column; gap: 0.15rem; }
+.ci-estado strong { font-size: 1.2rem; }
+.ci-avisos { margin: 0.9rem 0 0; padding-left: 1.1rem; }
+.ci-avisos li { margin: 0.25rem 0; }
+.ci-mes-cab { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.7rem; }
+.ci-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3rem; max-width: 380px; margin: 0 auto; }
+.ci-mes-cab { max-width: 380px; margin-left: auto; margin-right: auto; }
+.ci-cab { text-align: center; font-size: 0.7rem; font-weight: 700; color: var(--texto-tenue); }
+.ci-dia {
+    position: relative; aspect-ratio: 1; min-height: 2.3rem;
+    border: 1px solid var(--cristal-borde); border-radius: 10px;
+    background: var(--cristal); color: inherit; font: inherit; font-size: 0.85rem; cursor: pointer;
+}
+.ci-dia:disabled { opacity: 0.45; cursor: default; }
+.ci-dia.activo { outline: 2px solid var(--acento); outline-offset: 1px; }
+.ci-dia.ci-hoy { font-weight: 800; }
+.ci-sangra-1 { background: rgba(251, 113, 133, 0.22); }
+.ci-sangra-2 { background: rgba(244, 63, 94, 0.45); }
+.ci-sangra-3 { background: rgba(225, 29, 72, 0.7); color: #fff; }
+.ci-sangra-4 { background: rgba(159, 18, 57, 0.9); color: #fff; }
+.ci-prevista { border: 2px dashed rgba(244, 63, 94, 0.8); }
+.ci-fertil { background: rgba(45, 212, 191, 0.25); }
+.ci-ovulacion::after { content: ''; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--acento); }
+.ci-marcas { position: absolute; left: 0; right: 0; bottom: 3px; display: flex; justify-content: center; gap: 3px; }
+.ci-marca { display: inline-block; width: 6px; height: 6px; border-radius: 50%; }
+.ci-rel { background: #c084fc; }
+.ci-sin { background: #fbbf24; }
+.ci-leyenda { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; margin-top: 0.8rem; font-size: 0.75rem; color: var(--texto-suave); }
+.ci-leyenda span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.ci-punto { display: inline-block; width: 12px; height: 12px; border-radius: 4px; border: 1px solid var(--cristal-borde); }
+.ci-opciones { flex-wrap: wrap; margin-top: 0.35rem; }
+.ci-patrones { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+@media (max-width: 720px) {
+    .ci-dia { min-height: 2.6rem; }
+}

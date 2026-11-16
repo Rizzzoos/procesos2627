@@ -405,11 +405,19 @@ const CATALOGO = {
         nombre: 'Eventos',
         icono: '🎉',
         descripcion: 'Comidas, cenas, viajes, conciertos y festivales, escritos o dictados.'
+    },
+    ciclo: {
+        nombre: 'Mi ciclo',
+        icono: '🌸',
+        descripcion: 'Tu regla, tu ventana fértil y lo que sueles notar cada mes.',
+        opcional: true
     }
 };
 
 // Orden por defecto de la barra lateral (los 6 activos de fábrica)
-const ORDEN_POR_DEFECTO = Object.keys(CATALOGO);
+// Los opcionales (Mi ciclo) no vienen de fábrica: se eligen en el primer uso o en «Elegir módulos»
+const ORDEN_CATALOGO = Object.keys(CATALOGO);
+const ORDEN_POR_DEFECTO = ORDEN_CATALOGO.filter((c) => !CATALOGO[c].opcional);
 
 // Límites de seguridad comunes a todos los módulos
 const MAX_REGISTROS_MODULO = 10000;
@@ -429,7 +437,7 @@ function esObjetoPlano(datos) {
 
 // Devuelve el catálogo como lista para el cliente
 function listarModulos() {
-    return ORDEN_POR_DEFECTO.map((clave) => ({ clave, ...CATALOGO[clave] }));
+    return ORDEN_CATALOGO.map((clave) => ({ clave, ...CATALOGO[clave] }));
 }
 
 // Qué módulos tiene activos el usuario (si nunca lo guardó: los 6 por defecto)
@@ -693,6 +701,27 @@ async function resumenSemanal(email, hoy) {
     }
 }
 
+// Mi ciclo: lee los días apuntados y devuelve la predicción
+const NIVELES_SANGRADO = [0, 1, 2, 3, 4];
+async function analizarCiclo(email, hoy) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    if (!reglas.esClave(hoy)) return { exito: false, error: 'Falta la fecha de hoy (AAAA-MM-DD).' };
+    try {
+        const lista = await datos.listarRegistros(email, 'ciclo', { hasta: `${hoy}T23:59:59.999Z`, limite: 2000 });
+        const dias = lista
+            .filter((r) => r.datos && r.datos.tipo === 'dia')
+            .map((r) => ({
+                fecha: claveDeFecha(r.fecha),
+                sangrado: NIVELES_SANGRADO.includes(Number(r.datos.sangrado)) ? Number(r.datos.sangrado) : 0,
+                relaciones: Boolean(r.datos.relaciones),
+                sintomas: Array.isArray(r.datos.sintomas) ? r.datos.sintomas.filter((x) => reglas.SINTOMAS_CICLO[x]) : []
+            }));
+        return { exito: true, datos: reglas.analizarCiclo(dias, hoy) };
+    } catch (error) {
+        return { exito: false, error: 'No se pudo analizar el ciclo.' };
+    }
+}
+
 // CSV: una fila por registro; los datos van como JSON en su columna
 function aCsv(filas) {
     const celda = (v) => `"${String(v).replace(/"/g, '""')}"`;
@@ -754,5 +783,6 @@ module.exports = {
     aplicarRegla,
     // Ideas: resumen y exportar
     resumenSemanal,
+    analizarCiclo,
     exportarDatos
 };

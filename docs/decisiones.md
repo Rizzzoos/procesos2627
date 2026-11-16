@@ -5,7 +5,7 @@ description: Qué se decidió, por qué y en qué estado está cada decisión.
 timestamp: 2026-10-28
 ---
 
-Las decisiones D-01 a D-05 recogen las tecnologías; D-06 y D-07 registran un cambio de enfoque en el proveedor de correo (queda la antigua, sustituida); D-08 a D-16, decisiones del producto y del proceso (D-14 sustituye a D-13). Los motivos de D-06, D-08, D-12 y D-13 los aportó la persona responsable del proyecto.
+Las decisiones D-01 a D-05 recogen las tecnologías; D-06 y D-07 registran un cambio de enfoque en el proveedor de correo (queda la antigua, sustituida); D-08 a D-17, decisiones del producto y del proceso (D-14 sustituye a D-13). Los motivos de D-06, D-08, D-12 y D-13 los aportó la persona responsable del proyecto.
 
 ### D-01 — Express + Node.js para la API
 - **Qué se decidió:** montar la API REST con Express sobre Node.js.
@@ -88,3 +88,9 @@ Las decisiones D-01 a D-05 recogen las tecnologías; D-06 y D-07 registran un ca
 - **Por qué:** es el mecanismo habitual y reutiliza el proveedor de correo de D-07. Guardar solo el hash impide usar el enlace a quien lea la base de datos; 1 hora (frente a las 24 h de la confirmación, D-10) porque el enlace permite cambiar la contraseña.
 - **Mensaje al pedirlo:** siempre el mismo, exista o no la cuenta («Si hay una cuenta con ese correo, te hemos enviado un enlace…»), para que esta pantalla no sirva para probar correos.
 - **Estado:** vigente desde el Sprint 2 (PBI-29).
+
+### D-17 — Mi ciclo: módulo opcional y predicción con reglas sencillas
+- **Qué se decidió:** el módulo *Mi ciclo* no viene activado de fábrica: se elige en el primer uso o en «Elegir módulos». La predicción la hace el servidor (`analizarCiclo` en `reglas.js`) con reglas que se pueden explicar: duración media de los últimos 6 ciclos (28 días si aún no hay ninguno), ovulación 14 días antes de la próxima regla, ventana fértil de 5 días antes a 1 después, y un síntoma es «patrón» si aparece en al menos la mitad de los ciclos completos (mínimo 2). La confianza sube con el número de ciclos y baja si varían mucho.
+- **Por qué:** con pocos datos un modelo estadístico más complejo no sería mejor, y estas reglas se pueden comprobar con tests (*C1–C7*) y explicar a la usuaria («ciclo de 28 días de media · 4 ciclos · confianza alta»). Son datos de salud muy sensibles: no se activan para nadie que no los pida, viven solo en sus registros y se borran con la cuenta.
+- **Límite:** la app avisa de que es una estimación y no sirve como método anticonceptivo.
+- **Estado:** vigente desde el Sprint 2 (PBI-30).

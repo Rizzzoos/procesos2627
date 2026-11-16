@@ -36,17 +36,17 @@ async function pintarResumen(zona) {
 }
 
 // --- Primer uso: elegir qué módulos ver ---
-function abrirPrimerUso(disponibles, activos, alTerminar) {
+function abrirPrimerUso(disponibles, activos, alTerminar, opciones = {}) {
     const elegidos = new Set(activos.map((m) => m.clave));
-    const { caja, cerrar } = abrirModal('Bienvenida a Dasna', `
-        <p class="pista" style="margin-top:0">Elige qué quieres organizar. Podrás cambiarlo cuando quieras desde el Panel.</p>
+    const { caja, cerrar } = abrirModal(opciones.titulo || 'Bienvenida a Dasna', `
+        <p class="pista" style="margin-top:0">Elige qué quieres organizar. Podrás cambiarlo cuando quieras desde el menú de tu cuenta (Elegir módulos).</p>
         <div class="primer-uso">${disponibles.map((m) => `
             <label class="primer-uso-op">
                 <input type="checkbox" value="${esc(m.clave)}" ${elegidos.has(m.clave) ? 'checked' : ''}>
                 <span class="primer-uso-icono">${iconoDe(m.clave, m.icono)}</span>
                 <span><strong>${esc(m.nombre)}</strong><small class="pista">${esc(m.descripcion || '')}</small></span>
             </label>`).join('')}</div>
-        <div class="fila-botones"><button class="boton-primario" id="pu-guardar">Empezar</button></div>`);
+        <div class="fila-botones"><button class="boton-primario" id="pu-guardar">${opciones.boton || 'Empezar'}</button></div>`);
     caja.querySelector('#pu-guardar').addEventListener('click', async () => {
         const claves = [...caja.querySelectorAll('input:checked')].map((i) => i.value);
         if (!claves.length) return aviso('Elige al menos un módulo.', 'error');
@@ -56,6 +56,7 @@ function abrirPrimerUso(disponibles, activos, alTerminar) {
         cerrar();
         pintarBarraInferior();
         enrutar();
+        programarAvisosCiclo();
         if (alTerminar) alTerminar();
     });
 }
@@ -84,6 +85,7 @@ function alternarMenuCuenta(boton) {
     menu.className = 'menu-cuenta';
     menu.setAttribute('role', 'menu');
     menu.innerHTML = `
+        <button type="button" role="menuitem" data-accion="modulos">Elegir módulos</button>
         <button type="button" role="menuitem" data-accion="descargar">Descargar mis datos</button>
         <button type="button" role="menuitem" data-accion="salir">Salir</button>
         <button type="button" role="menuitem" data-accion="eliminar" class="peligro">Eliminar cuenta</button>`;
@@ -104,6 +106,7 @@ function alternarMenuCuenta(boton) {
         cerrar();
         if (b.dataset.accion === 'salir') rest.cerrarSesionApp();
         if (b.dataset.accion === 'descargar') abrirDescarga();
+        if (b.dataset.accion === 'modulos') abrirPrimerUso(modulosDisponibles, modulos, null, { titulo: 'Elegir módulos', boton: 'Guardar' });
         if (b.dataset.accion === 'eliminar') abrirEliminarCuenta();
     });
 }
