@@ -50,6 +50,13 @@ El proyecto requiere un archivo `.env` en la raíz (ver `.env.example`) con las 
 * `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` — credenciales del *OAuth Client ID* de Google Cloud. Sin ellas, el botón de Google responde con un error claro.
 * `URL_PUBLICA` — URL pública de la app (por ejemplo `https://procesos2627-817509698728.europe-west1.run.app`). Se usa para construir el enlace de confirmación y la *redirect URI* de Google. En local vale `http://localhost:3000`.
 
+**Avisos con la app cerrada (Web Push)**
+* `VAPID_PUBLICA` y `VAPID_PRIVADA` — par de claves VAPID (se generan con `npx web-push generate-vapid-keys`). Sin ellas, el push queda apagado y los avisos salen solo con la app abierta.
+* `CRON_CLAVE` — secreto largo que Cloud Scheduler manda en la cabecera `X-Clave-Cron` al llamar a `POST /api/push/enviar` cada 5 minutos.
+
+**Pruebas**
+* `MONGO_DB_PRUEBAS` (opcional) — base de datos de las pruebas; por defecto `dasna_pruebas`, separada de la real.
+
 > Las claves reales **nunca se suben al repositorio**: en Cloud Run se configuran como variables de entorno del servicio.
 
 ## Hito 4: confirmación de cuenta por correo

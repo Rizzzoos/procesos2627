@@ -1353,3 +1353,57 @@ body { animation-duration: 120s; letter-spacing: -0.005em; }
 @media (max-width: 720px) {
     .ci-dia { min-height: 2.6rem; }
 }
+
+/* ===== Franja «Hoy» del Panel ===== */
+.hoy-franja {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem 1.2rem;
+    flex-wrap: wrap;
+    padding: 0.8rem 1.1rem;
+    margin-bottom: 1rem;
+}
+.hoy-titulo {
+    display: flex;
+    flex-direction: column;
+    font-weight: 700;
+    font-size: 1.05rem;
+    line-height: 1.2;
+    min-width: 7.5rem;
+}
+.hoy-titulo .pista { font-weight: 500; font-size: 0.78rem; margin: 0; }
+.hoy-datos { display: flex; flex-wrap: wrap; gap: 0.5rem; flex: 1 1 auto; }
+.hoy-dato {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.75rem 0.35rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid var(--cristal-borde);
+    background: rgba(255, 255, 255, 0.12);
+    color: inherit;
+    text-decoration: none;
+    font-size: 0.86rem;
+    max-width: 100%;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+.hoy-dato span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hoy-dato:hover { background: rgba(255, 255, 255, 0.22); transform: translateY(-1px); }
+.hoy-dato .icono-linea { width: 1rem; height: 1rem; flex: 0 0 auto; }
+.hoy-dato .icono-linea svg { width: 100%; height: 100%; }
+.hoy-dato.pendiente { border-color: rgba(251, 191, 36, 0.75); }
+@media (max-width: 600px) {
+    .hoy-franja { padding: 0.7rem 0.8rem; gap: 0.5rem; }
+    .hoy-titulo { flex-direction: row; align-items: baseline; gap: 0.5rem; width: 100%; }
+    .hoy-dato { font-size: 0.8rem; }
+}
+
+/* Elegir módulos: apartados «Arriba del Panel» y «Módulos» */
+.primer-uso-grupo {
+    margin: 1rem 0 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--texto-suave);
+}

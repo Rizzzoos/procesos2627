@@ -35,6 +35,8 @@ const modulosSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     // Orden exacto de las claves visibles, p. ej. ['ahorros','diario','gimnasio']
     claves: { type: [String], default: [] },
+    // true desde que la elección incluye los recuadros del Panel (Hoy, Tu semana)
+    conPanel: { type: Boolean, default: false },
     actualizadoEn: { type: Date, default: Date.now }
 });
 
@@ -49,6 +51,63 @@ const registrosSchema = new mongoose.Schema({
 const Modulo = mongoose.model('Modulo', modulosSchema);
 const Registro = mongoose.model('Registro', registrosSchema);
 
+// ============================================================
+// WEB PUSH (PBI-24): avisos aunque la app esté cerrada
+//   suscripciones -> a qué navegadores/móviles se les puede mandar un push
+//   avisos        -> qué notificación sale y cuándo (las calcula el cliente)
+// ============================================================
+const suscripcionSchema = new mongoose.Schema({
+    email: { type: String, required: true, index: true },
+    endpoint: { type: String, required: true, unique: true },
+    claves: { p256dh: String, auth: String },
+    creadaEn: { type: Date, default: Date.now }
+}, { collection: 'suscripciones' });
+
+const avisoSchema = new mongoose.Schema({
+    email: { type: String, required: true, index: true },
+    nombre: { type: String, required: true },          // módulo que lo pide (agua, estudio…)
+    cuando: { type: Date, required: true, index: true },
+    titulo: { type: String, required: true },
+    texto: { type: String, required: true }
+});
+
+const Suscripcion = mongoose.model('Suscripcion', suscripcionSchema);
+const Aviso = mongoose.model('Aviso', avisoSchema);
+
+async function guardarSuscripcion(email, endpoint, claves) {
+    return Suscripcion.findOneAndUpdate(
+        { endpoint },
+        { email, endpoint, claves, creadaEn: new Date() },
+        { upsert: true, returnDocument: 'after' }
+    );
+}
+
+async function borrarSuscripcion(endpoint, email) {
+    return Suscripcion.deleteOne(email ? { endpoint, email } : { endpoint });
+}
+
+async function suscripcionesDe(email) {
+    return Suscripcion.find({ email }).lean();
+}
+
+// Cambia TODOS los avisos de un módulo de una persona por la lista nueva
+async function reemplazarAvisos(email, nombre, lista) {
+    await Aviso.deleteMany({ email, nombre });
+    if (lista.length) await Aviso.insertMany(lista.map((a) => ({ ...a, email, nombre })));
+}
+
+async function avisosVencidos(hasta) {
+    return Aviso.find({ cuando: { $lte: hasta } }).sort({ cuando: 1 }).limit(500).lean();
+}
+
+async function avisosDe(email) {
+    return Aviso.find({ email }).sort({ cuando: 1 }).lean();
+}
+
+async function borrarAvisosPorId(ids) {
+    return Aviso.deleteMany({ _id: { $in: ids } });
+}
+
 // --- Módulos: qué ve y en qué orden cada usuario ---
 
 async function buscarModulos(email) {
@@ -58,7 +117,7 @@ async function buscarModulos(email) {
 async function guardarModulos(email, claves) {
     return Modulo.findOneAndUpdate(
         { email },
-        { $set: { claves, actualizadoEn: new Date() } },
+        { $set: { claves, conPanel: true, actualizadoEn: new Date() } },
         { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 }
@@ -97,6 +156,8 @@ async function todosLosRegistros(email, modulo) {
 async function borrarDatosDe(email) {
     await Registro.deleteMany({ email });
     await Modulo.deleteMany({ email });
+    await Suscripcion.deleteMany({ email });
+    await Aviso.deleteMany({ email });
 }
 
 async function contarRegistros(email, modulo) {
@@ -225,5 +286,13 @@ module.exports = {
     contarRegistros,
     todosLosRegistros,
     borrarDatosDe,
-    actualizarRegistro
+    actualizarRegistro,
+    // Web Push
+    guardarSuscripcion,
+    borrarSuscripcion,
+    suscripcionesDe,
+    reemplazarAvisos,
+    avisosVencidos,
+    avisosDe,
+    borrarAvisosPorId
 };

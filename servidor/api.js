@@ -9,6 +9,19 @@ const jwt = require('jsonwebtoken');
 const logica = require('./logica.js');
 const oauth = require('./oauth.js'); // Hito 4: inicio de sesión con Google
 const ticket = require('./ticket.js'); // Foto al ticket: lectura con IA (Gemini)
+const { crearLimitador } = require('./limite.js');
+const push = require('./push.js'); // Web Push (PBI-24)
+const crypto = require('crypto');
+
+// Límite de intentos por IP: 10 fallos de login en 15 min bloquean esa IP 15 min.
+// Frena a quien prueba contraseñas o correos a lo bruto (riesgo aceptado en D-15).
+const limiteLogin = crearLimitador({ max: 10, ventanaMs: 15 * 60 * 1000 });
+// Recuperar contraseña manda correos: como mucho 5 peticiones cada 15 min por IP
+const limiteRecuperar = crearLimitador({ max: 5, ventanaMs: 15 * 60 * 1000 });
+
+function demasiados(res, minutos) {
+    res.status(429).json({ error: `Demasiados intentos. Vuelve a probar en ${minutos} min.` });
+}
 
 // Middleware "Guardaespaldas". Comprueba la cookie antes de dejar pasar.
 function protegerRuta(req, res, next) {
@@ -39,7 +52,11 @@ function crearRouter() {
     // Ruta para iniciar sesión
     router.post('/login', async (req, res) => {
         const { email, password } = req.body;
+        const permiso = limiteLogin.comprobar(req.ip);
+        if (!permiso.permitido) return demasiados(res, permiso.minutos);
         const resultado = await logica.loginUsuario(email, password);
+        if (resultado.exito) limiteLogin.exito(req.ip);
+        else limiteLogin.fallo(req.ip);
 
         if (resultado.exito) {
             // Creamos la sesión y la guardamos en una cookie de alta seguridad
@@ -55,8 +72,52 @@ function crearRouter() {
         }
     });
 
+    // ========================================================
+    // WEB PUSH (PBI-24): avisos con la app cerrada
+    // ========================================================
+    // Clave pública VAPID para que el navegador se suscriba (null si no está configurado)
+    router.get('/push/clave', (req, res) => {
+        res.status(200).json({ clave: push.clavePublica() });
+    });
+
+    router.post('/push/suscribir', protegerRuta, async (req, res) => {
+        const resultado = await logica.guardarSuscripcion(req.usuario.email, req.body);
+        if (resultado.exito) res.status(200).json({ mensaje: resultado.mensaje });
+        else res.status(400).json({ error: resultado.error });
+    });
+
+    router.post('/push/baja', protegerRuta, async (req, res) => {
+        const resultado = await logica.borrarSuscripcion(req.usuario.email, (req.body || {}).endpoint);
+        if (resultado.exito) res.status(200).json({ mensaje: resultado.mensaje });
+        else res.status(400).json({ error: resultado.error });
+    });
+
+    // El cliente manda TODOS los avisos de un módulo (sustituyen a los anteriores)
+    router.put('/avisos/:nombre', protegerRuta, async (req, res) => {
+        const resultado = await logica.guardarAvisos(req.usuario.email, req.params.nombre, (req.body || {}).avisos);
+        if (resultado.exito) res.status(200).json({ guardados: resultado.guardados });
+        else res.status(400).json({ error: resultado.error });
+    });
+
+    // Lo llama Cloud Scheduler cada 5 min con la cabecera X-Clave-Cron.
+    // Sin la clave correcta no hace nada (comparación en tiempo constante).
+    router.post('/push/enviar', async (req, res) => {
+        const esperada = process.env.CRON_CLAVE || '';
+        const recibida = String(req.get('X-Clave-Cron') || '');
+        const a = Buffer.from(esperada), b = Buffer.from(recibida);
+        if (!esperada || a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+            return res.status(403).json({ error: 'No autorizado.' });
+        }
+        const resultado = await logica.enviarAvisosPendientes(push.enviar);
+        if (resultado.exito) res.status(200).json(resultado);
+        else res.status(500).json({ error: resultado.error });
+    });
+
     // Recuperar contraseña: 1) pedir el enlace por correo, 2) elegir la nueva
     router.post('/recuperar', async (req, res) => {
+        const permiso = limiteRecuperar.comprobar(req.ip);
+        if (!permiso.permitido) return demasiados(res, permiso.minutos);
+        limiteRecuperar.fallo(req.ip); // cuenta cada petición, salga bien o no
         const resultado = await logica.solicitarRecuperacion((req.body || {}).email);
         if (resultado.exito) res.status(200).json({ mensaje: resultado.mensaje });
         else res.status(400).json({ error: resultado.error });

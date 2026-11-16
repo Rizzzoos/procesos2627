@@ -415,6 +415,22 @@ const CATALOGO = {
 };
 
 // Orden por defecto de la barra lateral (los 6 activos de fábrica)
+// Recuadros de arriba del Panel: se eligen igual que los módulos (vienen
+// activados de fábrica), pero no guardan registros propios (panel: true)
+CATALOGO.hoy = {
+    nombre: 'Hoy',
+    icono: '☀️',
+    descripcion: 'Arriba del Panel: tus vasos de agua, el diario, lo próximo y tu ciclo de un vistazo.',
+    panel: true
+};
+CATALOGO.semana = {
+    nombre: 'Tu semana',
+    icono: '📈',
+    descripcion: 'Arriba del Panel: resumen de los últimos 7 días de agua, diario y gimnasio.',
+    panel: true
+};
+const CLAVES_PANEL = ['hoy', 'semana'];
+
 // Los opcionales (Mi ciclo) no vienen de fábrica: se eligen en el primer uso o en «Elegir módulos»
 const ORDEN_CATALOGO = Object.keys(CATALOGO);
 const ORDEN_POR_DEFECTO = ORDEN_CATALOGO.filter((c) => !CATALOGO[c].opcional);
@@ -445,9 +461,14 @@ async function obtenerModulos(email) {
     if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
     try {
         const guardado = await datos.buscarModulos(email);
-        const claves = guardado && guardado.claves && guardado.claves.length
+        let claves = guardado && guardado.claves && guardado.claves.length
             ? guardado.claves
             : ORDEN_POR_DEFECTO;
+        // Quien eligió sus módulos antes de que existieran «Hoy» y «Tu semana»
+        // los sigue viendo (se guardan de verdad la próxima vez que elija)
+        if (guardado && guardado.claves && guardado.claves.length && !guardado.conPanel) {
+            claves = CLAVES_PANEL.concat(claves.filter((c) => !CLAVES_PANEL.includes(c)));
+        }
 
         // Se cruza con el catálogo: si algún día borramos un módulo, no rompe
         const modulos = claves
@@ -493,8 +514,8 @@ async function actualizarModulos(email, claves) {
 
 // Resolver la clave: existe el módulo y el filtro de fechas es válido
 function resolverModulo(clave, filtros = {}) {
-    if (!CATALOGO[clave]) {
-        return { error: `El módulo "${clave}" no existe. Disponibles: ${ORDEN_POR_DEFECTO.join(', ')}.` };
+    if (!CATALOGO[clave] || CATALOGO[clave].panel) {
+        return { error: `El módulo "${clave}" no existe. Disponibles: ${ORDEN_POR_DEFECTO.filter((c) => !CATALOGO[c].panel).join(', ')}.` };
     }
     const { desde, hasta, limite } = filtros;
     for (const [nombre, valor] of Object.entries({ desde, hasta })) {
@@ -722,6 +743,91 @@ async function analizarCiclo(email, hoy) {
     }
 }
 
+// ============================================================
+// WEB PUSH (PBI-24, decisión D-18)
+// El cliente calcula sus avisos (como antes) y los guarda aquí; un
+// trabajo programado (Cloud Scheduler) llama cada 5 min a
+// enviarAvisosPendientes, que manda los que ya tocan y los borra.
+// ============================================================
+const NOMBRES_AVISO = ['agua', 'estudio', 'viajes', 'ciclo', 'diario'];
+const MAX_AVISOS = 200;
+const HORIZONTE_AVISOS = 60 * 24 * 3600 * 1000;   // como mucho 60 días vista
+const CADUCIDAD_AVISO = 2 * 3600 * 1000;          // uno que se quedó 2 h atrás ya no se manda
+
+function esSuscripcionValida(sub) {
+    return esObjetoPlano(sub) && typeof sub.endpoint === 'string' && /^https:\/\//.test(sub.endpoint) &&
+        sub.endpoint.length <= 1000 && esObjetoPlano(sub.keys) &&
+        typeof sub.keys.p256dh === 'string' && typeof sub.keys.auth === 'string' &&
+        sub.keys.p256dh.length <= 200 && sub.keys.auth.length <= 100;
+}
+
+async function guardarSuscripcion(email, sub) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    if (!esSuscripcionValida(sub)) return { exito: false, error: 'Suscripción no válida.' };
+    try {
+        await datos.guardarSuscripcion(email, sub.endpoint, { p256dh: sub.keys.p256dh, auth: sub.keys.auth });
+        return { exito: true, mensaje: 'Avisos con la app cerrada activados en este dispositivo.' };
+    } catch (error) {
+        return { exito: false, error: 'No se pudo guardar la suscripción.' };
+    }
+}
+
+async function borrarSuscripcion(email, endpoint) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    if (typeof endpoint !== 'string' || !endpoint) return { exito: false, error: 'Falta el dispositivo.' };
+    try {
+        await datos.borrarSuscripcion(endpoint, email);
+        return { exito: true, mensaje: 'Avisos con la app cerrada desactivados en este dispositivo.' };
+    } catch (error) {
+        return { exito: false, error: 'No se pudo desactivar.' };
+    }
+}
+
+async function guardarAvisos(email, nombre, lista, ahora = Date.now()) {
+    if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
+    if (!NOMBRES_AVISO.includes(nombre)) return { exito: false, error: 'Tipo de aviso no válido.' };
+    if (!Array.isArray(lista) || lista.length > MAX_AVISOS) return { exito: false, error: `Envía una lista de como mucho ${MAX_AVISOS} avisos.` };
+    const limpios = [];
+    for (const a of lista) {
+        const cuando = Number(a && a.cuando);
+        if (!Number.isFinite(cuando) || typeof a.titulo !== 'string' || typeof a.texto !== 'string' ||
+            !a.titulo.trim() || !a.texto.trim()) {
+            return { exito: false, error: 'Cada aviso necesita cuándo, título y texto.' };
+        }
+        if (cuando <= ahora || cuando > ahora + HORIZONTE_AVISOS) continue;   // pasados o muy lejanos: fuera
+        limpios.push({ cuando: new Date(cuando), titulo: a.titulo.trim().slice(0, 80), texto: a.texto.trim().slice(0, 300) });
+    }
+    try {
+        await datos.reemplazarAvisos(email, nombre, limpios);
+        return { exito: true, guardados: limpios.length };
+    } catch (error) {
+        return { exito: false, error: 'No se pudieron guardar los avisos.' };
+    }
+}
+
+// `enviar(suscripcion, {titulo, texto})` se inyecta (push.js en producción,
+// una función falsa en los tests) y devuelve 'ok', 'caducada' o 'error'.
+async function enviarAvisosPendientes(enviar, ahora = Date.now()) {
+    try {
+        const vencidos = await datos.avisosVencidos(new Date(ahora));
+        let enviados = 0, caducados = 0;
+        const subsPorEmail = new Map();
+        for (const a of vencidos) {
+            if (ahora - new Date(a.cuando).getTime() > CADUCIDAD_AVISO) { caducados++; continue; }
+            if (!subsPorEmail.has(a.email)) subsPorEmail.set(a.email, await datos.suscripcionesDe(a.email));
+            for (const sub of subsPorEmail.get(a.email)) {
+                const r = await enviar(sub, { titulo: a.titulo, texto: a.texto });
+                if (r === 'ok') enviados++;
+                else if (r === 'caducada') await datos.borrarSuscripcion(sub.endpoint);
+            }
+        }
+        await datos.borrarAvisosPorId(vencidos.map((a) => a._id));
+        return { exito: true, revisados: vencidos.length, enviados, caducados };
+    } catch (error) {
+        return { exito: false, error: 'No se pudieron enviar los avisos.' };
+    }
+}
+
 // CSV: una fila por registro; los datos van como JSON en su columna
 function aCsv(filas) {
     const celda = (v) => `"${String(v).replace(/"/g, '""')}"`;
@@ -732,7 +838,7 @@ function aCsv(filas) {
 async function exportarDatos(email, formato = 'json', modulo = '') {
     if (!esEmailValido(email)) return { exito: false, error: 'No autorizado.' };
     if (!['json', 'csv'].includes(formato)) return { exito: false, error: 'Formato no válido (json o csv).' };
-    if (modulo && !CATALOGO[modulo]) return { exito: false, error: `El módulo "${modulo}" no existe.` };
+    if (modulo && (!CATALOGO[modulo] || CATALOGO[modulo].panel)) return { exito: false, error: `El módulo "${modulo}" no existe.` };
     try {
         const usuario = await datos.buscarPorEmail(email);
         if (!usuario) return { exito: false, error: 'La cuenta no existe.' };
@@ -748,7 +854,7 @@ async function exportarDatos(email, formato = 'json', modulo = '') {
         const todo = {
             exportado: new Date().toISOString(),
             cuenta: { email: usuario.email, nombre: usuario.nombre || '', rol: usuario.rol || 'usuario', fechaRegistro: usuario.fechaRegistro },
-            modulos: modulo ? [modulo] : (modulos || []).map((m) => m.clave),
+            modulos: modulo ? [modulo] : (modulos || []).filter((m) => !m.panel).map((m) => m.clave),
             registros
         };
         return { exito: true, nombre: `${base}.json`, tipo: 'application/json; charset=utf-8', contenido: JSON.stringify(todo, null, 2) };
@@ -784,5 +890,10 @@ module.exports = {
     // Ideas: resumen y exportar
     resumenSemanal,
     analizarCiclo,
-    exportarDatos
+    exportarDatos,
+    // Web Push
+    guardarSuscripcion,
+    borrarSuscripcion,
+    guardarAvisos,
+    enviarAvisosPendientes
 };

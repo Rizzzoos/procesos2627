@@ -4,7 +4,7 @@
   "main": "servidor/api.js",
   "scripts": {
     "start": "node servidor/index.js",
-    "test": "node --test servidor/logica.test.js servidor/reglas.test.js servidor/resumen.test.js servidor/ciclo.test.js"
+    "test": "node --test servidor/logica.test.js servidor/reglas.test.js servidor/resumen.test.js servidor/ciclo.test.js servidor/limite.test.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -12,6 +12,7 @@
     "dotenv": "^18.0.7",
     "express": "^5.0.0",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.11.1"
+    "mongoose": "^9.11.1",
+    "web-push": "^4.0.0"
   }
 }

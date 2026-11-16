@@ -5,8 +5,9 @@ require('dotenv').config(); // Cargamos los secretos para conectar a la BD
 const logica = require('./logica.js'); // Probamos la capa de lógica de negocio
 
 test('Batería de pruebas de Gestión de Usuarios (Dasna)', async (t) => {
-    // 0. Conectar a la base de datos de pruebas antes de empezar
-    await mongoose.connect(process.env.MONGO_URI);
+    // 0. Conectar a la base de datos DE PRUEBAS (separada de la real): mismo
+    //    clúster, otra base (`dasna_pruebas`), así los tests nunca tocan datos de usuarios
+    await mongoose.connect(process.env.MONGO_URI, { dbName: process.env.MONGO_DB_PRUEBAS || 'dasna_pruebas' });
 
     // Generamos un correo aleatorio para no chocar con datos reales
     const emailTest = `test_${Date.now()}@universo.com`;
@@ -315,10 +316,26 @@ test('Motor de módulos (Dasna)', async (t) => {
     await t.test('1. Un usuario nuevo ve los 7 módulos por defecto', async () => {
         const r = await logica.obtenerModulos(email);
         assert.strictEqual(r.exito, true);
-        assert.strictEqual(r.modulos.length, 12, 'Mi ciclo es opcional: no viene de fábrica');
+        assert.strictEqual(r.modulos.length, 14, 'Mi ciclo es opcional: no viene de fábrica');
+        assert.ok(r.modulos.some((m) => m.clave === 'hoy' && m.panel), '«Hoy» viene activado de fábrica');
+        assert.ok(r.modulos.some((m) => m.clave === 'semana' && m.panel), '«Tu semana» también');
         assert.ok(r.disponibles.some((m) => m.clave === 'ciclo'), 'pero se puede elegir');
         assert.ok(r.modulos.every((m) => m.nombre && m.icono && m.descripcion));
         assert.strictEqual(r.modulos[0].clave, 'visionboard', 'respeta el orden por defecto');
+    });
+
+    await t.test('1b. «Hoy» y «Tu semana» se eligen como un módulo más; las cuentas antiguas los conservan', async () => {
+        const emailViejo = `panel_${Date.now()}@universo.com`;
+        // Cuenta que eligió sus módulos antes de que existieran (sin conPanel)
+        await mongoose.connection.collection('modulos').insertOne({ email: emailViejo, claves: ['diario'] });
+        const antes = await logica.obtenerModulos(emailViejo);
+        assert.deepStrictEqual(antes.modulos.map((m) => m.clave), ['hoy', 'semana', 'diario']);
+        // Ahora quita «Tu semana»: se respeta
+        const despues = await logica.actualizarModulos(emailViejo, ['hoy', 'diario']);
+        assert.deepStrictEqual(despues.modulos.map((m) => m.clave), ['hoy', 'diario']);
+        // No son módulos con registros
+        assert.strictEqual((await logica.crearRegistroModulo(emailViejo, 'hoy', { a: 1 })).exito, false);
+        await mongoose.connection.collection('modulos').deleteOne({ email: emailViejo });
     });
 
     await t.test('2. Se puede reordenar y ocultar módulos (barra lateral configurable)', async () => {
@@ -442,6 +459,52 @@ test('Motor de módulos (Dasna)', async (t) => {
         const idMalo = await logica.actualizarRegistroModulo(emailA, 'diario', 'esto-no-es-un-id', { a: 1 });
         assert.strictEqual(idMalo.exito, false);
         assert.ok(idMalo.error.includes('no válido'));
+    });
+
+    // ===== PBI-24: Web Push (avisos con la app cerrada) =====
+    await t.test('Push 1: valida la suscripción y los avisos', async () => {
+        const emailP = `push_${Date.now()}@universo.com`;
+        assert.strictEqual((await logica.guardarSuscripcion(emailP, { endpoint: 'http://inseguro' })).exito, false);
+        assert.strictEqual((await logica.guardarAvisos(emailP, 'inventado', [])).exito, false);
+        assert.strictEqual((await logica.guardarAvisos(emailP, 'agua', [{ cuando: 'mañana' }])).exito, false);
+        const ahora = Date.now();
+        const r = await logica.guardarAvisos(emailP, 'agua', [
+            { cuando: ahora - 1000, titulo: 'Pasado', texto: 'no se guarda' },
+            { cuando: ahora + 3600000, titulo: 'Agua', texto: 'Toca un vaso' },
+            { cuando: ahora + 90 * 24 * 3600000, titulo: 'Lejos', texto: 'no se guarda' }
+        ], ahora);
+        assert.strictEqual(r.exito, true);
+        assert.strictEqual(r.guardados, 1, 'solo guarda los futuros dentro de 60 días');
+        await mongoose.connection.collection('avisos').deleteMany({ email: emailP });
+    });
+
+    await t.test('Push 2: manda los avisos que tocan, borra los enviados y las suscripciones caducadas', async () => {
+        const emailP = `push2_${Date.now()}@universo.com`;
+        const ahora = Date.now();
+        await logica.guardarSuscripcion(emailP, { endpoint: `https://push.ejemplo/${ahora}/vivo`, keys: { p256dh: 'p', auth: 'a' } });
+        await logica.guardarSuscripcion(emailP, { endpoint: `https://push.ejemplo/${ahora}/muerto`, keys: { p256dh: 'p', auth: 'a' } });
+        await logica.guardarAvisos(emailP, 'estudio', [
+            { cuando: ahora + 60000, titulo: 'Estudio', texto: 'Ya toca' },
+            { cuando: ahora + 7200000, titulo: 'Estudio', texto: 'Todavía no' }
+        ], ahora);
+
+        const mandados = [];
+        const falso = async (sub, msg) => {
+            if (sub.email !== emailP) return 'ok';           // avisos de otras pruebas: se ignoran
+            mandados.push(msg.texto);
+            return sub.endpoint.endsWith('/muerto') ? 'caducada' : 'ok';
+        };
+        const r = await logica.enviarAvisosPendientes(falso, ahora + 120000);
+        assert.strictEqual(r.exito, true);
+        assert.deepStrictEqual(mandados, ['Ya toca', 'Ya toca'], 'un push por dispositivo');
+
+        const quedan = await mongoose.connection.collection('avisos').find({ email: emailP }).toArray();
+        assert.deepStrictEqual(quedan.map((a) => a.texto), ['Todavía no'], 'el enviado se borra, el futuro se queda');
+        const subs = await mongoose.connection.collection('suscripciones').find({ email: emailP }).toArray();
+        assert.strictEqual(subs.length, 1, 'la suscripción caducada se borra');
+
+        await mongoose.connection.collection('avisos').deleteMany({ email: emailP });
+        await mongoose.connection.collection('suscripciones').deleteMany({ email: emailP });
     });
 
     // Limpieza

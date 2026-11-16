@@ -257,28 +257,16 @@ const NOMBRE_TIPO_ESTUDIO = Object.fromEntries(TIPOS_ESTUDIO);
 
 // Avisos de Estudio: si hay permiso de notificaciones, a las 9:00
 // del día de cada recordatorio (mientras la app esté abierta)
-let temporizadoresEstudio = [];
 async function programarAvisosEstudio(lista) {
-    temporizadoresEstudio.forEach(clearTimeout);
-    temporizadoresEstudio = [];
-    if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    let activo = false;
-    try { activo = localStorage.getItem('dasna-avisos-estudio') === 'si'; } catch (e) { /* opcional */ }
-    if (!activo) return;
+    if (!avisosActivos('dasna-avisos-estudio')) return programarAvisos('estudio', 'dasna-avisos-estudio', []);
     if (!lista) {
         const r = await rest.listarRegistros('estudio').catch(() => null);
         if (!r || !r.exito) return;
         lista = r.datos;
     }
-    const ahora = Date.now();
-    for (const a of avisosDe(lista)) {
-        const cuando = desdeClaveDia(a.dia);
-        cuando.setHours(9, 0, 0, 0);
-        const ms = cuando - ahora;
-        if (ms > 0 && ms < 2147483647) {
-            temporizadoresEstudio.push(setTimeout(() => enviarNotificacion('Dasna · Estudio', a.texto), ms));
-        }
-    }
+    programarAvisos('estudio', 'dasna-avisos-estudio', avisosDe(lista).map((a) => ({
+        cuando: aLas(a.dia, '09:00'), titulo: 'Dasna · Estudio', texto: a.texto
+    })));
 }
 
 // Todos los avisos (recordatorios + días del plan + la propia entrega)
@@ -394,6 +382,7 @@ async function fichaEstudio(cont) {
             if (permiso !== 'granted') return aviso('Sin permiso de notificaciones.', 'error');
             try { localStorage.setItem('dasna-avisos-estudio', avisosOn ? 'no' : 'si'); } catch (e) { /* opcional */ }
             aviso(avisosOn ? 'Avisos apagados' : 'Te avisaré a las 9:00 los días con recordatorio');
+            programarAvisosEstudio();
             render();
         });
     };

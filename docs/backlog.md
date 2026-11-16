@@ -14,7 +14,7 @@ Tres apartados: los **PBI** (trabajo planificado del producto), las **mejoras** 
 | ID | Descripción | Sprint | Estado | Evidencia |
 |---|---|---|---|---|
 | PBI-22 | Tests automáticos de las fechas en lenguaje natural (Eventos y Estudio). | 2 | hecho | `servidor/reglas.test.js` (*R1*–*R9*) |
-| PBI-24 | Recordatorios con Web Push, para que lleguen aunque la app esté cerrada (hoy los avisos solo salen con la app abierta). | — | pendiente | — |
+| PBI-24 | Recordatorios con Web Push, para que lleguen aunque la app esté cerrada. | 2 | hecho | `servidor/push.js`, `PUT /api/avisos/:nombre`, `POST /api/push/enviar` (Cloud Scheduler cada 5 min); tests *Push 1–2*; decisión D-18 |
 | PBI-27 | Reglas de los módulos al servidor: fechas, planificador de estudio, agua, sueño, outfits y plan por meses. | 2 | hecho | `servidor/reglas.js`, `POST /api/reglas/:nombre` |
 | PBI-28 | El cliente solo presenta: todas las llamadas a la API pasan por `cliente/rest.js`. | 2 | hecho | ARQ-03 en [requisitos.md](requisitos.md) |
 | PBI-29 | Recuperar la contraseña por correo. | 2 | hecho | `POST /api/recuperar` y `POST /api/restablecer`; tests *Recuperar 1–3*; decisión D-16 |
@@ -31,10 +31,13 @@ Tres apartados: los **PBI** (trabajo planificado del producto), las **mejoras** 
 | Al eliminar una cuenta se borran también sus módulos y registros | Revisión del código | hecho | `datos.borrarDatosDe()` |
 | «Elegir módulos» en el menú de la cuenta, para añadir o quitar módulos después del primer uso | Al añadir Mi ciclo | hecho | `cliente/modulos-panel.js` |
 | Adaptación a móvil: botones a tamaño de dedo, tablas con scroll, ventanas casi a pantalla completa | Prueba en móvil | hecho | `cliente/estilos/dasna.css` |
-| Base de datos separada para las pruebas (hoy usan la real y borran lo que crean) | Riesgo del Sprint 2 | pendiente | — |
-| Limitar los intentos de login por IP | Riesgo de D-15 | pendiente | — |
+| Base de datos separada para las pruebas: mismo clúster, base `dasna_pruebas` | Riesgo del Sprint 2 | hecho | `servidor/logica.test.js` |
+| Limitar los intentos de login por IP (10 fallos en 15 min) y las peticiones de recuperar contraseña (5 en 15 min) | Riesgo de D-15 | hecho | `servidor/limite.js`; tests *L1–L3* |
 | Autenticación del despliegue sin claves (Workload Identity Federation) | D-14 | pendiente | — |
-| Actualizar las acciones de GitHub que usan Node 20 (obsoleto) | Aviso de GitHub Actions | pendiente | `.github/workflows/ci.yml` |
+| Actualizar las acciones de GitHub que usan Node 20 (obsoleto): ahora todas corren en Node 24 | Aviso de GitHub Actions | hecho | `.github/workflows/ci.yml` |
+| Franja «Hoy» arriba del Panel: vasos de agua, diario escrito o no, entreno, lo próximo de Estudio o Eventos y el día del ciclo | Idea propia | hecho | `cliente/modulos-panel.js`; test *S6* |
+| «Hoy» y «Tu semana» se eligen en «Elegir módulos» como un módulo más (apartado «Arriba del Panel», activados de fábrica; las cuentas que ya habían elegido sus módulos los conservan) | Petición de la responsable | hecho | `CATALOGO` en `servidor/logica.js` (`panel: true`); test *1b* |
+| Ayuda al día (foto al ticket, avisos, tus datos) y cabeceras sin emoji en Usuarios y Ayuda | Revisión final | hecho | `cliente/app.js` |
 
 ## Decisiones tomadas
 
@@ -49,3 +52,4 @@ Tres apartados: los **PBI** (trabajo planificado del producto), las **mejoras** 
 | D-15 | El login dice si falla el correo o la contraseña, en vez de un error global | vigente |
 | D-16 | Recuperar contraseña con enlace de un solo uso (1 h) y token guardado como hash | vigente |
 | D-17 | Mi ciclo: módulo opcional y predicción con reglas sencillas que mejoran con más ciclos | vigente |
+| D-18 | Web Push: el cliente calcula los avisos y el servidor los manda con un trabajo programado | vigente |

@@ -9,10 +9,63 @@ const CARITAS_HUMOR = ['😞', '😕', '😐', '🙂', '😄'];
 const SVG_DESCARGA = svgLinea('<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/>');
 
 // --- Tarjeta «Tu semana» (arriba del Panel) ---
-async function pintarResumen(zona) {
-    zona.innerHTML = '<div class="skeleton"></div>';
+// --- Franja «Hoy»: lo del día de un vistazo, cada dato lleva a su módulo ---
+
+function datoHoy(modulo, texto, aviso = false) {
+    return `<a class="hoy-dato${aviso ? ' pendiente' : ''}" href="#/m/${modulo}">${iconoDe(modulo)}<span>${esc(texto)}</span></a>`;
+}
+
+function cuandoRelativo(clave) {
+    const hoy = hoyClave();
+    if (clave === hoy) return 'hoy';
+    if (clave === sumarDias(hoy, 1)) return 'mañana';
+    return fechaCorta(clave);
+}
+
+async function pintarHoy(zona, r) {
+    const activo = (clave) => modulos.some((m) => m.clave === clave);
+    const hoy = (r && r.hoy) || {};
+    const datos = [];
+    if (hoy.agua) datos.push(datoHoy('agua', `${hoy.agua.vasos}/${hoy.agua.meta} vasos`, hoy.agua.vasos < hoy.agua.meta));
+    if ('diario' in hoy) datos.push(datoHoy('diario', hoy.diario ? 'Diario escrito' : 'Diario por escribir', !hoy.diario));
+    if (hoy.gimnasio) datos.push(datoHoy('gimnasio', 'Entreno hecho'));
+
+    const pintar = (extra = []) => {
+        if (!zona.isConnected) return;
+        const todos = datos.concat(extra);
+        const f = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+        const fecha = f.charAt(0).toUpperCase() + f.slice(1);
+        zona.innerHTML = todos.length ? `
+            <div class="cristal hoy-franja">
+                <span class="hoy-titulo">Hoy<span class="pista">${esc(fecha)}</span></span>
+                <div class="hoy-datos">${todos.join('')}</div>
+            </div>` : '';
+    };
+    pintar();
+
+    // Lo que tarda más (próximo examen o evento, y el ciclo) llega después
+    const extra = [];
+    const [lista, ciclo] = await Promise.all([
+        cargarRegistrosCal().catch(() => []),
+        activo('ciclo') ? rest.ciclo().catch(() => null) : null
+    ]);
+    const hoyK = hoyClave();
+    const proximo = (lista || [])
+        .filter((x) => ['estudio', 'eventos'].includes(x.clave) && claveDia(x.fecha) >= hoyK)
+        .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))[0];
+    if (proximo) extra.push(datoHoy(proximo.clave, `${resumenDe(proximo.datos)} · ${cuandoRelativo(claveDia(proximo.fecha))}`));
+    if (ciclo && !ciclo.error && ciclo.diaCiclo) {
+        const fase = ciclo.retraso ? `${ciclo.retraso} ${ciclo.retraso === 1 ? 'día' : 'días'} de retraso` : (FASES_CICLO[ciclo.fase] || '').toLowerCase();
+        extra.push(datoHoy('ciclo', `Día ${ciclo.diaCiclo}${fase ? ' · ' + fase : ''}`));
+    }
+    if (extra.length) pintar(extra);
+}
+
+async function pintarResumen(zona, zonaHoy) {
+    if (zona) zona.innerHTML = '<div class="skeleton"></div>';
     const r = await rest.resumen();
-    if (!zona.isConnected) return;
+    if (zonaHoy && zonaHoy.isConnected) pintarHoy(zonaHoy, r && !r.error ? r : null);
+    if (!zona || !zona.isConnected) return;
     if (!r || r.error) { zona.innerHTML = ''; return; }
 
     const datos = [];
@@ -37,22 +90,29 @@ async function pintarResumen(zona) {
 
 // --- Primer uso: elegir qué módulos ver ---
 function abrirPrimerUso(disponibles, activos, alTerminar, opciones = {}) {
-    const elegidos = new Set(activos.map((m) => m.clave));
-    const { caja, cerrar } = abrirModal(opciones.titulo || 'Bienvenida a Dasna', `
-        <p class="pista" style="margin-top:0">Elige qué quieres organizar. Podrás cambiarlo cuando quieras desde el menú de tu cuenta (Elegir módulos).</p>
-        <div class="primer-uso">${disponibles.map((m) => `
+    // Marcados: los módulos que tiene y los recuadros del Panel que ve
+    const elegidos = new Set(activos.map((m) => m.clave).concat([...panelVisible]));
+    const opcion = (m) => `
             <label class="primer-uso-op">
                 <input type="checkbox" value="${esc(m.clave)}" ${elegidos.has(m.clave) ? 'checked' : ''}>
                 <span class="primer-uso-icono">${iconoDe(m.clave, m.icono)}</span>
                 <span><strong>${esc(m.nombre)}</strong><small class="pista">${esc(m.descripcion || '')}</small></span>
-            </label>`).join('')}</div>
+            </label>`;
+    const delPanel = disponibles.filter((m) => m.panel);
+    const deModulos = disponibles.filter((m) => !m.panel);
+    const { caja, cerrar } = abrirModal(opciones.titulo || 'Bienvenida a Dasna', `
+        <p class="pista" style="margin-top:0">Elige qué quieres organizar. Podrás cambiarlo cuando quieras desde el menú de tu cuenta (Elegir módulos).</p>
+        ${delPanel.length ? `<h4 class="primer-uso-grupo">Arriba del Panel</h4>
+        <div class="primer-uso">${delPanel.map(opcion).join('')}</div>
+        <h4 class="primer-uso-grupo">Módulos</h4>` : ''}
+        <div class="primer-uso">${deModulos.map(opcion).join('')}</div>
         <div class="fila-botones"><button class="boton-primario" id="pu-guardar">${opciones.boton || 'Empezar'}</button></div>`);
     caja.querySelector('#pu-guardar').addEventListener('click', async () => {
         const claves = [...caja.querySelectorAll('input:checked')].map((i) => i.value);
-        if (!claves.length) return aviso('Elige al menos un módulo.', 'error');
+        if (!claves.some((c) => deModulos.some((m) => m.clave === c))) return aviso('Elige al menos un módulo.', 'error');
         const res = await rest.guardarModulos(claves);
         if (!res || !res.exito) return aviso((res && res.error) || 'No se pudo guardar.', 'error');
-        modulos = res.modulos;
+        fijarModulos(res.modulos);
         cerrar();
         pintarBarraInferior();
         enrutar();
@@ -86,6 +146,7 @@ function alternarMenuCuenta(boton) {
     menu.setAttribute('role', 'menu');
     menu.innerHTML = `
         <button type="button" role="menuitem" data-accion="modulos">Elegir módulos</button>
+        <button type="button" role="menuitem" data-accion="push">Avisos con la app cerrada: ${pushActivo() ? 'sí' : 'no'}</button>
         <button type="button" role="menuitem" data-accion="descargar">Descargar mis datos</button>
         <button type="button" role="menuitem" data-accion="salir">Salir</button>
         <button type="button" role="menuitem" data-accion="eliminar" class="peligro">Eliminar cuenta</button>`;
@@ -108,6 +169,7 @@ function alternarMenuCuenta(boton) {
         if (b.dataset.accion === 'descargar') abrirDescarga();
         if (b.dataset.accion === 'modulos') abrirPrimerUso(modulosDisponibles, modulos, null, { titulo: 'Elegir módulos', boton: 'Guardar' });
         if (b.dataset.accion === 'eliminar') abrirEliminarCuenta();
+        if (b.dataset.accion === 'push') pushActivo() ? desactivarPush() : activarPush();
     });
 }
 

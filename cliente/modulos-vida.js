@@ -3,16 +3,27 @@
 // Usa utilidades de app.js y modulos.js.
 // ============================================================
 
-// --- Avisos genéricos (notificación a una hora mientras la app
-// esté abierta). Cada módulo tiene su interruptor propio. ---
+// --- Avisos genéricos. Cada módulo tiene su interruptor propio.
+// Sin Web Push: notificación a su hora mientras la app esté abierta.
+// Con Web Push (menú de la cuenta): la lista se guarda en el servidor
+// y llega aunque la app esté cerrada (PBI-24). ---
 const temporizadoresAvisos = {};
 function avisosActivos(flag) {
     try { return localStorage.getItem(flag) === 'si'; } catch (e) { return false; }
 }
+function pushActivo() {
+    try { return localStorage.getItem('dasna-push') === 'si'; } catch (e) { return false; }
+}
 function programarAvisos(nombre, flag, avisos) {
     (temporizadoresAvisos[nombre] || []).forEach(clearTimeout);
     temporizadoresAvisos[nombre] = [];
-    if (!('Notification' in window) || Notification.permission !== 'granted' || !avisosActivos(flag)) return;
+    const encendidos = 'Notification' in window && Notification.permission === 'granted' && avisosActivos(flag);
+    if (pushActivo()) {
+        const lista = encendidos ? avisos.map((a) => ({ cuando: a.cuando, titulo: a.titulo, texto: a.texto })) : [];
+        rest.guardarAvisos(nombre, lista).catch(() => {});
+        return;
+    }
+    if (!encendidos) return;
     const ahora = Date.now();
     for (const a of avisos) {
         const ms = a.cuando - ahora;
@@ -31,6 +42,75 @@ async function alternarAvisos(flag, textoOn) {
     aviso(on ? 'Avisos apagados' : textoOn);
     return true;
 }
+// Vuelve a calcular los avisos de todos los módulos (al arrancar y al
+// encender o apagar los avisos con la app cerrada)
+function reprogramarAvisos() {
+    programarRecordatorioDiario();
+    programarAvisosEstudio();
+    programarAvisosViajes();
+    programarAvisosAgua();
+    programarAvisosCiclo();
+}
+
+// --- Web Push: suscribir este dispositivo ---
+function claveVapid(base64) {
+    const relleno = '='.repeat((4 - (base64.length % 4)) % 4);
+    const crudo = atob((base64 + relleno).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(crudo, (c) => c.charCodeAt(0));
+}
+
+async function activarPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+        aviso('Este navegador no permite avisos con la app cerrada. En iPhone, añade Dasna a la pantalla de inicio y ábrela desde ahí.', 'error');
+        return false;
+    }
+    const clave = await rest.pushClave().catch(() => null);
+    if (!clave) { aviso('Los avisos con la app cerrada aún no están disponibles.', 'error'); return false; }
+    let permiso = Notification.permission;
+    if (permiso === 'default') permiso = await Notification.requestPermission();
+    if (permiso !== 'granted') { aviso('Sin permiso de notificaciones.', 'error'); return false; }
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = (await reg.pushManager.getSubscription()) ||
+            await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: claveVapid(clave) });
+        const r = await rest.pushSuscribir(sub.toJSON());
+        if (!r || !r.mensaje) throw new Error((r && r.error) || 'sin respuesta');
+        try { localStorage.setItem('dasna-push', 'si'); } catch (e) { /* opcional */ }
+        reprogramarAvisos();
+        aviso('Listo: tus avisos llegarán aunque cierres Dasna');
+        return true;
+    } catch (e) {
+        aviso('No se pudieron activar los avisos con la app cerrada.', 'error');
+        return false;
+    }
+}
+
+async function desactivarPush() {
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) { await rest.pushBaja(sub.endpoint).catch(() => {}); await sub.unsubscribe(); }
+    } catch (e) { /* si falla, al menos se apaga aquí */ }
+    try { localStorage.setItem('dasna-push', 'no'); } catch (e) { /* opcional */ }
+    reprogramarAvisos();   // vuelven los avisos con la app abierta
+    aviso('Avisos con la app cerrada apagados en este dispositivo');
+}
+
+// Al arrancar: si este dispositivo tenía push pero ya no hay suscripción
+// (permiso quitado), se apaga; si la hay, se renueva en el servidor
+async function comprobarPush() {
+    if (!pushActivo() || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (!sub || Notification.permission !== 'granted') {
+            try { localStorage.setItem('dasna-push', 'no'); } catch (e) { /* opcional */ }
+            return;
+        }
+        rest.pushSuscribir(sub.toJSON()).catch(() => {});
+    } catch (e) { /* sin service worker: nada */ }
+}
+
 function aLas(dia, hhmm) {
     const f = desdeClaveDia(dia);
     const [h, m] = String(hhmm || '09:00').split(':').map(Number);

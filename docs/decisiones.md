@@ -5,7 +5,7 @@ description: Qué se decidió, por qué y en qué estado está cada decisión.
 timestamp: 2026-10-28
 ---
 
-Las decisiones D-01 a D-05 recogen las tecnologías; D-06 y D-07 registran un cambio de enfoque en el proveedor de correo (queda la antigua, sustituida); D-08 a D-17, decisiones del producto y del proceso (D-14 sustituye a D-13). Los motivos de D-06, D-08, D-12 y D-13 los aportó la persona responsable del proyecto.
+Las decisiones D-01 a D-05 recogen las tecnologías; D-06 y D-07 registran un cambio de enfoque en el proveedor de correo (queda la antigua, sustituida); D-08 a D-18, decisiones del producto y del proceso (D-14 sustituye a D-13). Los motivos de D-06, D-08, D-12 y D-13 los aportó la persona responsable del proyecto.
 
 ### D-01 — Express + Node.js para la API
 - **Qué se decidió:** montar la API REST con Express sobre Node.js.
@@ -94,3 +94,9 @@ Las decisiones D-01 a D-05 recogen las tecnologías; D-06 y D-07 registran un ca
 - **Por qué:** con pocos datos un modelo estadístico más complejo no sería mejor, y estas reglas se pueden comprobar con tests (*C1–C7*) y explicar a la usuaria («ciclo de 28 días de media · 4 ciclos · confianza alta»). Son datos de salud muy sensibles: no se activan para nadie que no los pida, viven solo en sus registros y se borran con la cuenta.
 - **Límite:** la app avisa de que es una estimación y no sirve como método anticonceptivo.
 - **Estado:** vigente desde el Sprint 2 (PBI-30).
+
+### D-18 — Web Push: el cliente calcula los avisos y el servidor los manda
+- **Qué se decidió:** cada módulo sigue calculando sus avisos en el cliente (como antes), pero si la persona activa *Avisos con la app cerrada* en el menú de su cuenta, la lista se guarda en el servidor (`PUT /api/avisos/:nombre`, colección `avisos`) junto con la suscripción del navegador (colección `suscripciones`). Un trabajo de **Cloud Scheduler** llama cada 5 minutos a `POST /api/push/enviar` (protegido con la cabecera `X-Clave-Cron`), que manda por Web Push los avisos que ya tocan y los borra. Las claves VAPID y la clave del cron viven solo en `.env` y en las variables de Cloud Run.
+- **Por qué:** Cloud Run se apaga cuando no hay peticiones, así que un temporizador dentro del servidor no sirve; el trabajo programado lo despierta. Reutilizar los avisos que ya calcula cada ficha evita duplicar las reglas en el servidor. Los avisos con más de 2 h de retraso se descartan y las suscripciones caducadas (404/410) se borran solas.
+- **Límite:** en iPhone solo funciona con Dasna instalada en la pantalla de inicio (iOS 16.4 o posterior). Los avisos se recalculan al abrir la app (el diario, 7 días por delante).
+- **Estado:** vigente desde el Sprint 2 (PBI-24).
