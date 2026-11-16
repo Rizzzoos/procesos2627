@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacidad · Dasna</title>
+    <meta name="description" content="Qué datos guarda Dasna, para qué y cómo descargarlos o borrarlos.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="icon" href="/icon-96.png">
+    <style>
+        :root {
+            --fondo-1: #2b6f7a; --fondo-2: #36557e; --fondo-3: #6b4d7a;
+            --texto: #ffffff;
+            --texto-suave: rgba(255, 255, 255, 0.88);
+            --texto-tenue: rgba(255, 255, 255, 0.66);
+            --cristal: rgba(11, 26, 56, 0.55);
+            --cristal-borde: rgba(255, 255, 255, 0.4);
+            --acento: #2dd4bf;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root { --fondo-1: #0b1a33; --fondo-2: #0d2b2b; --fondo-3: #1a1440; --cristal: rgba(18, 30, 52, 0.85); --cristal-borde: rgba(255, 255, 255, 0.2); }
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 2rem 1rem;
+            min-height: 100vh;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            color: var(--texto);
+            background: linear-gradient(-45deg, var(--fondo-1), var(--fondo-2), var(--fondo-3));
+            background-attachment: fixed;
+            line-height: 1.6;
+        }
+        main {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 2rem 1.6rem;
+            background: var(--cristal);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid var(--cristal-borde);
+            border-radius: 24px;
+        }
+        h1 { margin: 0 0 0.3rem; font-size: 1.7rem; letter-spacing: 0.02em; }
+        h2 { margin: 1.8rem 0 0.4rem; font-size: 1.05rem; color: var(--acento); }
+        p, li { color: var(--texto-suave); }
+        ul { padding-left: 1.2rem; }
+        .fecha { color: var(--texto-tenue); font-size: 0.85rem; margin: 0; }
+        a { color: var(--acento); font-weight: 600; }
+        .volver { display: inline-block; margin-top: 2rem; }
+        @media (max-width: 480px) { main { padding: 1.5rem 1.1rem; } }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Privacidad en Dasna</h1>
+        <p class="fecha">Última actualización: 16 de noviembre de 2026</p>
+
+        <p>Dasna es una aplicación para organizar tu día a día (estudio, comidas, agua, sueño, diario, tu ciclo…), hecha como proyecto académico. Aquí se explica qué datos guarda, para qué y qué puedes hacer con ellos.</p>
+
+        <h2>Qué datos guardamos</h2>
+        <ul>
+            <li><strong>Tu cuenta:</strong> tu correo, tu nombre si lo escribes y tu contraseña, que se guarda cifrada (nunca en texto legible).</li>
+            <li><strong>Si entras con Google:</strong> solo tu correo y tu nombre. Dasna no recibe tu contraseña de Google ni accede a nada más de tu cuenta.</li>
+            <li><strong>Lo que apuntas en cada módulo:</strong> por ejemplo tus vasos de agua, tus entradas del diario, tus gastos o los días de tu ciclo. Algunos son datos de salud: el módulo <em>Mi ciclo</em> solo se activa si tú lo eliges.</li>
+        </ul>
+
+        <h2>Para qué los usamos</h2>
+        <p>Solo para que la app funcione para ti: mostrarte tus datos, calcular tus resúmenes y predicciones y mandarte los avisos que actives. No se venden, no se usan para publicidad y no se comparten con nadie para otros fines.</p>
+
+        <h2>Dónde se guardan y quién nos ayuda</h2>
+        <ul>
+            <li><strong>MongoDB Atlas</strong> guarda la base de datos.</li>
+            <li><strong>Google Cloud Run</strong> (región de Europa) ejecuta la aplicación.</li>
+            <li><strong>Brevo</strong> envía los correos de confirmación de la cuenta y de recuperar la contraseña.</li>
+            <li><strong>Google</strong> gestiona el inicio de sesión con Google si lo usas, y lee la foto de un ticket cuando usas esa función en Comidas.</li>
+        </ul>
+
+        <h2>Cookies y almacenamiento</h2>
+        <p>Dasna usa una única cookie, necesaria para mantener tu sesión iniciada (la sesión caduca a las 2 horas). En tu navegador guarda también preferencias como el tema claro u oscuro o si tienes los avisos activados. No hay cookies de publicidad ni de analítica.</p>
+
+        <h2>Tus derechos</h2>
+        <ul>
+            <li><strong>Descargar tus datos:</strong> menú de tu cuenta → <em>Descargar mis datos</em> (todo o por módulo, en JSON o CSV).</li>
+            <li><strong>Borrarlo todo:</strong> menú de tu cuenta → <em>Eliminar cuenta</em>. Se borran tu cuenta y todo lo que has guardado, sin posibilidad de recuperarlo.</li>
+            <li><strong>Cambiar tu contraseña:</strong> desde «¿Has olvidado tu contraseña?» en la pantalla de inicio.</li>
+        </ul>
+
+        <h2>Aviso sobre las predicciones</h2>
+        <p>Las predicciones de Dasna (por ejemplo, de tu ciclo) son estimaciones a partir de lo que apuntas. No son consejo médico y no sirven como método anticonceptivo.</p>
+
+        <a class="volver" href="/">← Volver a Dasna</a>
+    </main>
+</body>
+</html>
