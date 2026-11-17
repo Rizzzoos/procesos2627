@@ -53,7 +53,7 @@ async function pintarHoy(zona, r) {
     const proximo = (lista || [])
         .filter((x) => ['estudio', 'eventos'].includes(x.clave) && claveDia(x.fecha) >= hoyK)
         .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))[0];
-    if (proximo) extra.push(datoHoy(proximo.clave, `${resumenDe(proximo.datos)} · ${cuandoRelativo(claveDia(proximo.fecha))}`));
+    if (proximo) extra.push(datoHoy(proximo.clave, `${resumenDe(proximo.datos, proximo.clave)} · ${cuandoRelativo(claveDia(proximo.fecha))}`));
     if (ciclo && !ciclo.error && ciclo.diaCiclo) {
         const fase = ciclo.retraso ? `${ciclo.retraso} ${ciclo.retraso === 1 ? 'día' : 'días'} de retraso` : (FASES_CICLO[ciclo.fase] || '').toLowerCase();
         extra.push(datoHoy('ciclo', `Día ${ciclo.diaCiclo}${fase ? ' · ' + fase : ''}`));

@@ -2,6 +2,7 @@
 
 Formato: **fecha · evento · enlace**, del más reciente al más antiguo. Los enlaces apuntan a la web pública del repositorio. Fechas y hashes tomados de `git log --first-parent --format='%h %ad %s' --date=short main` y de la API de GitHub (fechas de fusión de los PR).
 
+- 2026-11-17 · El calendario del Panel muestra cada registro con su frase (antes Mi ciclo salía en JSON)
 - 2026-11-16 · Avisos con la app cerrada en producción: claves VAPID en Cloud Run y trabajo `dasna-avisos` de Cloud Scheduler cada 5 min (PBI-24)
 - 2026-11-16 · App terminada: Web Push, franja «Hoy» y «Tu semana» opcionales, límite de intentos, pruebas en base aparte y CI en Node 24 · [PR #16](https://github.com/Rizzzoos/procesos2627/pull/16)
 - 2026-11-16 · Login con Google funcionando en la URL pública: página de privacidad y app de Google en producción (RF-04) · [PR #14](https://github.com/Rizzzoos/procesos2627/pull/14)

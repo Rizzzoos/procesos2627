@@ -134,6 +134,11 @@ let calBase = new Date();      // mes que se muestra
 let calSel = null;             // día seleccionado (YYYY-MM-DD)
 let registrosCal = null;       // registros de todos los módulos (cargados una vez)
 
+// Un día de Mi ciclo sin sangrado, relaciones ni síntomas no aporta nada al calendario
+function cicloVacio(d) {
+    return !d || (!(Number(d.sangrado) > 0) && !d.relaciones && !(Array.isArray(d.sintomas) && d.sintomas.length));
+}
+
 async function cargarRegistrosCal() {
     if (registrosCal) return registrosCal;
     // El diario y las comidas no salen en el calendario del panel
@@ -145,7 +150,7 @@ async function cargarRegistrosCal() {
     registrosCal = [];
     listas.forEach((r, i) => {
         if (r && r.exito && Array.isArray(r.datos)) {
-            r.datos.filter((reg) => !(reg.datos && reg.datos.tipo === 'rutina')).forEach((reg) => registrosCal.push({
+            r.datos.filter((reg) => !(reg.datos && reg.datos.tipo === 'rutina') && !(visibles[i].clave === 'ciclo' && cicloVacio(reg.datos))).forEach((reg) => registrosCal.push({
                 ...reg,
                 clave: visibles[i].clave,
                 icono: visibles[i].icono,
@@ -162,11 +167,34 @@ function claveDia(fecha) {
     return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
 }
 
-function resumenDe(datos) {
+// Texto corto de un registro para el calendario del Panel y la franja «Hoy».
+// Cada módulo con su frase; nunca se enseña el JSON crudo.
+function resumenDe(datos, clave = '') {
     if (datos == null) return '—';
-    const texto = (typeof datos === 'object'
-        ? (datos.titulo || datos.resumen || datos.concepto || datos.nombre || datos.nota || datos.texto || datos.tarea)
-        : datos) || JSON.stringify(datos);
+    if (typeof datos !== 'object') return String(datos).slice(0, 70);
+    const d = datos;
+    let texto = '';
+    if (clave === 'ciclo') {
+        const partes = [];
+        const nivel = SANGRADO_CICLO.find(([v]) => v === Number(d.sangrado));
+        if (nivel && nivel[0] > 0) partes.push(nivel[0] === 1 ? 'Manchado' : `Regla (${nivel[1].toLowerCase()})`);
+        if (d.relaciones) partes.push('Relaciones');
+        const sintomas = (Array.isArray(d.sintomas) ? d.sintomas : []).map((x) => NOMBRE_SINTOMA[x]).filter(Boolean);
+        if (sintomas.length) partes.push(sintomas.join(', ').toLowerCase());
+        texto = partes.length ? partes.join(' · ') : 'Día apuntado';
+        texto = texto.charAt(0).toUpperCase() + texto.slice(1);
+    } else if (clave === 'viajes' && d.destino) {
+        texto = `Viaje a ${d.destino}`;
+    } else if (clave === 'gimnasio' && d.tipo === 'sesion') {
+        texto = `Entreno${d.rutina ? ': ' + d.rutina : ''}`;
+    } else if (clave === 'estudio' && d.titulo) {
+        texto = `${NOMBRE_TIPO_ESTUDIO[d.tipo] || 'Tarea'}: ${d.titulo}${d.asignatura ? ' (' + d.asignatura + ')' : ''}`;
+    } else if (clave === 'ahorros' && d.concepto) {
+        const cantidad = Number(d.cantidad);
+        texto = Number.isFinite(cantidad) ? `${d.concepto} · ${cantidad.toLocaleString('es-ES')} €` : d.concepto;
+    } else {
+        texto = d.titulo || d.resumen || d.concepto || d.nombre || d.destino || d.rutina || d.nota || d.texto || d.tarea || 'Apuntado';
+    }
     return String(texto).slice(0, 70);
 }
 
@@ -298,7 +326,7 @@ function pintarDetalle() {
         <a class="cal-item" href="#/m/${r.clave}">
             <span>${iconoDe(r.clave, r.icono)}</span>
             <span class="de-modulo">${r.nombre}</span>
-            <span class="dato">${resumenDe(r.datos)}</span>
+            <span class="dato">${esc(resumenDe(r.datos, r.clave))}</span>
         </a>`).join('');
 }
 
