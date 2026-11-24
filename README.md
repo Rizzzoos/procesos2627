@@ -2,6 +2,10 @@
 
 Aplicación SaaS organizada en capas, con gestión de usuarios, inicio de sesión con Google (OAuth) y confirmación de cuenta por correo.
 
+**App desplegada:** https://procesos2627-817509698728.europe-west1.run.app
+
+**¿Quieres colaborar?** Lee [CONTRIBUTING.md](CONTRIBUTING.md): ideas y preguntas en [Discussions](https://github.com/Rizzzoos/procesos2627/discussions), fallos y mejoras en Issues (con plantilla) y PRs con la etiqueta `se-busca-revisión` para revisar.
+
 ## Tecnologías elegidas
 * **Node.js + Express:** Elegidos por su eficiencia y rapidez para construir la API REST, permitiendo usar JavaScript unificado tanto en el cliente como en el servidor.
 * **MongoDB Atlas + Mongoose:** Elegido por ser una base de datos NoSQL flexible, ideal para persistir datos y evolucionar la estructura sin esquemas rígidos iniciales.
