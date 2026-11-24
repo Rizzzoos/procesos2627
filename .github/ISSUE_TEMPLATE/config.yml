@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Ideas y preguntas
+    url: https://github.com/Rizzzoos/procesos2627/discussions
+    about: Para ideas abiertas o dudas que aún no son una tarea concreta, usa Discussions.
