@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const logica = require('./logica.js');
+const reglas = require('./reglas.js');
 
 const HOY = '2026-11-10'; // martes
 const regla = (nombre, params) => logica.aplicarRegla(nombre, { hoy: HOY, ...params });
@@ -52,6 +53,12 @@ test('Reglas de los módulos (PBI-27)', async (t) => {
         assert.strictEqual(corto.falta, 18, 'solo hay un día de estudio antes del día de repaso');
         assert.strictEqual(regla('plan-estudio', { temas: [{ horas: 1 }], examen: '2026-11-01', horasDia: 2 }).exito, false, 'examen pasado');
         assert.strictEqual(regla('plan-estudio', { temas: [{ horas: 1 }], examen: '2026-12-01', horasDia: 30 }).exito, false, 'más de 16 h al día');
+        // Llamando a la regla pura sin pasar por logica.js: negativos e Infinity usan las 2 h por defecto
+        const temas = [{ nombre: 'Tema 1', horas: 5 }];
+        const base = reglas.planificarTemas(temas, '2026-11-15', undefined, HOY);
+        for (const malo of [-2, Infinity, 'abc']) {
+            assert.deepStrictEqual(reglas.planificarTemas(temas, '2026-11-15', malo, HOY), base, `horasDia = ${malo}`);
+        }
     });
 
     await t.test('R6: agua, un vaso cada 2 h adelantado antes de comer', () => {

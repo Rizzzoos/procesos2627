@@ -253,8 +253,16 @@ function interpretarEstudio(texto, hoyK) {
 }
 
 // --- Estudio: reparte las horas de cada tema en los días hasta el examen ---
+const HORAS_DIA_POR_DEFECTO = 2;   // si no llegan horas válidas, se estudian 2 h al día
+
+// Convierte lo que llega (texto, número o nada) en las horas de estudio de cada día
+function horasDeEstudio(horasDia) {
+    const horas = Number(horasDia);
+    return Number.isFinite(horas) && horas > 0 ? horas : HORAS_DIA_POR_DEFECTO;
+}
+
 function planificarTemas(temas, fechaExamen, horasDia, hoyK) {
-    horasDia = Number(horasDia) || 2;
+    const horasPorDia = horasDeEstudio(horasDia);
     const ultimo = sumarDias(fechaExamen, -1);
     const dias = [];
     for (let k = hoyK; k < ultimo; k = sumarDias(k, 1)) dias.push(k);
@@ -262,7 +270,7 @@ function planificarTemas(temas, fechaExamen, horasDia, hoyK) {
     if (!dias.length) return { plan: [{ dia: hoyK, texto: 'Repaso general' }], falta: total };
     const plan = [];
     let iDia = 0;
-    let libre = horasDia;
+    let libre = horasPorDia;
     for (const t of temas) {
         let resto = Number(t.horas) || 0;
         while (resto > 0.01 && iDia < dias.length) {
@@ -270,7 +278,7 @@ function planificarTemas(temas, fechaExamen, horasDia, hoyK) {
             plan.push({ dia: dias[iDia], texto: `${t.nombre} (${String(Math.round(toca * 10) / 10).replace('.', ',')} h)` });
             resto -= toca;
             libre -= toca;
-            if (libre <= 0.01) { iDia++; libre = horasDia; }
+            if (libre <= 0.01) { iDia++; libre = horasPorDia; }
         }
     }
     plan.push({ dia: ultimo, texto: 'Repaso general' });
@@ -278,7 +286,7 @@ function planificarTemas(temas, fechaExamen, horasDia, hoyK) {
     for (const p of plan) porDia.set(p.dia, [...(porDia.get(p.dia) || []), p.texto]);
     return {
         plan: [...porDia].map(([dia, textos]) => ({ dia, texto: textos.join(' · ') })),
-        falta: Math.max(0, total - dias.length * horasDia)
+        falta: Math.max(0, total - dias.length * horasPorDia)
     };
 }
 
