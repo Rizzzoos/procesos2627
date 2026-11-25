@@ -257,7 +257,8 @@ const HORAS_DIA_POR_DEFECTO = 2;   // si no llegan horas válidas, se estudian 2
 
 // Convierte lo que llega (texto, número o nada) en las horas de estudio de cada día
 function horasDeEstudio(horasDia) {
-    return Number(horasDia) || HORAS_DIA_POR_DEFECTO;
+    const horas = Number(horasDia);
+    return Number.isFinite(horas) && horas > 0 ? horas : HORAS_DIA_POR_DEFECTO;
 }
 
 function planificarTemas(temas, fechaExamen, horasDia, hoyK) {
